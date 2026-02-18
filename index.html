@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汉字学习 - Hanzi Writer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Serif SC', 'Songti SC', serif;
+      background-color: #fafaf9; /* stone-50 */
+      color: #1c1917; /* stone-900 */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Header */
+    .header {
+      width: 100%;
+      background: linear-gradient(135deg, #dc2626, #b91c1c); /* red-600 to red-700 */
+      color: #fff;
+      padding: 20px 16px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    .header p {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-top: 4px;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* Main container */
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 20px 16px;
+      flex: 1;
+    }
+
+    /* Input section */
+    .input-section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #e7e5e4; /* stone-200 */
+      margin-bottom: 20px;
+    }
+
+    .input-section label {
+      display: block;
+      font-size: 0.9rem;
+      color: #57534e; /* stone-600 */
+      margin-bottom: 8px;
+      font-family: system-ui, sans-serif;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 1.2rem;
+      font-family: 'Noto Serif SC', serif;
+      border: 2px solid #d6d3d1; /* stone-300 */
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #fafaf9;
+    }
+
+    .input-row input:focus {
+      border-color: #dc2626;
+    }
+
+    .input-row button {
+      padding: 10px 20px;
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: system-ui, sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .input-row button:hover {
+      background: #b91c1c;
+    }
+
+    .input-row button:active {
+      transform: scale(0.97);
+    }
+
+    /* Error / info message */
+    .message {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: system-ui, sans-serif;
+      display: none;
+    }
+
+    .message.error {
+      display: block;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .message.info {
+      display: block;
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* Quick select characters */
+    .quick-chars {
+      margin-top: 14px;
+    }
+
+    .quick-chars span.label {
+      font-size: 0.8rem;
+      color: #78716c;
+      font-family: system-ui, sans-serif;
+    }
+
+    .quick-chars .chars {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .quick-chars .char-btn {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid #e7e5e4;
+      border-radius: 8px;
+      background: #fafaf9;
+      font-size: 1.2rem;
+      font-family: 'Noto Serif SC', serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-chars .char-btn:hover {
+      border-color: #dc2626;
+      color: #dc2626;
+      background: #fef2f2;
+    }
+
+    .quick-chars .char-btn.active {
+      border-color: #dc2626;
+      background: #dc2626;
+      color: #fff;
+    }
+
+    /* Writer display card */
+    .writer-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #e7e5e4;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .writer-card.visible {
+      display: block;
+    }
+
+    .char-info {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .char-info .big-char {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #dc2626;
+    }
+
+    .char-info .pinyin {
+      font-size: 1.1rem;
+      color: #78716c;
+      margin-top: 2px;
+    }
+
+    .char-info .meaning {
+      font-size: 0.85rem;
+      color: #a8a29e;
+      font-family: system-ui, sans-serif;
+      margin-top: 2px;
+    }
+
+    /* Grid wrapper - responsive */
+    .grid-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .grid-container {
+      width: 300px;
+      height: 300px;
+      position: relative;
+      border: 2px solid #dc2626;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    /* 田字格 grid lines */
+    .grid-container::before,
+    .grid-container::after {
+      content: '';
+      position: absolute;
+      background: none;
+    }
+
+    .grid-container::before {
+      top: 50%;
+      left: 5%;
+      right: 5%;
+      height: 0;
+      border-top: 1px dashed #e7e5e4;
+    }
+
+    .grid-container::after {
+      left: 50%;
+      top: 5%;
+      bottom: 5%;
+      width: 0;
+      border-left: 1px dashed #e7e5e4;
+    }
+
+    .grid-container svg {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      padding: 8px 18px;
+      border: 1.5px solid #dc2626;
+      border-radius: 8px;
+      background: #fff;
+      color: #dc2626;
+      font-size: 0.85rem;
+      font-family: system-ui, sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .controls button:hover {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .controls button.primary {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .controls button.primary:hover {
+      background: #b91c1c;
+    }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      background: #f5f5f4;
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .mode-tabs button {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #78716c;
+      font-size: 0.85rem;
+      font-family: system-ui, sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-tabs button.active {
+      background: #fff;
+      color: #dc2626;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    /* Stroke info */
+    .stroke-info {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #78716c;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* Quiz result */
+    .quiz-result {
+      text-align: center;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: system-ui, sans-serif;
+      display: none;
+    }
+
+    .quiz-result.show {
+      display: block;
+    }
+
+    .quiz-result.success {
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .quiz-result.fail {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    /* Loading spinner */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: #78716c;
+      font-family: system-ui, sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e7e5e4;
+      border-top-color: #dc2626;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Footer */
+    .footer {
+      width: 100%;
+      text-align: center;
+      padding: 16px;
+      font-size: 0.75rem;
+      color: #a8a29e;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 400px) {
+      .grid-container {
+        width: calc(100vw - 72px);
+        height: calc(100vw - 72px);
+        max-width: 300px;
+        max-height: 300px;
+      }
+
+      .header h1 {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 14px 12px;
+      }
+
+      .input-section,
+      .writer-card {
+        padding: 16px;
+      }
+
+      .controls button {
+        padding: 8px 14px;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 340px) {
+      .grid-container {
+        width: calc(100vw - 56px);
+        height: calc(100vw - 56px);
+      }
+    }
+
+    /* Library load error */
+    .lib-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin: 20px 16px;
+      max-width: 480px;
+    }
+
+    .lib-error .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .lib-error h2 {
+      color: #991b1b;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .lib-error p {
+      color: #78716c;
+      font-size: 0.85rem;
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+    }
+
+    .lib-error button {
+      margin-top: 12px;
+      padding: 8px 20px;
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>汉字学习</h1>
+    <p>Learn Chinese Characters — Stroke by Stroke</p>
+  </div>
+
+  <!-- Library load error (hidden by default) -->
+  <div class="lib-error" id="libError" style="display:none;">
+    <div class="icon">&#9888;</div>
+    <h2>HanziWriter 加载失败</h2>
+    <p>无法加载笔画库，请检查网络连接后重试。</p>
+    <button onclick="location.reload()">重新加载</button>
+  </div>
+
+  <div class="container" id="mainApp">
+
+    <!-- Input -->
+    <div class="input-section">
+      <label>输入一个汉字开始学习</label>
+      <div class="input-row">
+        <input type="text" id="charInput" maxlength="1" placeholder="例：学" autofocus>
+        <button onclick="loadCharacter()">学习</button>
+      </div>
+      <div class="message" id="msg"></div>
+      <div class="quick-chars">
+        <span class="label">常用汉字</span>
+        <div class="chars">
+          <button class="char-btn" onclick="quickSelect(this)">人</button>
+          <button class="char-btn" onclick="quickSelect(this)">大</button>
+          <button class="char-btn" onclick="quickSelect(this)">学</button>
+          <button class="char-btn" onclick="quickSelect(this)">中</button>
+          <button class="char-btn" onclick="quickSelect(this)">国</button>
+          <button class="char-btn" onclick="quickSelect(this)">爱</button>
+          <button class="char-btn" onclick="quickSelect(this)">龙</button>
+          <button class="char-btn" onclick="quickSelect(this)">福</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Writer display -->
+    <div class="writer-card" id="writerCard">
+      <div class="char-info" id="charInfo">
+        <div class="big-char" id="bigChar"></div>
+        <div class="pinyin" id="pinyin"></div>
+        <div class="meaning" id="meaning"></div>
+      </div>
+
+      <!-- Mode tabs -->
+      <div class="mode-tabs">
+        <button class="active" onclick="switchMode('animate', this)">笔顺演示</button>
+        <button onclick="switchMode('quiz', this)">书写练习</button>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid-wrapper">
+        <div class="grid-container" id="gridContainer">
+          <div id="writerTarget"></div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls" id="animateControls">
+        <button class="primary" onclick="animateChar()">播放动画</button>
+        <button onclick="animateStrokeByStroke()">逐笔播放</button>
+        <button onclick="resetWriter()">重置</button>
+      </div>
+
+      <div class="controls" id="quizControls" style="display:none;">
+        <button class="primary" onclick="startQuiz()">开始练习</button>
+        <button onclick="showHint()">提示</button>
+      </div>
+
+      <div class="stroke-info" id="strokeInfo"></div>
+      <div class="quiz-result" id="quizResult"></div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Powered by <a href="https://hanziwriter.org" target="_blank" style="color:#dc2626;text-decoration:none;">HanziWriter</a>
+  </div>
+
+  <!-- HanziWriter CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+
+  <script>
+    var writer = null;
+    var currentChar = '';
+    var currentMode = 'animate';
+    var currentStroke = 0;
+    var totalStrokes = 0;
+    var libLoaded = typeof HanziWriter !== 'undefined';
+
+    // Pinyin dictionary (common characters)
+    var pinyinDict = {
+      '人': { pinyin: 'rén', meaning: 'person, people' },
+      '大': { pinyin: 'dà', meaning: 'big, large' },
+      '学': { pinyin: 'xué', meaning: 'learn, study' },
+      '中': { pinyin: 'zhōng', meaning: 'middle, center' },
+      '国': { pinyin: 'guó', meaning: 'country, nation' },
+      '爱': { pinyin: 'ài', meaning: 'love' },
+      '龙': { pinyin: 'lóng', meaning: 'dragon' },
+      '福': { pinyin: 'fú', meaning: 'fortune, blessing' },
+      '山': { pinyin: 'shān', meaning: 'mountain' },
+      '水': { pinyin: 'shuǐ', meaning: 'water' },
+      '火': { pinyin: 'huǒ', meaning: 'fire' },
+      '木': { pinyin: 'mù', meaning: 'wood, tree' },
+      '日': { pinyin: 'rì', meaning: 'sun, day' },
+      '月': { pinyin: 'yuè', meaning: 'moon, month' },
+      '天': { pinyin: 'tiān', meaning: 'sky, day' },
+      '地': { pinyin: 'dì', meaning: 'earth, ground' },
+      '一': { pinyin: 'yī', meaning: 'one' },
+      '二': { pinyin: 'èr', meaning: 'two' },
+      '三': { pinyin: 'sān', meaning: 'three' },
+      '四': { pinyin: 'sì', meaning: 'four' },
+      '五': { pinyin: 'wǔ', meaning: 'five' },
+      '六': { pinyin: 'liù', meaning: 'six' },
+      '七': { pinyin: 'qī', meaning: 'seven' },
+      '八': { pinyin: 'bā', meaning: 'eight' },
+      '九': { pinyin: 'jiǔ', meaning: 'nine' },
+      '十': { pinyin: 'shí', meaning: 'ten' },
+      '口': { pinyin: 'kǒu', meaning: 'mouth' },
+      '手': { pinyin: 'shǒu', meaning: 'hand' },
+      '心': { pinyin: 'xīn', meaning: 'heart' },
+      '花': { pinyin: 'huā', meaning: 'flower' },
+      '鸟': { pinyin: 'niǎo', meaning: 'bird' },
+      '马': { pinyin: 'mǎ', meaning: 'horse' },
+      '鱼': { pinyin: 'yú', meaning: 'fish' },
+      '猫': { pinyin: 'māo', meaning: 'cat' },
+      '狗': { pinyin: 'gǒu', meaning: 'dog' },
+      '好': { pinyin: 'hǎo', meaning: 'good' },
+      '你': { pinyin: 'nǐ', meaning: 'you' },
+      '我': { pinyin: 'wǒ', meaning: 'I, me' },
+      '他': { pinyin: 'tā', meaning: 'he, him' },
+      '她': { pinyin: 'tā', meaning: 'she, her' },
+      '是': { pinyin: 'shì', meaning: 'is, am, are' },
+      '的': { pinyin: 'de', meaning: '(possessive particle)' },
+      '了': { pinyin: 'le', meaning: '(completed action)' },
+      '在': { pinyin: 'zài', meaning: 'at, in' },
+      '有': { pinyin: 'yǒu', meaning: 'have, exist' },
+      '不': { pinyin: 'bù', meaning: 'not, no' },
+      '这': { pinyin: 'zhè', meaning: 'this' },
+      '那': { pinyin: 'nà', meaning: 'that' },
+      '来': { pinyin: 'lái', meaning: 'come' },
+      '去': { pinyin: 'qù', meaning: 'go' },
+      '吃': { pinyin: 'chī', meaning: 'eat' },
+      '喝': { pinyin: 'hē', meaning: 'drink' },
+      '说': { pinyin: 'shuō', meaning: 'speak, say' },
+      '看': { pinyin: 'kàn', meaning: 'look, see' },
+      '听': { pinyin: 'tīng', meaning: 'listen, hear' },
+      '读': { pinyin: 'dú', meaning: 'read' },
+      '写': { pinyin: 'xiě', meaning: 'write' },
+      '风': { pinyin: 'fēng', meaning: 'wind' },
+      '云': { pinyin: 'yún', meaning: 'cloud' },
+      '雨': { pinyin: 'yǔ', meaning: 'rain' },
+      '雪': { pinyin: 'xuě', meaning: 'snow' },
+      '春': { pinyin: 'chūn', meaning: 'spring' },
+      '夏': { pinyin: 'xià', meaning: 'summer' },
+      '秋': { pinyin: 'qiū', meaning: 'autumn' },
+      '冬': { pinyin: 'dōng', meaning: 'winter' }
+    };
+
+    // Check library load
+    window.addEventListener('load', function() {
+      if (typeof HanziWriter === 'undefined') {
+        document.getElementById('libError').style.display = 'block';
+        document.getElementById('mainApp').style.display = 'none';
+      }
+    });
+
+    // Enter key support
+    document.getElementById('charInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') loadCharacter();
+    });
+
+    function isChinese(char) {
+      var code = char.charCodeAt(0);
+      return (code >= 0x4E00 && code <= 0x9FFF) ||
+             (code >= 0x3400 && code <= 0x4DBF) ||
+             (code >= 0x20000 && code <= 0x2A6DF);
+    }
+
+    function showMessage(text, type) {
+      var msg = document.getElementById('msg');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+
+    function clearMessage() {
+      var msg = document.getElementById('msg');
+      msg.className = 'message';
+      msg.textContent = '';
+    }
+
+    function quickSelect(btn) {
+      var allBtns = document.querySelectorAll('.char-btn');
+      allBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('charInput').value = btn.textContent;
+      loadCharacter();
+    }
+
+    function loadCharacter() {
+      var input = document.getElementById('charInput').value.trim();
+      clearMessage();
+
+      if (!input) {
+        showMessage('请输入一个汉字。', 'error');
+        return;
+      }
+
+      var char = input.charAt(0);
+
+      if (!isChinese(char)) {
+        showMessage('「' + char + '」不是有效的汉字，请输入中文字符。', 'error');
+        return;
+      }
+
+      if (typeof HanziWriter === 'undefined') {
+        showMessage('HanziWriter 库未加载，请刷新页面重试。', 'error');
+        return;
+      }
+
+      currentChar = char;
+      document.getElementById('charInput').value = char;
+
+      // Update quick select state
+      var allBtns = document.querySelectorAll('.char-btn');
+      allBtns.forEach(function(b) {
+        b.classList.toggle('active', b.textContent === char);
+      });
+
+      // Show character info
+      var info = pinyinDict[char];
+      document.getElementById('bigChar').textContent = char;
+      document.getElementById('pinyin').textContent = info ? info.pinyin : '';
+      document.getElementById('meaning').textContent = info ? info.meaning : '';
+
+      // Destroy old writer
+      var target = document.getElementById('writerTarget');
+      target.innerHTML = '';
+
+      // Show card
+      document.getElementById('writerCard').classList.add('visible');
+
+      // Reset mode to animate
+      currentMode = 'animate';
+      var tabs = document.querySelectorAll('.mode-tabs button');
+      tabs[0].classList.add('active');
+      tabs[1].classList.remove('active');
+      document.getElementById('animateControls').style.display = 'flex';
+      document.getElementById('quizControls').style.display = 'none';
+      document.getElementById('quizResult').className = 'quiz-result';
+
+      // Get container size
+      var container = document.getElementById('gridContainer');
+      var size = container.clientWidth;
+
+      try {
+        writer = HanziWriter.create('writerTarget', char, {
+          width: size,
+          height: size,
+          padding: 20,
+          showOutline: true,
+          strokeAnimationSpeed: 1,
+          delayBetweenStrokes: 300,
+          strokeColor: '#1c1917',
+          outlineColor: '#d6d3d1',
+          drawingColor: '#dc2626',
+          radicalColor: '#dc2626',
+          highlightColor: '#fca5a5',
+          showCharacter: true,
+          charDataLoader: function(char, onComplete) {
+            var url = 'https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/' + char + '.json';
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                  var data = JSON.parse(xhr.responseText);
+                  totalStrokes = data.strokes.length;
+                  currentStroke = 0;
+                  document.getElementById('strokeInfo').textContent =
+                    '共 ' + totalStrokes + ' 笔';
+                  onComplete(data);
+                } else {
+                  showMessage('无法加载「' + char + '」的笔画数据，该字可能暂不支持。', 'error');
+                  document.getElementById('writerCard').classList.remove('visible');
+                  onComplete(null);
+                }
+              }
+            };
+            xhr.onerror = function() {
+              showMessage('网络错误，无法获取笔画数据，请检查网络连接。', 'error');
+              document.getElementById('writerCard').classList.remove('visible');
+            };
+            xhr.send();
+          }
+        });
+      } catch (err) {
+        showMessage('加载失败：' + err.message, 'error');
+        document.getElementById('writerCard').classList.remove('visible');
+      }
+    }
+
+    function switchMode(mode, btn) {
+      currentMode = mode;
+      var tabs = document.querySelectorAll('.mode-tabs button');
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      btn.classList.add('active');
+
+      document.getElementById('quizResult').className = 'quiz-result';
+
+      if (mode === 'animate') {
+        document.getElementById('animateControls').style.display = 'flex';
+        document.getElementById('quizControls').style.display = 'none';
+        if (writer) {
+          writer.hideCharacter();
+          writer.showCharacter();
+          writer.showOutline();
+        }
+      } else {
+        document.getElementById('animateControls').style.display = 'none';
+        document.getElementById('quizControls').style.display = 'flex';
+      }
+    }
+
+    function animateChar() {
+      if (!writer) return;
+      writer.hideCharacter();
+      writer.showOutline();
+      currentStroke = 0;
+      writer.animateCharacter({
+        onComplete: function() {
+          document.getElementById('strokeInfo').textContent =
+            '共 ' + totalStrokes + ' 笔 — 演示完成';
+        }
+      });
+    }
+
+    function animateStrokeByStroke() {
+      if (!writer) return;
+
+      if (currentStroke === 0) {
+        writer.hideCharacter();
+        writer.showOutline();
+      }
+
+      if (currentStroke < totalStrokes) {
+        writer.animateStroke(currentStroke, {
+          onComplete: function() {
+            currentStroke++;
+            document.getElementById('strokeInfo').textContent =
+              '第 ' + currentStroke + ' / ' + totalStrokes + ' 笔';
+          }
+        });
+      } else {
+        currentStroke = 0;
+        document.getElementById('strokeInfo').textContent =
+          '共 ' + totalStrokes + ' 笔 — 演示完成，点击可重新开始';
+      }
+    }
+
+    function resetWriter() {
+      if (!writer) return;
+      currentStroke = 0;
+      writer.hideCharacter();
+      writer.showCharacter();
+      writer.showOutline();
+      document.getElementById('strokeInfo').textContent =
+        '共 ' + totalStrokes + ' 笔';
+    }
+
+    function startQuiz() {
+      if (!writer) return;
+      document.getElementById('quizResult').className = 'quiz-result';
+
+      writer.quiz({
+        onMistake: function(data) {
+          document.getElementById('strokeInfo').textContent =
+            '第 ' + (data.strokeNum + 1) + ' / ' + totalStrokes + ' 笔 · 错误 ' + data.mistakesOnStroke + ' 次';
+        },
+        onCorrectStroke: function(data) {
+          document.getElementById('strokeInfo').textContent =
+            '第 ' + (data.strokeNum + 1) + ' / ' + totalStrokes + ' 笔 · 正确!';
+        },
+        onComplete: function(data) {
+          var result = document.getElementById('quizResult');
+          if (data.totalMistakes === 0) {
+            result.textContent = '太棒了! 零失误完成!';
+            result.className = 'quiz-result show success';
+          } else {
+            result.textContent = '完成! 共出错 ' + data.totalMistakes + ' 次，继续加油!';
+            result.className = 'quiz-result show ' + (data.totalMistakes <= 3 ? 'success' : 'fail');
+          }
+          document.getElementById('strokeInfo').textContent =
+            '共 ' + totalStrokes + ' 笔 — 练习完成';
+        }
+      });
+
+      document.getElementById('strokeInfo').textContent = '请在田字格中书写...';
+    }
+
+    function showHint() {
+      if (!writer) return;
+      writer.showHint();
+    }
+  </script>
+
+</body>
+</html>
