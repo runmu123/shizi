@@ -3,11 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>汉字学习 - Hanzi Writer</title>
+  <title>生字卡片</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+  <script src="js/js-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
   <style>
+    :root {
+      --primary-color: #d97706; /* amber-600 */
+      --primary-hover: #b45309; /* amber-700 */
+      --bg-color: #fef3c7; /* amber-50 */
+      --card-bg: #fff;
+      --text-color: #1c1917; /* stone-900 */
+      --highlight-color: #dc2626; /* red-600 */
+      --grid-border: #fca5a5; /* red-300 */
+      --grid-line: #fecaca; /* red-200 */
+      --tag-bg: #fcd34d; /* amber-300 */
+      --tag-text: #78350f; /* amber-900 */
+      --nav-bg: #fff;
+      --nav-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -15,807 +32,1024 @@
     }
 
     body {
-      font-family: 'Noto Serif SC', 'Songti SC', serif;
-      background-color: #fafaf9; /* stone-50 */
-      color: #1c1917; /* stone-900 */
+      font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+      background-color: #fdfbf7;
+      color: var(--text-color);
+      padding-top: 80px; /* Space for fixed navbar */
+      padding-bottom: 20px;
+      padding-left: 20px;
+      padding-right: 20px;
       min-height: 100vh;
-      display: flex;
+    }
+
+    /* Learning View Styles */
+    .learning-view {
+      display: none;
+      max-width: 600px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid #f3f4f6;
       flex-direction: column;
       align-items: center;
+      position: relative;
     }
 
-    /* Header */
-    .header {
-      width: 100%;
-      background: linear-gradient(135deg, #dc2626, #b91c1c); /* red-600 to red-700 */
-      color: #fff;
-      padding: 20px 16px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
-    }
-
-    .header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-    }
-
-    .header p {
-      font-size: 0.85rem;
-      opacity: 0.85;
-      margin-top: 4px;
-      font-family: system-ui, sans-serif;
-    }
-
-    /* Main container */
-    .container {
-      width: 100%;
-      max-width: 480px;
-      padding: 20px 16px;
-      flex: 1;
-    }
-
-    /* Input section */
-    .input-section {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border: 1px solid #e7e5e4; /* stone-200 */
-      margin-bottom: 20px;
-    }
-
-    .input-section label {
-      display: block;
-      font-size: 0.9rem;
-      color: #57534e; /* stone-600 */
-      margin-bottom: 8px;
-      font-family: system-ui, sans-serif;
-    }
-
-    .input-row {
+    .learning-view.active {
       display: flex;
-      gap: 10px;
     }
 
-    .input-row input {
-      flex: 1;
-      padding: 10px 14px;
-      font-size: 1.2rem;
-      font-family: 'Noto Serif SC', serif;
-      border: 2px solid #d6d3d1; /* stone-300 */
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: transparent;
+      border: 1px solid #e5e7eb;
+      padding: 6px 12px;
       border-radius: 8px;
-      outline: none;
-      transition: border-color 0.2s;
-      background: #fafaf9;
-    }
-
-    .input-row input:focus {
-      border-color: #dc2626;
-    }
-
-    .input-row button {
-      padding: 10px 20px;
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-family: system-ui, sans-serif;
       cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-
-    .input-row button:hover {
-      background: #b91c1c;
-    }
-
-    .input-row button:active {
-      transform: scale(0.97);
-    }
-
-    /* Error / info message */
-    .message {
-      margin-top: 12px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 0.85rem;
       font-family: system-ui, sans-serif;
-      display: none;
-    }
-
-    .message.error {
-      display: block;
-      background: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-
-    .message.info {
-      display: block;
-      background: #f0fdf4;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-
-    /* Quick select characters */
-    .quick-chars {
-      margin-top: 14px;
-    }
-
-    .quick-chars span.label {
-      font-size: 0.8rem;
-      color: #78716c;
-      font-family: system-ui, sans-serif;
-    }
-
-    .quick-chars .chars {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .quick-chars .char-btn {
-      width: 42px;
-      height: 42px;
+      color: #6b7280;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
-      justify-content: center;
-      border: 1.5px solid #e7e5e4;
-      border-radius: 8px;
-      background: #fafaf9;
-      font-size: 1.2rem;
+      gap: 4px;
+    }
+
+    .back-btn:hover {
+      background: #f9fafb;
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .char-header {
+      text-align: center;
+      margin-bottom: 24px;
+      margin-top: 10px;
+    }
+
+    .big-char {
+      font-size: 4rem;
+      font-family: 'KaiTi', 'STKaiti', serif;
+      color: var(--highlight-color);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .pinyin {
+      font-size: 1.5rem;
+      color: #78716c;
       font-family: 'Noto Serif SC', serif;
+    }
+
+    .writer-container {
+      margin-bottom: 24px;
+      padding: 4px;
+      border: 2px solid var(--grid-border);
+      border-radius: 4px;
+      background: #fff;
+      position: relative;
+    }
+
+    /* Tian Zi Ge lines for writer */
+    .writer-container::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 4px;
+      right: 4px;
+      height: 1px;
+      border-top: 1px dashed var(--grid-line);
+      z-index: 0;
+    }
+
+    .writer-container::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 4px;
+      bottom: 4px;
+      width: 1px;
+      border-left: 1px dashed var(--grid-line);
+      z-index: 0;
+    }
+
+    .writer-target {
+      position: relative;
+      z-index: 1;
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: #f3f4f6;
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .mode-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
       cursor: pointer;
+      border-radius: 6px;
+      color: #6b7280;
+      font-size: 0.95rem;
       transition: all 0.2s;
     }
 
-    .quick-chars .char-btn:hover {
-      border-color: #dc2626;
-      color: #dc2626;
-      background: #fef2f2;
+    .mode-tab.active {
+      background: #fff;
+      color: var(--primary-color);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      font-weight: 600;
     }
 
-    .quick-chars .char-btn.active {
-      border-color: #dc2626;
-      background: #dc2626;
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .control-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--primary-color);
+      background: #fff;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: var(--primary-color);
       color: #fff;
     }
 
-    /* Writer display card */
-    .writer-card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border: 1px solid #e7e5e4;
-      margin-bottom: 20px;
-      display: none;
+    .control-btn.primary {
+      background: var(--primary-color);
+      color: #fff;
     }
 
-    .writer-card.visible {
-      display: block;
+    .control-btn.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
     }
 
-    .char-info {
-      text-align: center;
-      margin-bottom: 16px;
+    .stroke-info {
+      color: #9ca3af;
+      font-size: 0.9rem;
+      margin-top: 10px;
     }
 
-    .char-info .big-char {
-      font-size: 2.4rem;
-      font-weight: 700;
-      color: #dc2626;
+    .char-box {
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .char-info .pinyin {
-      font-size: 1.1rem;
-      color: #78716c;
-      margin-top: 2px;
+    .char-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-color: var(--primary-color);
     }
 
-    .char-info .meaning {
-      font-size: 0.85rem;
-      color: #a8a29e;
+    /* Navbar */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--nav-bg);
+      box-shadow: var(--nav-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .level-selector {
+      display: flex;
+      gap: 8px;
+    }
+
+    .level-btn {
+      padding: 6px 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #374151;
+      transition: all 0.2s;
       font-family: system-ui, sans-serif;
-      margin-top: 2px;
     }
 
-    /* Grid wrapper - responsive */
-    .grid-wrapper {
+    .level-btn.active {
+      background: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+    }
+
+    .unit-navigator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: system-ui, sans-serif;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .nav-btn:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .unit-indicator {
+      position: relative;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      min-width: 80px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .unit-indicator:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    /* Search Bar */
+    .search-container {
+      flex: 1;
       display: flex;
       justify-content: center;
-      margin-bottom: 16px;
+      margin: 0 20px;
     }
 
-    .grid-container {
-      width: 300px;
-      height: 300px;
+    .search-input {
+      width: 100%;
+      max-width: 200px;
+      padding: 6px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      outline: none;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      background: #f9fafb url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="%239ca3af"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>') no-repeat 12px center;
+      background-size: 16px;
+      padding-left: 36px;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary-color);
+      background-color: #fff;
+      box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.1);
+      max-width: 300px;
+    }
+
+    /* Hidden select covering the indicator */
+    .unit-select {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .unit-title {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #78350f;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    /* Card Styles */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      gap: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid #f3f4f6;
+      align-items: center;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Left: Character Box (Tian Zi Ge) */
+    .char-box {
+      flex-shrink: 0;
+      width: 100px;
+      height: 100px;
       position: relative;
-      border: 2px solid #dc2626;
-      border-radius: 4px;
-      background: #fff;
+      border: 2px solid var(--grid-border);
+      border-radius: 8px;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    /* 田字格 grid lines */
-    .grid-container::before,
-    .grid-container::after {
+    /* Grid lines */
+    .char-box::before,
+    .char-box::after {
       content: '';
       position: absolute;
+      background-color: var(--grid-line);
+      z-index: 1;
+    }
+
+    .char-box::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      border-top: 1px dashed var(--grid-line);
       background: none;
     }
 
-    .grid-container::before {
-      top: 50%;
-      left: 5%;
-      right: 5%;
-      height: 0;
-      border-top: 1px dashed #e7e5e4;
-    }
-
-    .grid-container::after {
+    .char-box::after {
       left: 50%;
-      top: 5%;
-      bottom: 5%;
-      width: 0;
-      border-left: 1px dashed #e7e5e4;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      border-left: 1px dashed var(--grid-line);
+      background: none;
     }
 
-    .grid-container svg {
-      width: 100% !important;
-      height: 100% !important;
+    .char-text {
+      font-size: 72px;
+      font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', serif;
+      z-index: 2;
+      line-height: 1;
+      color: #1f2937;
     }
 
-    /* Controls */
-    .controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .controls button {
-      padding: 8px 18px;
-      border: 1.5px solid #dc2626;
-      border-radius: 8px;
-      background: #fff;
-      color: #dc2626;
-      font-size: 0.85rem;
-      font-family: system-ui, sans-serif;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .controls button:hover {
-      background: #dc2626;
-      color: #fff;
-    }
-
-    .controls button.primary {
-      background: #dc2626;
-      color: #fff;
-    }
-
-    .controls button.primary:hover {
-      background: #b91c1c;
-    }
-
-    /* Mode tabs */
-    .mode-tabs {
-      display: flex;
-      gap: 0;
-      margin-bottom: 16px;
-      background: #f5f5f4;
-      border-radius: 8px;
-      padding: 3px;
-    }
-
-    .mode-tabs button {
+    /* Right: Content Box */
+    .content-box {
       flex: 1;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: #78716c;
-      font-size: 0.85rem;
-      font-family: system-ui, sans-serif;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .mode-tabs button.active {
-      background: #fff;
-      color: #dc2626;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-    }
-
-    /* Stroke info */
-    .stroke-info {
-      text-align: center;
-      margin-top: 14px;
-      font-size: 0.85rem;
-      color: #78716c;
-      font-family: system-ui, sans-serif;
-    }
-
-    /* Quiz result */
-    .quiz-result {
-      text-align: center;
-      margin-top: 12px;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-family: system-ui, sans-serif;
-      display: none;
-    }
-
-    .quiz-result.show {
-      display: block;
-    }
-
-    .quiz-result.success {
-      background: #f0fdf4;
-      color: #166534;
-    }
-
-    .quiz-result.fail {
-      background: #fef2f2;
-      color: #991b1b;
-    }
-
-    /* Loading spinner */
-    .loading {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 200px;
-      color: #78716c;
-      font-family: system-ui, sans-serif;
-      font-size: 0.9rem;
+      gap: 12px;
     }
 
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid #e7e5e4;
-      border-top-color: #dc2626;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 12px;
+    .row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Footer */
-    .footer {
-      width: 100%;
-      text-align: center;
-      padding: 16px;
-      font-size: 0.75rem;
-      color: #a8a29e;
-      font-family: system-ui, sans-serif;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 400px) {
-      .grid-container {
-        width: calc(100vw - 72px);
-        height: calc(100vw - 72px);
-        max-width: 300px;
-        max-height: 300px;
-      }
-
-      .header h1 {
-        font-size: 1.3rem;
-      }
-
-      .container {
-        padding: 14px 12px;
-      }
-
-      .input-section,
-      .writer-card {
-        padding: 16px;
-      }
-
-      .controls button {
-        padding: 8px 14px;
-        font-size: 0.8rem;
-      }
-    }
-
-    @media (max-width: 340px) {
-      .grid-container {
-        width: calc(100vw - 56px);
-        height: calc(100vw - 56px);
-      }
-    }
-
-    /* Library load error */
-    .lib-error {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      margin: 20px 16px;
-      max-width: 480px;
-    }
-
-    .lib-error .icon {
-      font-size: 2rem;
-      margin-bottom: 8px;
-    }
-
-    .lib-error h2 {
-      color: #991b1b;
+    .tag {
+      background-color: var(--tag-bg);
+      color: var(--tag-text);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 700;
       font-size: 1rem;
-      margin-bottom: 8px;
+      white-space: nowrap;
+      font-family: 'Noto Serif SC', serif;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
-    .lib-error p {
-      color: #78716c;
-      font-size: 0.85rem;
-      font-family: system-ui, sans-serif;
+    .text-content {
+      font-size: 1.2rem;
       line-height: 1.5;
+      color: #44403c;
+      font-family: 'Noto Serif SC', serif;
     }
 
-    .lib-error button {
-      margin-top: 12px;
-      padding: 8px 20px;
-      background: #dc2626;
-      color: #fff;
-      border: none;
+    .words span {
+      margin-right: 12px;
+      display: inline-block;
+    }
+
+    .highlight {
+      color: var(--highlight-color);
+      font-weight: 600;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #9ca3af;
+      font-size: 1.2rem;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 20px;
+      color: #dc2626;
+      background: #fef2f2;
       border-radius: 8px;
-      cursor: pointer;
-      font-family: system-ui, sans-serif;
+      border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 600px) {
+      .navbar {
+        padding: 0 12px;
+      }
+      
+      .unit-navigator {
+        gap: 8px;
+      }
+
+      .card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .char-box {
+        align-self: center;
+        margin-bottom: 10px;
+      }
+      
+      .row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      
+      .tag {
+        font-size: 0.9rem;
+        padding: 2px 8px;
+      }
     }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h1>汉字学习</h1>
-    <p>Learn Chinese Characters — Stroke by Stroke</p>
-  </div>
-
-  <!-- Library load error (hidden by default) -->
-  <div class="lib-error" id="libError" style="display:none;">
-    <div class="icon">&#9888;</div>
-    <h2>HanziWriter 加载失败</h2>
-    <p>无法加载笔画库，请检查网络连接后重试。</p>
-    <button onclick="location.reload()">重新加载</button>
-  </div>
-
-  <div class="container" id="mainApp">
-
-    <!-- Input -->
-    <div class="input-section">
-      <label>输入一个汉字开始学习</label>
-      <div class="input-row">
-        <input type="text" id="charInput" maxlength="1" placeholder="例：学" autofocus>
-        <button onclick="loadCharacter()">学习</button>
-      </div>
-      <div class="message" id="msg"></div>
-      <div class="quick-chars">
-        <span class="label">常用汉字</span>
-        <div class="chars">
-          <button class="char-btn" onclick="quickSelect(this)">人</button>
-          <button class="char-btn" onclick="quickSelect(this)">大</button>
-          <button class="char-btn" onclick="quickSelect(this)">学</button>
-          <button class="char-btn" onclick="quickSelect(this)">中</button>
-          <button class="char-btn" onclick="quickSelect(this)">国</button>
-          <button class="char-btn" onclick="quickSelect(this)">爱</button>
-          <button class="char-btn" onclick="quickSelect(this)">龙</button>
-          <button class="char-btn" onclick="quickSelect(this)">福</button>
-        </div>
-      </div>
+  <header class="navbar">
+    <div class="level-selector" id="levelSelector">
+      <button class="level-btn active" data-level="L1">L1</button>
+      <button class="level-btn" data-level="L2">L2</button>
+      <button class="level-btn" data-level="L3">L3</button>
+    </div>
+    
+    <div class="search-container">
+      <input type="text" id="searchInput" class="search-input" placeholder="输入一个汉字..." maxlength="1">
     </div>
 
-    <!-- Writer display -->
-    <div class="writer-card" id="writerCard">
-      <div class="char-info" id="charInfo">
-        <div class="big-char" id="bigChar"></div>
-        <div class="pinyin" id="pinyin"></div>
-        <div class="meaning" id="meaning"></div>
+    <div class="unit-navigator">
+      <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
+      <div class="unit-indicator">
+        <span id="indicatorText">1/1</span>
+        <select id="unitSelect" class="unit-select"></select>
       </div>
+      <button class="nav-btn" id="nextUnit" title="下一单元">&gt;</button>
+    </div>
+  </header>
 
-      <!-- Mode tabs -->
-      <div class="mode-tabs">
-        <button class="active" onclick="switchMode('animate', this)">笔顺演示</button>
-        <button onclick="switchMode('quiz', this)">书写练习</button>
-      </div>
+  <div class="container" id="app">
+    <div class="loading">加载中...</div>
+  </div>
 
-      <!-- Grid -->
-      <div class="grid-wrapper">
-        <div class="grid-container" id="gridContainer">
-          <div id="writerTarget"></div>
-        </div>
-      </div>
-
-      <!-- Controls -->
-      <div class="controls" id="animateControls">
-        <button class="primary" onclick="animateChar()">播放动画</button>
-        <button onclick="animateStrokeByStroke()">逐笔播放</button>
-        <button onclick="resetWriter()">重置</button>
-      </div>
-
-      <div class="controls" id="quizControls" style="display:none;">
-        <button class="primary" onclick="startQuiz()">开始练习</button>
-        <button onclick="showHint()">提示</button>
-      </div>
-
-      <div class="stroke-info" id="strokeInfo"></div>
-      <div class="quiz-result" id="quizResult"></div>
+  <!-- Learning View -->
+  <div class="learning-view" id="learningView">
+    <button class="back-btn" id="backBtn">
+      <span>&larr;</span> 返回
+    </button>
+    
+    <div class="char-header">
+      <div class="big-char" id="learnChar"></div>
+      <div class="pinyin" id="learnPinyin"></div>
     </div>
 
-  </div>
+    <div class="mode-tabs">
+      <div class="mode-tab active" data-mode="animate">笔顺演示</div>
+      <div class="mode-tab" data-mode="quiz">书写练习</div>
+    </div>
 
-  <div class="footer">
-    Powered by <a href="https://hanziwriter.org" target="_blank" style="color:#dc2626;text-decoration:none;">HanziWriter</a>
-  </div>
+    <div class="writer-container" id="writerContainer">
+      <div class="writer-target" id="writerTarget"></div>
+    </div>
 
-  <!-- HanziWriter CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <!-- Animate Controls -->
+    <div class="controls" id="animateControls">
+      <button class="control-btn primary" id="playBtn">播放动画</button>
+      <button class="control-btn" id="strokeBtn">逐笔播放</button>
+      <button class="control-btn" id="resetBtn">重置</button>
+    </div>
+
+    <!-- Quiz Controls -->
+    <div class="controls" id="quizControls" style="display:none;">
+      <button class="control-btn primary" id="startQuizBtn">开始练习</button>
+      <button class="control-btn" id="hintBtn">提示</button>
+    </div>
+
+    <div class="stroke-info" id="strokeInfo"></div>
+    <div class="error-msg" id="quizResult" style="display:none; margin-top:10px;"></div>
+  </div>
 
   <script>
-    var writer = null;
-    var currentChar = '';
-    var currentMode = 'animate';
-    var currentStroke = 0;
-    var totalStrokes = 0;
-    var libLoaded = typeof HanziWriter !== 'undefined';
+    // State
+    const LEVELS = ['L1', 'L2', 'L3'];
+    let currentLevel = 'L1';
+    let currentData = null; // Full parsed YAML data
+    const levelDataCache = {}; // Cache for loaded levels
+    let unitKeys = [];      // Array of unit names (e.g. "第一单元")
+    let currentUnitIndex = 0;
 
-    // Pinyin dictionary (common characters)
-    var pinyinDict = {
-      '人': { pinyin: 'rén', meaning: 'person, people' },
-      '大': { pinyin: 'dà', meaning: 'big, large' },
-      '学': { pinyin: 'xué', meaning: 'learn, study' },
-      '中': { pinyin: 'zhōng', meaning: 'middle, center' },
-      '国': { pinyin: 'guó', meaning: 'country, nation' },
-      '爱': { pinyin: 'ài', meaning: 'love' },
-      '龙': { pinyin: 'lóng', meaning: 'dragon' },
-      '福': { pinyin: 'fú', meaning: 'fortune, blessing' },
-      '山': { pinyin: 'shān', meaning: 'mountain' },
-      '水': { pinyin: 'shuǐ', meaning: 'water' },
-      '火': { pinyin: 'huǒ', meaning: 'fire' },
-      '木': { pinyin: 'mù', meaning: 'wood, tree' },
-      '日': { pinyin: 'rì', meaning: 'sun, day' },
-      '月': { pinyin: 'yuè', meaning: 'moon, month' },
-      '天': { pinyin: 'tiān', meaning: 'sky, day' },
-      '地': { pinyin: 'dì', meaning: 'earth, ground' },
-      '一': { pinyin: 'yī', meaning: 'one' },
-      '二': { pinyin: 'èr', meaning: 'two' },
-      '三': { pinyin: 'sān', meaning: 'three' },
-      '四': { pinyin: 'sì', meaning: 'four' },
-      '五': { pinyin: 'wǔ', meaning: 'five' },
-      '六': { pinyin: 'liù', meaning: 'six' },
-      '七': { pinyin: 'qī', meaning: 'seven' },
-      '八': { pinyin: 'bā', meaning: 'eight' },
-      '九': { pinyin: 'jiǔ', meaning: 'nine' },
-      '十': { pinyin: 'shí', meaning: 'ten' },
-      '口': { pinyin: 'kǒu', meaning: 'mouth' },
-      '手': { pinyin: 'shǒu', meaning: 'hand' },
-      '心': { pinyin: 'xīn', meaning: 'heart' },
-      '花': { pinyin: 'huā', meaning: 'flower' },
-      '鸟': { pinyin: 'niǎo', meaning: 'bird' },
-      '马': { pinyin: 'mǎ', meaning: 'horse' },
-      '鱼': { pinyin: 'yú', meaning: 'fish' },
-      '猫': { pinyin: 'māo', meaning: 'cat' },
-      '狗': { pinyin: 'gǒu', meaning: 'dog' },
-      '好': { pinyin: 'hǎo', meaning: 'good' },
-      '你': { pinyin: 'nǐ', meaning: 'you' },
-      '我': { pinyin: 'wǒ', meaning: 'I, me' },
-      '他': { pinyin: 'tā', meaning: 'he, him' },
-      '她': { pinyin: 'tā', meaning: 'she, her' },
-      '是': { pinyin: 'shì', meaning: 'is, am, are' },
-      '的': { pinyin: 'de', meaning: '(possessive particle)' },
-      '了': { pinyin: 'le', meaning: '(completed action)' },
-      '在': { pinyin: 'zài', meaning: 'at, in' },
-      '有': { pinyin: 'yǒu', meaning: 'have, exist' },
-      '不': { pinyin: 'bù', meaning: 'not, no' },
-      '这': { pinyin: 'zhè', meaning: 'this' },
-      '那': { pinyin: 'nà', meaning: 'that' },
-      '来': { pinyin: 'lái', meaning: 'come' },
-      '去': { pinyin: 'qù', meaning: 'go' },
-      '吃': { pinyin: 'chī', meaning: 'eat' },
-      '喝': { pinyin: 'hē', meaning: 'drink' },
-      '说': { pinyin: 'shuō', meaning: 'speak, say' },
-      '看': { pinyin: 'kàn', meaning: 'look, see' },
-      '听': { pinyin: 'tīng', meaning: 'listen, hear' },
-      '读': { pinyin: 'dú', meaning: 'read' },
-      '写': { pinyin: 'xiě', meaning: 'write' },
-      '风': { pinyin: 'fēng', meaning: 'wind' },
-      '云': { pinyin: 'yún', meaning: 'cloud' },
-      '雨': { pinyin: 'yǔ', meaning: 'rain' },
-      '雪': { pinyin: 'xuě', meaning: 'snow' },
-      '春': { pinyin: 'chūn', meaning: 'spring' },
-      '夏': { pinyin: 'xià', meaning: 'summer' },
-      '秋': { pinyin: 'qiū', meaning: 'autumn' },
-      '冬': { pinyin: 'dōng', meaning: 'winter' }
-    };
+    // Elements
+    const appEl = document.getElementById('app');
+    const prevBtn = document.getElementById('prevUnit');
+    const nextBtn = document.getElementById('nextUnit');
+    const indicatorText = document.getElementById('indicatorText');
+    const unitSelect = document.getElementById('unitSelect');
+    const levelBtns = document.querySelectorAll('.level-btn');
+    const searchInput = document.getElementById('searchInput');
+    const unitNavigator = document.querySelector('.unit-navigator');
 
-    // Check library load
-    window.addEventListener('load', function() {
-      if (typeof HanziWriter === 'undefined') {
-        document.getElementById('libError').style.display = 'block';
-        document.getElementById('mainApp').style.display = 'none';
-      }
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLevel(currentLevel);
+      setupEventListeners();
     });
 
-    // Enter key support
-    document.getElementById('charInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') loadCharacter();
-    });
-
-    function isChinese(char) {
-      var code = char.charCodeAt(0);
-      return (code >= 0x4E00 && code <= 0x9FFF) ||
-             (code >= 0x3400 && code <= 0x4DBF) ||
-             (code >= 0x20000 && code <= 0x2A6DF);
-    }
-
-    function showMessage(text, type) {
-      var msg = document.getElementById('msg');
-      msg.textContent = text;
-      msg.className = 'message ' + type;
-    }
-
-    function clearMessage() {
-      var msg = document.getElementById('msg');
-      msg.className = 'message';
-      msg.textContent = '';
-    }
-
-    function quickSelect(btn) {
-      var allBtns = document.querySelectorAll('.char-btn');
-      allBtns.forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      document.getElementById('charInput').value = btn.textContent;
-      loadCharacter();
-    }
-
-    function loadCharacter() {
-      var input = document.getElementById('charInput').value.trim();
-      clearMessage();
-
-      if (!input) {
-        showMessage('请输入一个汉字。', 'error');
-        return;
-      }
-
-      var char = input.charAt(0);
-
-      if (!isChinese(char)) {
-        showMessage('「' + char + '」不是有效的汉字，请输入中文字符。', 'error');
-        return;
-      }
-
-      if (typeof HanziWriter === 'undefined') {
-        showMessage('HanziWriter 库未加载，请刷新页面重试。', 'error');
-        return;
-      }
-
-      currentChar = char;
-      document.getElementById('charInput').value = char;
-
-      // Update quick select state
-      var allBtns = document.querySelectorAll('.char-btn');
-      allBtns.forEach(function(b) {
-        b.classList.toggle('active', b.textContent === char);
+    function setupEventListeners() {
+      // Search
+      searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        if (val && val.length === 1) {
+          // Perform search
+          searchChar(val);
+        } else if (val.length === 0) {
+          // Restore view
+          unitNavigator.style.visibility = 'visible';
+          renderUnit();
+        }
       });
-
-      // Show character info
-      var info = pinyinDict[char];
-      document.getElementById('bigChar').textContent = char;
-      document.getElementById('pinyin').textContent = info ? info.pinyin : '';
-      document.getElementById('meaning').textContent = info ? info.meaning : '';
-
-      // Destroy old writer
-      var target = document.getElementById('writerTarget');
-      target.innerHTML = '';
-
-      // Show card
-      document.getElementById('writerCard').classList.add('visible');
-
-      // Reset mode to animate
-      currentMode = 'animate';
-      var tabs = document.querySelectorAll('.mode-tabs button');
-      tabs[0].classList.add('active');
-      tabs[1].classList.remove('active');
-      document.getElementById('animateControls').style.display = 'flex';
-      document.getElementById('quizControls').style.display = 'none';
-      document.getElementById('quizResult').className = 'quiz-result';
-
-      // Get container size
-      var container = document.getElementById('gridContainer');
-      var size = container.clientWidth;
-
-      try {
-        writer = HanziWriter.create('writerTarget', char, {
-          width: size,
-          height: size,
-          padding: 20,
-          showOutline: true,
-          strokeAnimationSpeed: 1,
-          delayBetweenStrokes: 300,
-          strokeColor: '#1c1917',
-          outlineColor: '#d6d3d1',
-          drawingColor: '#dc2626',
-          radicalColor: '#dc2626',
-          highlightColor: '#fca5a5',
-          showCharacter: true,
-          charDataLoader: function(char, onComplete) {
-            var url = 'https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/' + char + '.json';
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, true);
-            xhr.onreadystatechange = function() {
-              if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                  var data = JSON.parse(xhr.responseText);
-                  totalStrokes = data.strokes.length;
-                  currentStroke = 0;
-                  document.getElementById('strokeInfo').textContent =
-                    '共 ' + totalStrokes + ' 笔';
-                  onComplete(data);
-                } else {
-                  showMessage('无法加载「' + char + '」的笔画数据，该字可能暂不支持。', 'error');
-                  document.getElementById('writerCard').classList.remove('visible');
-                  onComplete(null);
-                }
-              }
-            };
-            xhr.onerror = function() {
-              showMessage('网络错误，无法获取笔画数据，请检查网络连接。', 'error');
-              document.getElementById('writerCard').classList.remove('visible');
-            };
-            xhr.send();
+      
+      // Level Switching
+      levelBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const level = btn.dataset.level;
+          if (level !== currentLevel) {
+            // Update active state UI
+            levelBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Load new level
+            currentLevel = level;
+            loadLevel(level);
           }
         });
-      } catch (err) {
-        showMessage('加载失败：' + err.message, 'error');
-        document.getElementById('writerCard').classList.remove('visible');
-      }
-    }
+      });
 
-    function switchMode(mode, btn) {
-      currentMode = mode;
-      var tabs = document.querySelectorAll('.mode-tabs button');
-      tabs.forEach(function(t) { t.classList.remove('active'); });
-      btn.classList.add('active');
-
-      document.getElementById('quizResult').className = 'quiz-result';
-
-      if (mode === 'animate') {
-        document.getElementById('animateControls').style.display = 'flex';
-        document.getElementById('quizControls').style.display = 'none';
-        if (writer) {
-          writer.hideCharacter();
-          writer.showCharacter();
-          writer.showOutline();
-        }
-      } else {
-        document.getElementById('animateControls').style.display = 'none';
-        document.getElementById('quizControls').style.display = 'flex';
-      }
-    }
-
-    function animateChar() {
-      if (!writer) return;
-      writer.hideCharacter();
-      writer.showOutline();
-      currentStroke = 0;
-      writer.animateCharacter({
-        onComplete: function() {
-          document.getElementById('strokeInfo').textContent =
-            '共 ' + totalStrokes + ' 笔 — 演示完成';
+      // Navigation
+      prevBtn.addEventListener('click', () => {
+        if (currentUnitIndex > 0) {
+          currentUnitIndex--;
+          renderUnit();
         }
       });
+
+      nextBtn.addEventListener('click', () => {
+        if (currentUnitIndex < unitKeys.length - 1) {
+          currentUnitIndex++;
+          renderUnit();
+        }
+      });
+
+      // Unit Select Dropdown
+      unitSelect.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.value, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < unitKeys.length) {
+          currentUnitIndex = idx;
+          renderUnit();
+        }
+      });
+
+      // Character Click (Enter Learning Mode)
+      appEl.addEventListener('click', (e) => {
+        const charBox = e.target.closest('.char-box');
+        if (charBox) {
+          const charText = charBox.querySelector('.char-text');
+          const char = charText ? charText.textContent.trim() : '';
+          if (char) enterLearning(char);
+        }
+      });
+
+      setupLearningEvents();
+    }
+
+    async function loadLevel(level) {
+      appEl.innerHTML = '<div class="loading">正在加载数据...</div>';
+      
+      try {
+        let data = levelDataCache[level];
+        if (!data) {
+          const response = await fetch(`yaml/contents_${level}.yaml`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const text = await response.text();
+          data = jsyaml.load(text);
+          if (!data) throw new Error('YAML data is empty or invalid');
+          levelDataCache[level] = data;
+        }
+
+        currentData = data;
+        unitKeys = Object.keys(data);
+        currentUnitIndex = 0;
+
+        // Populate Select Options
+        unitSelect.innerHTML = '';
+        unitKeys.forEach((key, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = key; // e.g. "第一单元"
+          unitSelect.appendChild(option);
+        });
+
+        renderUnit();
+
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        appEl.innerHTML = `
+          <div class="error-msg">
+            <h3>加载失败</h3>
+            <p>无法加载 ${level} 的数据文件。</p>
+            <p>请确保文件 yaml/contents_${level}.yaml 存在。</p>
+            <p>错误信息: ${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function highlightChar(text, char) {
+      if (!text) return '';
+      // Replace all occurrences of the char with a span.highlight
+      // Use simple replace for first occurrence or regex for all
+      try {
+        const regex = new RegExp(char, 'g');
+        return text.replace(regex, `<span class="highlight">${char}</span>`);
+      } catch (e) {
+        return text;
+      }
+    }
+
+    async function searchChar(char) {
+      appEl.innerHTML = '<div class="loading">正在全库搜索...</div>';
+      // Hide nav during search result view
+      unitNavigator.style.visibility = 'hidden';
+
+      let foundInfo = null;
+      let foundLevel = '';
+      let foundUnit = '';
+      
+      // Iterate through all levels
+      for (const level of LEVELS) {
+        let data = levelDataCache[level];
+        
+        // Fetch if not cached
+        if (!data) {
+          try {
+            const response = await fetch(`yaml/contents_${level}.yaml`);
+            if (response.ok) {
+              const text = await response.text();
+              data = jsyaml.load(text);
+              levelDataCache[level] = data;
+            }
+          } catch (e) {
+            console.error(`Error fetching ${level} for search:`, e);
+          }
+        }
+
+        if (data) {
+          // Search in this level
+          for (const [unit, chars] of Object.entries(data)) {
+            if (chars && chars[char]) {
+              foundInfo = chars[char];
+              foundLevel = level;
+              foundUnit = unit;
+              break;
+            }
+          }
+        }
+
+        if (foundInfo) break; // Stop if found
+      }
+
+      if (foundInfo) {
+        renderSearchResult(char, foundInfo, foundLevel, foundUnit);
+      } else {
+        appEl.innerHTML = `
+          <div class="modal-msg">
+            <p>未在任何等级找到汉字「${char}」</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderSearchResult(char, info, level, unit) {
+      const words = (info.词) ? info.词 : [];
+      const sentence = (info.句) ? info.句 : '';
+      const wordsHtml = Array.isArray(words) 
+        ? words.map(word => `<span>${word}</span>`).join(' ')
+        : '';
+      const sentenceHtml = highlightChar(sentence, char);
+
+      const html = `
+        <div class="unit-title">${level} - ${unit}</div>
+        <div class="card">
+          <div class="char-box">
+            <div class="char-text">${char}</div>
+          </div>
+          <div class="content-box">
+            <div class="row">
+              <div class="tag">词</div>
+              <div class="text-content words">${wordsHtml}</div>
+            </div>
+            <div class="row">
+              <div class="tag">句</div>
+              <div class="text-content sentence">${sentenceHtml}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      appEl.innerHTML = html;
+    }
+
+    function renderUnit() {
+      if (!currentData || unitKeys.length === 0) {
+        appEl.innerHTML = '<div class="loading">暂无数据</div>';
+        indicatorText.textContent = '0/0';
+        return;
+      }
+
+      const unitName = unitKeys[currentUnitIndex];
+      const unitChars = currentData[unitName];
+
+      // Update Navigation UI
+      indicatorText.textContent = `${currentUnitIndex + 1}/${unitKeys.length}`;
+      unitSelect.value = currentUnitIndex;
+      prevBtn.disabled = currentUnitIndex === 0;
+      nextBtn.disabled = currentUnitIndex === unitKeys.length - 1;
+
+      // Render Cards
+      let html = `<div class="unit-title">${unitName}</div>`;
+      
+      if (unitChars) {
+        for (const [char, info] of Object.entries(unitChars)) {
+          // info might be null if yaml has empty key
+          const words = (info && info.词) ? info.词 : [];
+          const sentence = (info && info.句) ? info.句 : '';
+          
+          const wordsHtml = Array.isArray(words) 
+            ? words.map(word => `<span>${word}</span>`).join(' ')
+            : '';
+            
+          const sentenceHtml = highlightChar(sentence, char);
+          
+          html += `
+            <div class="card">
+              <div class="char-box">
+                <div class="char-text">${char}</div>
+              </div>
+              <div class="content-box">
+                <div class="row">
+                  <div class="tag">词</div>
+                  <div class="text-content words">${wordsHtml}</div>
+                </div>
+                <div class="row">
+                  <div class="tag">句</div>
+                  <div class="text-content sentence">${sentenceHtml}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      } else {
+        html += '<div class="loading">本单元暂无内容</div>';
+      }
+
+      appEl.innerHTML = html;
+      
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    // --- Learning View Logic ---
+
+    // Pinyin Dictionary (Expanded)
+    const pinyinDict = {
+      '人': { pinyin: 'rén' }, '大': { pinyin: 'dà' }, '学': { pinyin: 'xué' }, '中': { pinyin: 'zhōng' },
+      '国': { pinyin: 'guó' }, '爱': { pinyin: 'ài' }, '龙': { pinyin: 'lóng' }, '福': { pinyin: 'fú' },
+      '山': { pinyin: 'shān' }, '水': { pinyin: 'shuǐ' }, '火': { pinyin: 'huǒ' }, '木': { pinyin: 'mù' },
+      '日': { pinyin: 'rì' }, '月': { pinyin: 'yuè' }, '天': { pinyin: 'tiān' }, '地': { pinyin: 'dì' },
+      '一': { pinyin: 'yī' }, '二': { pinyin: 'èr' }, '三': { pinyin: 'sān' }, '四': { pinyin: 'sì' },
+      '五': { pinyin: 'wǔ' }, '六': { pinyin: 'liù' }, '七': { pinyin: 'qī' }, '八': { pinyin: 'bā' },
+      '九': { pinyin: 'jiǔ' }, '十': { pinyin: 'shí' }, '口': { pinyin: 'kǒu' }, '手': { pinyin: 'shǒu' },
+      '心': { pinyin: 'xīn' }, '花': { pinyin: 'huā' }, '鸟': { pinyin: 'niǎo' }, '马': { pinyin: 'mǎ' },
+      '鱼': { pinyin: 'yú' }, '猫': { pinyin: 'māo' }, '狗': { pinyin: 'gǒu' }, '好': { pinyin: 'hǎo' },
+      '你': { pinyin: 'nǐ' }, '我': { pinyin: 'wǒ' }, '他': { pinyin: 'tā' }, '她': { pinyin: 'tā' },
+      '是': { pinyin: 'shì' }, '的': { pinyin: 'de' }, '了': { pinyin: 'le' }, '在': { pinyin: 'zài' },
+      '有': { pinyin: 'yǒu' }, '不': { pinyin: 'bù' }, '这': { pinyin: 'zhè' }, '那': { pinyin: 'nà' },
+      '来': { pinyin: 'lái' }, '去': { pinyin: 'qù' }, '吃': { pinyin: 'chī' }, '喝': { pinyin: 'hē' },
+      '说': { pinyin: 'shuō' }, '看': { pinyin: 'kàn' }, '听': { pinyin: 'tīng' }, '读': { pinyin: 'dú' },
+      '写': { pinyin: 'xiě' }, '风': { pinyin: 'fēng' }, '云': { pinyin: 'yún' }, '雨': { pinyin: 'yǔ' },
+      '雪': { pinyin: 'xuě' }, '春': { pinyin: 'chūn' }, '夏': { pinyin: 'xià' }, '秋': { pinyin: 'qiū' },
+      '冬': { pinyin: 'dōng' }
+    };
+
+    let writer = null;
+    let currentMode = 'animate';
+    let currentStroke = 0;
+    let totalStrokes = 0;
+    const learningView = document.getElementById('learningView');
+    const learnCharEl = document.getElementById('learnChar');
+    const learnPinyinEl = document.getElementById('learnPinyin');
+    const writerTarget = document.getElementById('writerTarget');
+    const animateControls = document.getElementById('animateControls');
+    const quizControls = document.getElementById('quizControls');
+    const strokeInfo = document.getElementById('strokeInfo');
+    const quizResult = document.getElementById('quizResult');
+
+    function setupLearningEvents() {
+      // Back Button
+      document.getElementById('backBtn').addEventListener('click', exitLearning);
+
+      // Mode Tabs
+      document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const mode = tab.dataset.mode;
+          switchMode(mode);
+        });
+      });
+
+      // Animate Controls
+      document.getElementById('playBtn').addEventListener('click', () => {
+        if (writer) {
+          currentStroke = 0;
+          writer.animateCharacter();
+        }
+      });
+      document.getElementById('strokeBtn').addEventListener('click', animateStrokeByStroke);
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        if (writer) {
+           writer.cancelQuiz();
+           initWriter(learnCharEl.textContent);
+        }
+      });
+
+      // Quiz Controls
+      document.getElementById('startQuizBtn').addEventListener('click', () => {
+        if (writer) {
+          quizResult.style.display = 'none';
+          writer.quiz({
+            onMistake: (strokeData) => {
+              quizResult.style.display = 'block';
+              quizResult.textContent = '笔画错误，请重试。';
+              quizResult.style.color = '#dc2626';
+              quizResult.style.borderColor = '#fecaca';
+              quizResult.style.backgroundColor = '#fef2f2';
+            },
+            onCorrectStroke: (strokeData) => {
+              quizResult.style.display = 'none';
+              strokeInfo.textContent = `第 ${strokeData.strokeNum + 1} 笔正确`;
+            },
+            onComplete: (summaryData) => {
+              quizResult.style.display = 'block';
+              quizResult.textContent = `练习完成！总共错误 ${summaryData.totalMistakes} 次。`;
+              quizResult.style.color = '#166534';
+              quizResult.style.borderColor = '#bbf7d0';
+              quizResult.style.backgroundColor = '#f0fdf4';
+            }
+          });
+        }
+      });
+      
+      document.getElementById('hintBtn').addEventListener('click', () => {
+        if(writer) writer.animateCharacter(); 
+      });
+    }
+
+    function enterLearning(char) {
+      appEl.style.display = 'none';
+      document.querySelector('.navbar').style.display = 'none';
+      learningView.classList.add('active');
+      window.scrollTo(0, 0);
+
+      learnCharEl.textContent = char;
+      const pinyin = (pinyinDict[char] && pinyinDict[char].pinyin) ? pinyinDict[char].pinyin : '';
+      learnPinyinEl.textContent = pinyin;
+      
+      initWriter(char);
+    }
+
+    function exitLearning() {
+      learningView.classList.remove('active');
+      appEl.style.display = 'flex';
+      document.querySelector('.navbar').style.display = 'flex';
+      
+      if (writer) {
+        writerTarget.innerHTML = '';
+        writer = null;
+      }
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      
+      document.querySelectorAll('.mode-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.mode === mode);
+      });
+
+      if (mode === 'animate') {
+        animateControls.style.display = 'flex';
+        quizControls.style.display = 'none';
+        if (writer) writer.showCharacter();
+      } else {
+        animateControls.style.display = 'none';
+        quizControls.style.display = 'flex';
+        if (writer) writer.hideCharacter();
+      }
+      
+      quizResult.style.display = 'none';
+      strokeInfo.textContent = '';
+    }
+
+    function initWriter(char) {
+      writerTarget.innerHTML = '';
+      strokeInfo.textContent = '';
+      quizResult.style.display = 'none';
+      
+      currentStroke = 0;
+
+      const size = Math.min(window.innerWidth - 60, 300);
+      writerTarget.style.width = size + 'px';
+      writerTarget.style.height = size + 'px';
+
+      if (typeof HanziWriter === 'undefined') {
+        writerTarget.innerHTML = '<div class="loading">HanziWriter 库加载失败</div>';
+        return;
+      }
+
+      writer = HanziWriter.create('writerTarget', char, {
+        width: size,
+        height: size,
+        padding: 20,
+        showOutline: true,
+        strokeAnimationSpeed: 1,
+        delayBetweenStrokes: 300,
+        strokeColor: '#1c1917',
+        outlineColor: '#d6d3d1',
+        drawingColor: '#d97706',
+        radicalColor: '#d97706',
+        highlightColor: '#fca5a5',
+        showCharacter: true,
+        drawingWidth: 20, // 增加书写轨迹宽度
+        onLoadCharDataSuccess: (data) => {
+          totalStrokes = data.strokes.length;
+          strokeInfo.textContent = '共 ' + totalStrokes + ' 笔';
+        }
+      });
+      
+      switchMode('animate');
     }
 
     function animateStrokeByStroke() {
@@ -828,64 +1062,18 @@
 
       if (currentStroke < totalStrokes) {
         writer.animateStroke(currentStroke, {
-          onComplete: function() {
+          onComplete: () => {
             currentStroke++;
-            document.getElementById('strokeInfo').textContent =
-              '第 ' + currentStroke + ' / ' + totalStrokes + ' 笔';
+            strokeInfo.textContent = '第 ' + currentStroke + ' / ' + totalStrokes + ' 笔';
           }
         });
       } else {
+        // Reset if clicked again after finish or handle completion
         currentStroke = 0;
-        document.getElementById('strokeInfo').textContent =
-          '共 ' + totalStrokes + ' 笔 — 演示完成，点击可重新开始';
+        strokeInfo.textContent = '共 ' + totalStrokes + ' 笔 — 演示完成';
+        writer.showCharacter();
       }
     }
-
-    function resetWriter() {
-      if (!writer) return;
-      currentStroke = 0;
-      writer.hideCharacter();
-      writer.showCharacter();
-      writer.showOutline();
-      document.getElementById('strokeInfo').textContent =
-        '共 ' + totalStrokes + ' 笔';
-    }
-
-    function startQuiz() {
-      if (!writer) return;
-      document.getElementById('quizResult').className = 'quiz-result';
-
-      writer.quiz({
-        onMistake: function(data) {
-          document.getElementById('strokeInfo').textContent =
-            '第 ' + (data.strokeNum + 1) + ' / ' + totalStrokes + ' 笔 · 错误 ' + data.mistakesOnStroke + ' 次';
-        },
-        onCorrectStroke: function(data) {
-          document.getElementById('strokeInfo').textContent =
-            '第 ' + (data.strokeNum + 1) + ' / ' + totalStrokes + ' 笔 · 正确!';
-        },
-        onComplete: function(data) {
-          var result = document.getElementById('quizResult');
-          if (data.totalMistakes === 0) {
-            result.textContent = '太棒了! 零失误完成!';
-            result.className = 'quiz-result show success';
-          } else {
-            result.textContent = '完成! 共出错 ' + data.totalMistakes + ' 次，继续加油!';
-            result.className = 'quiz-result show ' + (data.totalMistakes <= 3 ? 'success' : 'fail');
-          }
-          document.getElementById('strokeInfo').textContent =
-            '共 ' + totalStrokes + ' 笔 — 练习完成';
-        }
-      });
-
-      document.getElementById('strokeInfo').textContent = '请在田字格中书写...';
-    }
-
-    function showHint() {
-      if (!writer) return;
-      writer.showHint();
-    }
   </script>
-
 </body>
 </html>
