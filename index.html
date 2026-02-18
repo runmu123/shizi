@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
   <script src="js/js-yaml.min.js"></script>
+  <script src="https://unpkg.com/pinyin-pro"></script>
   <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
   <style>
     :root {
@@ -236,27 +237,82 @@
       z-index: 100;
     }
 
-    .level-selector {
-      display: flex;
-      gap: 8px;
+    .level-selector-wrapper {
+      position: relative;
+      display: inline-block;
     }
 
-    .level-btn {
+    .level-selector-btn {
       padding: 6px 12px;
       border: 1px solid #e5e7eb;
-      background: #f9fafb;
+      background: #fff;
       border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
       color: #374151;
-      transition: all 0.2s;
       font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
     }
 
-    .level-btn.active {
-      background: var(--primary-color);
-      color: #fff;
-      border-color: var(--primary-color);
+    .level-selector-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .level-selector-btn::after {
+      content: '';
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid #6b7280;
+    }
+
+    .level-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      display: none;
+      flex-direction: column;
+      min-width: 100px;
+      z-index: 200;
+      overflow: hidden;
+    }
+
+    .level-dropdown.show {
+      display: flex;
+    }
+
+    .level-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-family: system-ui, sans-serif;
+      font-size: 0.95rem;
+      color: #374151;
+      transition: background 0.1s;
+      text-align: left;
+      border: none;
+      background: none;
+      width: 100%;
+    }
+
+    .level-option:hover {
+      background: #f3f4f6;
+      color: var(--primary-color);
+    }
+
+    .level-option.active {
+      background: #fff7ed;
+      color: var(--primary-color);
+      font-weight: 600;
     }
 
     .unit-navigator {
@@ -523,10 +579,13 @@
 <body>
 
   <header class="navbar">
-    <div class="level-selector" id="levelSelector">
-      <button class="level-btn active" data-level="L1">L1</button>
-      <button class="level-btn" data-level="L2">L2</button>
-      <button class="level-btn" data-level="L3">L3</button>
+    <div class="level-selector-wrapper" id="levelSelector">
+      <button class="level-selector-btn" id="currentLevelBtn">L1</button>
+      <div class="level-dropdown" id="levelDropdown">
+        <button class="level-option active" data-level="L1">L1</button>
+        <button class="level-option" data-level="L2">L2</button>
+        <button class="level-option" data-level="L3">L3</button>
+      </div>
     </div>
     
     <div class="search-container">
@@ -599,7 +658,9 @@
     const nextBtn = document.getElementById('nextUnit');
     const indicatorText = document.getElementById('indicatorText');
     const unitSelect = document.getElementById('unitSelect');
-    const levelBtns = document.querySelectorAll('.level-btn');
+    const currentLevelBtn = document.getElementById('currentLevelBtn');
+    const levelDropdown = document.getElementById('levelDropdown');
+    const levelOptions = document.querySelectorAll('.level-option');
     const searchInput = document.getElementById('searchInput');
     const unitNavigator = document.querySelector('.unit-navigator');
 
@@ -607,9 +668,42 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadLevel(currentLevel);
       setupEventListeners();
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.level-selector-wrapper')) {
+          levelDropdown.classList.remove('show');
+        }
+      });
     });
 
     function setupEventListeners() {
+      // Level Dropdown Toggle
+      currentLevelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        levelDropdown.classList.toggle('show');
+      });
+
+      // Level Selection
+      levelOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+          const level = opt.dataset.level;
+          if (level !== currentLevel) {
+             // Update UI
+             currentLevelBtn.textContent = level;
+             levelOptions.forEach(o => o.classList.remove('active'));
+             opt.classList.add('active');
+             levelDropdown.classList.remove('show');
+             
+             // Load Data
+             currentLevel = level;
+             loadLevel(level);
+          } else {
+             levelDropdown.classList.remove('show');
+          }
+        });
+      });
+
       // Search
       searchInput.addEventListener('input', (e) => {
         const val = e.target.value.trim();
@@ -623,22 +717,6 @@
         }
       });
       
-      // Level Switching
-      levelBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const level = btn.dataset.level;
-          if (level !== currentLevel) {
-            // Update active state UI
-            levelBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Load new level
-            currentLevel = level;
-            loadLevel(level);
-          }
-        });
-      });
-
       // Navigation
       prevBtn.addEventListener('click', () => {
         if (currentUnitIndex > 0) {
@@ -875,26 +953,7 @@
 
     // --- Learning View Logic ---
 
-    // Pinyin Dictionary (Expanded)
-    const pinyinDict = {
-      '人': { pinyin: 'rén' }, '大': { pinyin: 'dà' }, '学': { pinyin: 'xué' }, '中': { pinyin: 'zhōng' },
-      '国': { pinyin: 'guó' }, '爱': { pinyin: 'ài' }, '龙': { pinyin: 'lóng' }, '福': { pinyin: 'fú' },
-      '山': { pinyin: 'shān' }, '水': { pinyin: 'shuǐ' }, '火': { pinyin: 'huǒ' }, '木': { pinyin: 'mù' },
-      '日': { pinyin: 'rì' }, '月': { pinyin: 'yuè' }, '天': { pinyin: 'tiān' }, '地': { pinyin: 'dì' },
-      '一': { pinyin: 'yī' }, '二': { pinyin: 'èr' }, '三': { pinyin: 'sān' }, '四': { pinyin: 'sì' },
-      '五': { pinyin: 'wǔ' }, '六': { pinyin: 'liù' }, '七': { pinyin: 'qī' }, '八': { pinyin: 'bā' },
-      '九': { pinyin: 'jiǔ' }, '十': { pinyin: 'shí' }, '口': { pinyin: 'kǒu' }, '手': { pinyin: 'shǒu' },
-      '心': { pinyin: 'xīn' }, '花': { pinyin: 'huā' }, '鸟': { pinyin: 'niǎo' }, '马': { pinyin: 'mǎ' },
-      '鱼': { pinyin: 'yú' }, '猫': { pinyin: 'māo' }, '狗': { pinyin: 'gǒu' }, '好': { pinyin: 'hǎo' },
-      '你': { pinyin: 'nǐ' }, '我': { pinyin: 'wǒ' }, '他': { pinyin: 'tā' }, '她': { pinyin: 'tā' },
-      '是': { pinyin: 'shì' }, '的': { pinyin: 'de' }, '了': { pinyin: 'le' }, '在': { pinyin: 'zài' },
-      '有': { pinyin: 'yǒu' }, '不': { pinyin: 'bù' }, '这': { pinyin: 'zhè' }, '那': { pinyin: 'nà' },
-      '来': { pinyin: 'lái' }, '去': { pinyin: 'qù' }, '吃': { pinyin: 'chī' }, '喝': { pinyin: 'hē' },
-      '说': { pinyin: 'shuō' }, '看': { pinyin: 'kàn' }, '听': { pinyin: 'tīng' }, '读': { pinyin: 'dú' },
-      '写': { pinyin: 'xiě' }, '风': { pinyin: 'fēng' }, '云': { pinyin: 'yún' }, '雨': { pinyin: 'yǔ' },
-      '雪': { pinyin: 'xuě' }, '春': { pinyin: 'chūn' }, '夏': { pinyin: 'xià' }, '秋': { pinyin: 'qiū' },
-      '冬': { pinyin: 'dōng' }
-    };
+    // Removed hardcoded pinyinDict in favor of pinyin-pro library
 
     let writer = null;
     let currentMode = 'animate';
@@ -975,8 +1034,12 @@
       window.scrollTo(0, 0);
 
       learnCharEl.textContent = char;
-      const pinyin = (pinyinDict[char] && pinyinDict[char].pinyin) ? pinyinDict[char].pinyin : '';
-      learnPinyinEl.textContent = pinyin;
+      // Use pinyin-pro library via global variable pinyinPro
+      const { pinyin } = pinyinPro;
+      // Get all pronunciations for polyphonic characters (multiple: true)
+      // toneType: 'symbol' is default, returns string separated by spaces
+      const pinyinText = pinyin(char, { multiple: true });
+      learnPinyinEl.textContent = pinyinText;
       
       initWriter(char);
     }
