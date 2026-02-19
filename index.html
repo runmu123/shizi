@@ -2030,13 +2030,14 @@
                 });
                 
                 units.forEach(unit => {
-                   const chars = grouped[lvl][unit].join('，');
+                   // Using English colon and comma as requested
+                   const chars = grouped[lvl][unit].join(', ');
                    html += `
                      <div class="progress-unit-row">
                        <div class="progress-unit-info">
-                         <span class="progress-unit-name">${unit}：</span>
+                         <span class="progress-unit-name">${unit}: </span>
                          <span class="progress-char-list">
-                           ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join('，')}
+                           ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join(', ')}
                          </span>
                        </div>
                        <button class="progress-nav-btn" onclick="navigateToUnit('${lvl}', '${unit}')" title="前往该单元">
