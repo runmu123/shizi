@@ -937,6 +937,32 @@
     .progress-unit-row {
       margin-bottom: 12px;
       line-height: 1.6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .progress-unit-info {
+      flex: 1;
+    }
+    .progress-nav-btn {
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #9ca3af;
+      margin-left: 12px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .progress-nav-btn:hover {
+      background-color: #f3f4f6;
+      color: var(--primary-color);
+      border-color: var(--primary-color);
     }
     .progress-unit-name {
       font-weight: 600;
@@ -1160,6 +1186,10 @@
     // Toast Function
     function showToast(message, type = 'default') {
       const container = document.getElementById('toastContainer');
+      
+      // Clear previous toasts to ensure only one is displayed at a time
+      container.innerHTML = '';
+
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       
@@ -1996,10 +2026,15 @@
                    const chars = grouped[lvl][unit].join('，');
                    html += `
                      <div class="progress-unit-row">
-                       <span class="progress-unit-name">${unit}：</span>
-                       <span class="progress-char-list">
-                         ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join('，')}
-                       </span>
+                       <div class="progress-unit-info">
+                         <span class="progress-unit-name">${unit}：</span>
+                         <span class="progress-char-list">
+                           ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join('，')}
+                         </span>
+                       </div>
+                       <button class="progress-nav-btn" onclick="navigateToUnit('${lvl}', '${unit}')" title="前往该单元">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                       </button>
                      </div>
                    `;
                 });
@@ -2112,6 +2147,39 @@
             showToast('浏览器不支持缓存清理', 'error');
         }
       });
+    }
+
+    async function navigateToUnit(level, unitName) {
+      // Close modal
+      document.getElementById('progressModal').style.display = 'none';
+      
+      // Exit learning view if active
+      if (document.getElementById('learningView').classList.contains('active')) {
+        exitLearning();
+      }
+
+      // Switch Level if needed
+      if (currentLevel !== level) {
+         currentLevel = level;
+         // Update UI for level
+         document.getElementById('currentLevelBtn').textContent = level;
+         document.querySelectorAll('.level-option').forEach(opt => {
+           opt.classList.toggle('active', opt.dataset.level === level);
+         });
+         
+         await loadLevel(level);
+      }
+
+      // Find Unit Index in current keys
+      const index = unitKeys.indexOf(unitName);
+      if (index !== -1) {
+        currentUnitIndex = index;
+        renderUnit();
+        // Show success toast
+        showToast(`已跳转到 ${level} ${unitName}`, 'success');
+      } else {
+        showToast(`未找到单元: ${unitName}`, 'error');
+      }
     }
 
     // Initialize
