@@ -10,6 +10,10 @@
   <script src="js/js-yaml.min.js"></script>
   <script src="https://unpkg.com/pinyin-pro"></script>
   <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/audio-manager.js"></script>
   <style>
     :root {
       --primary-color: #d97706; /* amber-600 */
@@ -898,43 +902,36 @@
     const confirmPasswordBtn = document.getElementById('confirmPassword');
     const cancelPasswordBtn = document.getElementById('cancelPassword');
 
-    const PLAY_BTN_HTML = `
-      <button class="play-btn" title="播放">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-        </svg>
-      </button>
-    `;
-    
-    const PLAY_BTN_SMALL_HTML = `
-      <button class="play-btn" title="播放" style="padding: 2px; margin-left: 2px;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-        </svg>
-      </button>
-    `;
-
-    const MIC_BTN_HTML = `
-      <button class="play-btn" title="录音">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-      </button>
-    `;
-
-    const MIC_BTN_SMALL_HTML = `
-      <button class="play-btn" title="录音" style="padding: 2px; margin-left: 2px;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-      </button>
-    `;
-
-    function getBtnHtml(isSmall) {
-      if (isTeachingMode) {
-        return isSmall ? MIC_BTN_SMALL_HTML : MIC_BTN_HTML;
-      }
-      return isSmall ? PLAY_BTN_SMALL_HTML : PLAY_BTN_HTML;
+    function getBtnHtml(text, type, rootChar, level, unit, isSmall = false) {
+      const playIcon = isSmall 
+        ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
+        
+      const micIcon = isSmall
+        ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>`;
+        
+      const icon = isTeachingMode ? micIcon : playIcon;
+      const title = isTeachingMode ? '录音' : '播放';
+      const style = isSmall ? 'padding: 2px; margin-left: 2px;' : '';
+      
+      // Ensure text is safe for attribute
+       const safeText = text ? text.replace(/"/g, '&quot;') : '';
+       
+       return `
+         <button class="play-btn" 
+           title="${title}" 
+           style="${style}"
+           data-text="${safeText}" 
+           data-type="${type}" 
+           data-root-char="${rootChar}"
+           data-level="${level}"
+           data-unit="${unit}"
+           data-is-small="${isSmall}"
+         >
+           ${icon}
+         </button>
+       `;
     }
 
     const nextBtn = document.getElementById('nextUnit');
@@ -1098,9 +1095,94 @@
         if (charBox) {
           const charText = charBox.querySelector('.char-text');
           const char = charText ? charText.textContent.trim() : '';
-          if (char) enterLearning(char);
+          if (char) {
+             const container = charBox.closest('.char-header-container');
+             const playBtn = container ? container.querySelector('.play-btn') : null;
+             let level = currentLevel;
+             let unit = unitKeys ? unitKeys[currentUnitIndex] : '';
+             
+             if (playBtn && playBtn.dataset.level) {
+               level = playBtn.dataset.level;
+               unit = playBtn.dataset.unit;
+             }
+             enterLearning(char, level, unit);
+          }
         }
       });
+
+      // Global Audio Play/Record Handler
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.play-btn');
+        if (!btn) return;
+        // Don't stop propagation if it's inside something else?
+        // But buttons are standalone.
+        e.stopPropagation(); 
+        
+        const text = btn.dataset.text;
+        const type = btn.dataset.type;
+        const rootChar = btn.dataset.rootChar;
+        const level = btn.dataset.level || currentLevel;
+        const unit = btn.dataset.unit || (unitKeys ? unitKeys[currentUnitIndex] : '');
+        
+        if (!text || !level || !unit) {
+          console.warn('Missing audio context:', {text, type, rootChar, level, unit});
+          return;
+        }
+
+        if (isTeachingMode) {
+          // Recording Logic
+          if (audioManager.isRecording) {
+             // Stop recording
+             btn.classList.add('recording-processing');
+             btn.innerHTML = '...'; // Show processing state
+             
+             try {
+               const blob = await audioManager.stopRecording();
+               if (blob) {
+                 await audioManager.uploadAudio(blob, level, unit, rootChar, text, type);
+                 alert('上传成功！');
+               }
+             } catch (err) {
+               console.error(err);
+               alert('上传失败: ' + err.message);
+             } finally {
+               btn.classList.remove('recording-processing');
+               btn.classList.remove('recording-active');
+               // Restore icon
+               updateBtnIcon(btn, true);
+             }
+          } else {
+             // Start recording
+             try {
+               // Update UI to show recording state (e.g. Stop Icon)
+               await audioManager.startRecording();
+               btn.classList.add('recording-active');
+               btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="${btn.dataset.isSmall === 'true' ? 'width:16px;height:16px' : ''}">
+                 <rect x="6" y="6" width="12" height="12" />
+               </svg>`;
+             } catch (err) {
+               alert('无法启动录音: ' + err.message);
+             }
+          }
+        } else {
+          // Playing Logic
+          const success = await audioManager.playAudio(level, unit, rootChar, text);
+          if (!success) {
+            alert('暂无录音');
+          }
+        }
+      });
+      
+      function updateBtnIcon(btn, isTeaching) {
+          const isSmall = btn.dataset.isSmall === 'true';
+          const style = isSmall ? 'width: 16px; height: 16px;' : '';
+          
+          const playIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="${style}"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
+          const micIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="${style}"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>`;
+          
+          btn.innerHTML = isTeaching ? micIcon : playIcon;
+          btn.title = isTeaching ? '录音' : '播放';
+       }
 
       setupLearningEvents();
     }
@@ -1249,7 +1331,7 @@
       const words = (info.词) ? info.词 : [];
       const sentence = (info.句) ? info.句 : '';
       const wordsHtml = Array.isArray(words) 
-        ? words.map(word => `<span class="word-item">${word}${getBtnHtml(true)}</span>`).join(' ')
+        ? words.map(word => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, level, unit, true)}</span>`).join(' ')
         : '';
       const sentenceHtml = highlightChar(sentence, char);
 
@@ -1260,7 +1342,7 @@
             <div class="char-box">
               <div class="char-text">${char}</div>
             </div>
-            ${getBtnHtml(false)}
+            ${getBtnHtml(char, 'char', char, level, unit, false)}
           </div>
           <div class="content-box">
             <div class="row">
@@ -1273,7 +1355,7 @@
               <div class="tag">句</div>
               <div class="text-btn-row">
                 <div class="text-content sentence">${sentenceHtml}</div>
-                ${getBtnHtml(false)}
+                ${getBtnHtml(sentence, 'sentence', char, level, unit, false)}
               </div>
             </div>
           </div>
@@ -1308,7 +1390,7 @@
           const sentence = (info && info.句) ? info.句 : '';
           
           const wordsHtml = Array.isArray(words) 
-            ? words.map(word => `<span class="word-item">${word}${getBtnHtml(true)}</span>`).join(' ')
+            ? words.map(word => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, currentLevel, unitName, true)}</span>`).join(' ')
             : '';
             
           const sentenceHtml = highlightChar(sentence, char);
@@ -1319,7 +1401,7 @@
                 <div class="char-box">
                   <div class="char-text">${char}</div>
                 </div>
-                ${getBtnHtml(false)}
+                ${getBtnHtml(char, 'char', char, currentLevel, unitName, false)}
               </div>
               <div class="content-box">
                 <div class="row">
@@ -1332,7 +1414,7 @@
                   <div class="tag">句</div>
                   <div class="text-btn-row">
                     <div class="text-content sentence">${sentenceHtml}</div>
-                    ${getBtnHtml(false)}
+                    ${getBtnHtml(sentence, 'sentence', char, currentLevel, unitName, false)}
                   </div>
                 </div>
               </div>
@@ -1442,14 +1524,24 @@
       }
     }
 
-    function enterLearning(char) {
+    function enterLearning(char, level, unit) {
       appEl.style.display = 'none';
       document.querySelector('.navbar').style.display = 'none';
-      document.querySelector('.toolbar').style.display = 'none'; // Also hide toolbar
+      document.querySelector('.toolbar').style.display = 'none';
       learningView.classList.add('active');
       window.scrollTo(0, 0);
 
       updateLearningViewBtn();
+      
+      // Update Play Button Data
+      const learnPlayBtn = document.getElementById('learnPlayBtn');
+      if (learnPlayBtn) {
+        learnPlayBtn.dataset.text = char;
+        learnPlayBtn.dataset.type = 'char';
+        learnPlayBtn.dataset.rootChar = char;
+        learnPlayBtn.dataset.level = level || currentLevel;
+        learnPlayBtn.dataset.unit = unit || (unitKeys[currentUnitIndex] || '');
+      }
 
       learnCharEl.textContent = char;
       // Use pinyin-pro library via global variable pinyinPro
