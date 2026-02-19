@@ -53,20 +53,34 @@ class AudioManager {
     return char;
   }
 
-  // Generate path: L1/Unit_1/kou/md5.mp3
-  getFilePath(level, unit, char, text, type) {
-    const content = text.trim();
-    const hash = md5(content);
-    
+  // Generate path: L1/Unit_1/kou/filename.mp3
+  getFilePath(level, unit, char, text, type, index) {
     const unitCode = this.getUnitCode(unit);
     const charPy = this.getPinyin(char);
     
-    // We can assume unitCode and charPy are ASCII safe now, but keep encodeURIComponent for safety if they fallback
     const safeLevel = encodeURIComponent(level);
     const safeUnit = encodeURIComponent(`Unit_${unitCode}`);
     const safeChar = encodeURIComponent(charPy);
     
-    return `${safeLevel}/${safeUnit}/${safeChar}/${hash}.mp3`;
+    let filename = '';
+    if (type === 'char') {
+      filename = 'char.mp3';
+    } else if (type === 'sentence') {
+      filename = 'sentence.mp3';
+    } else if (type === 'word') {
+       if (index !== undefined && index !== null) {
+         // User requested word_数字 based on order
+         filename = `word_${index + 1}.mp3`;
+       } else {
+         const hash = md5(text.trim());
+         filename = `word_${hash}.mp3`; 
+       }
+    } else {
+       const hash = md5(text.trim());
+       filename = `${hash}.mp3`;
+    }
+    
+    return `${safeLevel}/${safeUnit}/${safeChar}/${filename}`;
   }
 
   async startRecording() {
@@ -123,10 +137,9 @@ class AudioManager {
     });
   }
 
-  async uploadAudio(blob, level, unit, char, text, type) {
+  async uploadAudio(blob, level, unit, char, text, type, index) {
     this.init();
-    
-    const filePath = this.getFilePath(level, unit, char, text, type);
+    const filePath = this.getFilePath(level, unit, char, text, type, index);
     console.log(`Uploading audio to: ${filePath}, Blob size: ${blob.size}`);
 
     try {
@@ -155,9 +168,9 @@ class AudioManager {
     }
   }
 
-  getAudioUrl(level, unit, char, text) {
+  getAudioUrl(level, unit, char, text, type, index) {
     this.init();
-    const filePath = this.getFilePath(level, unit, char, text);
+    const filePath = this.getFilePath(level, unit, char, text, type, index);
     const { data } = this.supabase
       .storage
       .from(SUPABASE_CONFIG.bucket)
@@ -165,8 +178,8 @@ class AudioManager {
     return data.publicUrl;
   }
   
-  async playAudio(level, unit, char, text) {
-    const url = this.getAudioUrl(level, unit, char, text);
+  async playAudio(level, unit, char, text, type, index) {
+    const url = this.getAudioUrl(level, unit, char, text, type, index);
     
     // Stop current audio
     if (this.currentAudio) {

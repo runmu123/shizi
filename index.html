@@ -980,7 +980,7 @@
       }, 3000);
     }
 
-    function getBtnHtml(text, type, rootChar, level, unit, isSmall = false) {
+    function getBtnHtml(text, type, rootChar, level, unit, isSmall = false, index = null) {
       const playIcon = isSmall 
         ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`
         : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
@@ -1006,6 +1006,7 @@
            data-level="${level}"
            data-unit="${unit}"
            data-is-small="${isSmall}"
+           data-index="${index !== null ? index : ''}"
          >
            ${icon}
          </button>
@@ -1203,6 +1204,8 @@
         const rootChar = btn.dataset.rootChar;
         const level = btn.dataset.level || currentLevel;
         const unit = btn.dataset.unit || (unitKeys ? unitKeys[currentUnitIndex] : '');
+        const indexStr = btn.dataset.index;
+        const index = (indexStr !== '' && indexStr !== undefined && indexStr !== null) ? parseInt(indexStr, 10) : null;
         
         if (!text || !level || !unit) {
           console.warn('Missing audio context:', {text, type, rootChar, level, unit});
@@ -1223,7 +1226,7 @@
              try {
                const blob = await audioManager.stopRecording();
                if (blob) {
-                 await audioManager.uploadAudio(blob, level, unit, rootChar, text, type);
+                 await audioManager.uploadAudio(blob, level, unit, rootChar, text, type, index);
                  showToast('上传成功！', 'success');
                } else {
                  showToast('录音失败：未获取到音频数据', 'error');
@@ -1259,7 +1262,7 @@
           btn.innerHTML = '...';
           
           try {
-            const success = await audioManager.playAudio(level, unit, rootChar, text);
+            const success = await audioManager.playAudio(level, unit, rootChar, text, type, index);
             if (!success) {
               showToast('暂无录音', 'info');
             }
@@ -1432,7 +1435,7 @@
       const words = (info.词) ? info.词 : [];
       const sentence = (info.句) ? info.句 : '';
       const wordsHtml = Array.isArray(words) 
-        ? words.map(word => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, level, unit, true)}</span>`).join(' ')
+        ? words.map((word, index) => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, level, unit, true, index)}</span>`).join(' ')
         : '';
       const sentenceHtml = highlightChar(sentence, char);
 
@@ -1491,7 +1494,7 @@
           const sentence = (info && info.句) ? info.句 : '';
           
           const wordsHtml = Array.isArray(words) 
-            ? words.map(word => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, currentLevel, unitName, true)}</span>`).join(' ')
+            ? words.map((word, index) => `<span class="word-item">${word}${getBtnHtml(word, 'word', char, currentLevel, unitName, true, index)}</span>`).join(' ')
             : '';
             
           const sentenceHtml = highlightChar(sentence, char);
@@ -1642,6 +1645,7 @@
         learnPlayBtn.dataset.rootChar = char;
         learnPlayBtn.dataset.level = level || currentLevel;
         learnPlayBtn.dataset.unit = unit || (unitKeys[currentUnitIndex] || '');
+        learnPlayBtn.dataset.index = '';
       }
 
       learnCharEl.textContent = char;
