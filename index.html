@@ -36,7 +36,7 @@
       font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
       background-color: #fdfbf7;
       color: var(--text-color);
-      padding-top: 80px; /* Space for fixed navbar */
+      padding-top: 120px; /* Space for fixed navbar and toolbar */
       padding-bottom: 20px;
       padding-left: 20px;
       padding-right: 20px;
@@ -221,6 +221,15 @@
       border-color: var(--primary-color);
     }
 
+    /* Wrapper for text and button to keep them aligned */
+    .text-btn-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      width: 100%;
+    }
+
     /* Navbar */
     .navbar {
       position: fixed;
@@ -229,12 +238,13 @@
       right: 0;
       height: 60px;
       background: var(--nav-bg);
-      box-shadow: var(--nav-shadow);
+      box-shadow: none; /* Removed shadow as toolbar has one below */
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center; /* Center content */
       padding: 0 20px;
       z-index: 100;
+      border-bottom: 1px solid #f3f4f6;
     }
 
     .level-selector-wrapper {
@@ -432,19 +442,16 @@
       animation: fadeIn 0.3s ease-in-out;
     }
 
-    @media (min-width: 800px) {
-      .card {
-        flex-direction: row;
-        align-items: flex-start;
-      }
-      .content-box {
-        width: auto;
-      }
-    }
-
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Container for the character and its play button */
+    .char-header-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
     /* Left: Character Box (Tian Zi Ge) */
@@ -459,6 +466,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Word Item Style */
+    .word-item {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 12px;
+      gap: 4px;
+    }
+
+    .word-text {
+      /* font style for word */
     }
 
     /* Grid lines */
@@ -521,6 +540,8 @@
       white-space: nowrap;
       font-family: 'Noto Serif SC', serif;
       box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .text-content {
@@ -530,9 +551,11 @@
       font-family: 'Noto Serif SC', serif;
     }
 
-    .words span {
-      margin-right: 12px;
-      display: inline-block;
+    /* Override previous words style */
+    .words {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .highlight {
@@ -556,53 +579,236 @@
       border: 1px solid #fecaca;
     }
 
-    @media (max-width: 600px) {
-      .navbar {
-        padding: 0 12px;
-      }
-      
-      .unit-navigator {
-        gap: 8px;
-      }
-      
-      .row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-      }
-      
-      .tag {
-        font-size: 0.9rem;
-        padding: 2px 8px;
-      }
+    /* Play Button Styles */
+    .play-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9ca3af; /* gray-400 */
+      padding: 4px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      margin-left: 8px; /* Space from content */
+    }
+    
+    .play-btn:hover {
+      background-color: #f3f4f6;
+      color: var(--primary-color);
+    }
+    
+    .play-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Adjust row for play button alignment */
+    .row {
+      display: flex;
+      align-items: flex-start; /* Align to top for multiline content */
+      gap: 12px;
+    }
+    
+    /* Learning View Header adjustment */
+    .char-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .big-char {
+      margin-bottom: 0; /* Override previous margin */
+    }
+
+    /* Toolbar Styles */
+    .toolbar {
+      position: fixed;
+      top: 60px; /* Below navbar */
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      z-index: 90;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    
+    .toolbar-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    /* Push level selector and unit navigator to the right */
+    #levelSelector {
+      margin-left: auto;
+    }
+
+    /* Reuse Level Selector Styles for Mode Selector */
+    .mode-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-family: system-ui, sans-serif;
+      font-size: 0.95rem;
+      color: #374151;
+      transition: background 0.1s;
+      text-align: left;
+      border: none;
+      background: none;
+      width: 100%;
+    }
+
+    .mode-option:hover {
+      background: #f3f4f6;
+      color: var(--primary-color);
+    }
+
+    .mode-option.active {
+      background: #fff7ed;
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 320px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 16px;
+      font-family: 'Noto Serif SC', serif;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .modal-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.1);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.cancel {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+
+    .modal-btn.confirm {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .modal-btn:hover {
+      opacity: 0.9;
+    }
+    
+    .error-text {
+      color: #dc2626;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      display: none;
+      text-align: left;
     }
   </style>
 </head>
 <body>
 
   <header class="navbar">
-    <div class="level-selector-wrapper" id="levelSelector">
-      <button class="level-selector-btn" id="currentLevelBtn">L1</button>
-      <div class="level-dropdown" id="levelDropdown">
-        <button class="level-option active" data-level="L1">L1</button>
-        <button class="level-option" data-level="L2">L2</button>
-        <button class="level-option" data-level="L3">L3</button>
-      </div>
-    </div>
-    
     <div class="search-container">
       <input type="text" id="searchInput" class="search-input" placeholder="搜索汉字" maxlength="1">
     </div>
-
-    <div class="unit-navigator">
-      <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
-      <div class="unit-indicator">
-        <span id="indicatorText">1/1</span>
-        <select id="unitSelect" class="unit-select"></select>
-      </div>
-      <button class="nav-btn" id="nextUnit" title="下一单元">&gt;</button>
-    </div>
   </header>
+
+  <div class="toolbar">
+    <div class="toolbar-content">
+      <!-- Mode Selector -->
+      <div class="level-selector-wrapper" id="modeSelector">
+        <button class="level-selector-btn" id="currentModeBtn">学习模式</button>
+        <div class="level-dropdown" id="modeDropdown">
+          <button class="mode-option active" data-mode="learn">学习模式</button>
+          <button class="mode-option" data-mode="teach">教学模式</button>
+        </div>
+      </div>
+      
+      <!-- Level Selector -->
+      <div class="level-selector-wrapper" id="levelSelector">
+        <button class="level-selector-btn" id="currentLevelBtn">L1</button>
+        <div class="level-dropdown" id="levelDropdown">
+          <button class="level-option active" data-level="L1">L1</button>
+          <button class="level-option" data-level="L2">L2</button>
+          <button class="level-option" data-level="L3">L3</button>
+        </div>
+      </div>
+
+      <!-- Unit Navigator -->
+      <div class="unit-navigator">
+        <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
+        <div class="unit-indicator">
+          <span id="indicatorText">1/1</span>
+          <select id="unitSelect" class="unit-select"></select>
+        </div>
+        <button class="nav-btn" id="nextUnit" title="下一单元">&gt;</button>
+      </div>
+    </div>
+  </div>
 
   <div class="container" id="app">
     <div class="loading">加载中...</div>
@@ -615,7 +821,14 @@
     </button>
     
     <div class="char-header">
-      <div class="big-char" id="learnChar"></div>
+      <div class="char-header-row">
+        <div class="big-char" id="learnChar"></div>
+        <button class="play-btn" title="播放" id="learnPlayBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+        </button>
+      </div>
       <div class="pinyin" id="learnPinyin"></div>
     </div>
 
@@ -645,6 +858,19 @@
     <div class="error-msg" id="quizResult" style="display:none; margin-top:10px;"></div>
   </div>
 
+  <!-- Password Modal -->
+  <div class="modal-overlay" id="passwordModal">
+    <div class="modal-box">
+      <div class="modal-title">输入密码进入教学模式</div>
+      <div class="error-text" id="passwordError">密码错误，请重试</div>
+      <input type="password" class="modal-input" id="passwordInput" placeholder="请输入密码">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelPassword">取消</button>
+        <button class="modal-btn confirm" id="confirmPassword">确认</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // State
     const LEVELS = ['L1', 'L2', 'L3'];
@@ -653,10 +879,64 @@
     const levelDataCache = {}; // Cache for loaded levels
     let unitKeys = [];      // Array of unit names (e.g. "第一单元")
     let currentUnitIndex = 0;
+    let isTeachingMode = false;
 
     // Elements
     const appEl = document.getElementById('app');
     const prevBtn = document.getElementById('prevUnit');
+    const teachingModeToggle = document.getElementById('teachingModeToggle'); // Now removed, will be null
+
+    // New Elements
+    const currentModeBtn = document.getElementById('currentModeBtn');
+    const modeDropdown = document.getElementById('modeDropdown');
+    const modeOptions = document.querySelectorAll('.mode-option');
+
+    // Password Modal Elements
+    const passwordModal = document.getElementById('passwordModal');
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordError = document.getElementById('passwordError');
+    const confirmPasswordBtn = document.getElementById('confirmPassword');
+    const cancelPasswordBtn = document.getElementById('cancelPassword');
+
+    const PLAY_BTN_HTML = `
+      <button class="play-btn" title="播放">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+      </button>
+    `;
+    
+    const PLAY_BTN_SMALL_HTML = `
+      <button class="play-btn" title="播放" style="padding: 2px; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+      </button>
+    `;
+
+    const MIC_BTN_HTML = `
+      <button class="play-btn" title="录音">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+      </button>
+    `;
+
+    const MIC_BTN_SMALL_HTML = `
+      <button class="play-btn" title="录音" style="padding: 2px; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+      </button>
+    `;
+
+    function getBtnHtml(isSmall) {
+      if (isTeachingMode) {
+        return isSmall ? MIC_BTN_SMALL_HTML : MIC_BTN_HTML;
+      }
+      return isSmall ? PLAY_BTN_SMALL_HTML : PLAY_BTN_HTML;
+    }
+
     const nextBtn = document.getElementById('nextUnit');
     const indicatorText = document.getElementById('indicatorText');
     const unitSelect = document.getElementById('unitSelect');
@@ -675,15 +955,84 @@
       document.addEventListener('click', (e) => {
         if (!e.target.closest('.level-selector-wrapper')) {
           levelDropdown.classList.remove('show');
+          modeDropdown.classList.remove('show');
         }
       });
     });
 
     function setupEventListeners() {
+      // Mode Dropdown Toggle
+      currentModeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        modeDropdown.classList.toggle('show');
+        // Close level dropdown if open
+        levelDropdown.classList.remove('show');
+      });
+
+      // Mode Selection
+      modeOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+          const mode = opt.dataset.mode;
+          // 'learn' or 'teach'
+          const newModeIsTeaching = (mode === 'teach');
+          
+          if (isTeachingMode !== newModeIsTeaching) {
+             if (newModeIsTeaching) {
+               // Prompt for password
+               passwordModal.classList.add('active');
+               passwordInput.value = '';
+               passwordError.style.display = 'none';
+               passwordInput.focus();
+               modeDropdown.classList.remove('show');
+             } else {
+               // Switch back to learning mode directly
+               switchTeachingMode(false);
+               modeDropdown.classList.remove('show');
+             }
+          } else {
+             modeDropdown.classList.remove('show');
+          }
+        });
+      });
+
+      // Password Modal Events
+      const handlePasswordSubmit = () => {
+        const password = passwordInput.value.trim();
+        if (password === 'kaishen') {
+          switchTeachingMode(true);
+          passwordModal.classList.remove('active');
+        } else {
+          passwordError.style.display = 'block';
+          passwordInput.value = '';
+          passwordInput.focus();
+        }
+      };
+
+      confirmPasswordBtn.addEventListener('click', handlePasswordSubmit);
+      
+      passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          handlePasswordSubmit();
+        }
+      });
+
+      cancelPasswordBtn.addEventListener('click', () => {
+        passwordModal.classList.remove('active');
+      });
+
+      // Close modal when clicking outside
+      passwordModal.addEventListener('click', (e) => {
+        if (e.target === passwordModal) {
+          passwordModal.classList.remove('active');
+        }
+      });
+
       // Level Dropdown Toggle
       currentLevelBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         levelDropdown.classList.toggle('show');
+        // Close mode dropdown if open
+        modeDropdown.classList.remove('show');
       });
 
       // Level Selection
@@ -754,6 +1103,37 @@
       });
 
       setupLearningEvents();
+    }
+
+    function switchTeachingMode(enable) {
+      isTeachingMode = enable;
+      
+      // Update UI
+      currentModeBtn.textContent = isTeachingMode ? '教学模式' : '学习模式';
+      modeOptions.forEach(o => {
+        if (o.dataset.mode === (isTeachingMode ? 'teach' : 'learn')) {
+          o.classList.add('active');
+        } else {
+          o.classList.remove('active');
+        }
+      });
+
+      // Re-render
+      if (unitNavigator.style.visibility === 'hidden') {
+         const val = searchInput.value.trim();
+         if (val && val.length === 1) {
+           searchChar(val);
+         } else {
+           renderUnit();
+         }
+      } else {
+         renderUnit();
+      }
+
+      // Update Learning View if active
+      if (document.getElementById('learningView').classList.contains('active')) {
+        updateLearningViewBtn();
+      }
     }
 
     async function loadLevel(level) {
@@ -869,24 +1249,32 @@
       const words = (info.词) ? info.词 : [];
       const sentence = (info.句) ? info.句 : '';
       const wordsHtml = Array.isArray(words) 
-        ? words.map(word => `<span>${word}</span>`).join(' ')
+        ? words.map(word => `<span class="word-item">${word}${getBtnHtml(true)}</span>`).join(' ')
         : '';
       const sentenceHtml = highlightChar(sentence, char);
 
       const html = `
         <div class="unit-title">${level} - ${unit}</div>
         <div class="card">
-          <div class="char-box">
-            <div class="char-text">${char}</div>
+          <div class="char-header-container">
+            <div class="char-box">
+              <div class="char-text">${char}</div>
+            </div>
+            ${getBtnHtml(false)}
           </div>
           <div class="content-box">
             <div class="row">
               <div class="tag">词</div>
-              <div class="text-content words">${wordsHtml}</div>
+              <div class="text-btn-row">
+                <div class="text-content words">${wordsHtml}</div>
+              </div>
             </div>
             <div class="row">
               <div class="tag">句</div>
-              <div class="text-content sentence">${sentenceHtml}</div>
+              <div class="text-btn-row">
+                <div class="text-content sentence">${sentenceHtml}</div>
+                ${getBtnHtml(false)}
+              </div>
             </div>
           </div>
         </div>
@@ -920,24 +1308,32 @@
           const sentence = (info && info.句) ? info.句 : '';
           
           const wordsHtml = Array.isArray(words) 
-            ? words.map(word => `<span>${word}</span>`).join(' ')
+            ? words.map(word => `<span class="word-item">${word}${getBtnHtml(true)}</span>`).join(' ')
             : '';
             
           const sentenceHtml = highlightChar(sentence, char);
           
           html += `
             <div class="card">
-              <div class="char-box">
-                <div class="char-text">${char}</div>
+              <div class="char-header-container">
+                <div class="char-box">
+                  <div class="char-text">${char}</div>
+                </div>
+                ${getBtnHtml(false)}
               </div>
               <div class="content-box">
                 <div class="row">
                   <div class="tag">词</div>
-                  <div class="text-content words">${wordsHtml}</div>
+                  <div class="text-btn-row">
+                    <div class="text-content words">${wordsHtml}</div>
+                  </div>
                 </div>
                 <div class="row">
                   <div class="tag">句</div>
-                  <div class="text-content sentence">${sentenceHtml}</div>
+                  <div class="text-btn-row">
+                    <div class="text-content sentence">${sentenceHtml}</div>
+                    ${getBtnHtml(false)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1029,11 +1425,31 @@
       });
     }
 
+    function updateLearningViewBtn() {
+      const btn = document.getElementById('learnPlayBtn');
+      if (btn) {
+        if (isTeachingMode) {
+           btn.title = "录音";
+           btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>`;
+        } else {
+           btn.title = "播放";
+           btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>`;
+        }
+      }
+    }
+
     function enterLearning(char) {
       appEl.style.display = 'none';
       document.querySelector('.navbar').style.display = 'none';
+      document.querySelector('.toolbar').style.display = 'none'; // Also hide toolbar
       learningView.classList.add('active');
       window.scrollTo(0, 0);
+
+      updateLearningViewBtn();
 
       learnCharEl.textContent = char;
       // Use pinyin-pro library via global variable pinyinPro
@@ -1050,6 +1466,7 @@
       learningView.classList.remove('active');
       appEl.style.display = 'flex';
       document.querySelector('.navbar').style.display = 'flex';
+      document.querySelector('.toolbar').style.display = 'flex';
       
       if (writer) {
         writerTarget.innerHTML = '';
