@@ -283,6 +283,11 @@
       border-left: 4px solid transparent;
       border-right: 4px solid transparent;
       border-top: 4px solid #6b7280;
+      transition: transform 0.2s;
+    }
+
+    .level-selector-btn.active::after {
+      transform: rotate(180deg);
     }
 
     .level-dropdown {
@@ -928,9 +933,18 @@
       align-items: center;
       font-weight: 600;
     }
+    
+    .progress-level-header svg {
+      transition: transform 0.2s;
+    }
+
+    .progress-level-header.active svg {
+      transform: rotate(180deg);
+    }
     .progress-level-content {
       display: none;
-      max-height: 300px;
+      /* Max height reduced for approx 5 rows. */
+      max-height: 220px;
       overflow-y: auto;
       padding: 16px;
       background: #fff;
@@ -1008,6 +1022,7 @@
       <button class="menu-item" id="menuClearCache">清理语音缓存</button>
       <button class="menu-item" id="menuStats">显示语音数据</button>
       <button class="menu-item" id="menuProgress">学习进度</button>
+      <button class="menu-item" id="menuRefresh">刷新页面</button>
       <button class="menu-item" id="menuLogin">登录</button>
     </div>
   </header>
@@ -1268,6 +1283,8 @@
         if (!e.target.closest('.level-selector-wrapper')) {
           levelDropdown.classList.remove('show');
           modeDropdown.classList.remove('show');
+          currentLevelBtn.classList.remove('active');
+          currentModeBtn.classList.remove('active');
         }
       });
     });
@@ -1277,8 +1294,10 @@
       currentModeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         modeDropdown.classList.toggle('show');
+        currentModeBtn.classList.toggle('active');
         // Close level dropdown if open
         levelDropdown.classList.remove('show');
+        currentLevelBtn.classList.remove('active');
       });
 
       // Mode Selection
@@ -1296,13 +1315,16 @@
                passwordError.style.display = 'none';
                passwordInput.focus();
                modeDropdown.classList.remove('show');
+               currentModeBtn.classList.remove('active');
              } else {
                // Switch back to learning mode directly
                switchTeachingMode(false);
                modeDropdown.classList.remove('show');
+               currentModeBtn.classList.remove('active');
              }
           } else {
              modeDropdown.classList.remove('show');
+             currentModeBtn.classList.remove('active');
           }
         });
       });
@@ -1343,8 +1365,10 @@
       currentLevelBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         levelDropdown.classList.toggle('show');
+        currentLevelBtn.classList.toggle('active');
         // Close mode dropdown if open
         modeDropdown.classList.remove('show');
+        currentModeBtn.classList.remove('active');
       });
 
       // Level Selection
@@ -1357,12 +1381,14 @@
              levelOptions.forEach(o => o.classList.remove('active'));
              opt.classList.add('active');
              levelDropdown.classList.remove('show');
+             currentLevelBtn.classList.remove('active');
              
              // Load Data
              currentLevel = level;
              loadLevel(level);
           } else {
              levelDropdown.classList.remove('show');
+             currentLevelBtn.classList.remove('active');
           }
         });
       });
@@ -2015,7 +2041,7 @@
               levels.forEach(lvl => {
                 html += `
                   <div class="progress-level-item">
-                    <div class="progress-level-header" onclick="this.nextElementSibling.classList.toggle('show')">
+                    <div class="progress-level-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('show')">
                       <span>${lvl}</span>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
@@ -2154,6 +2180,36 @@
         } else {
             showToast('浏览器不支持缓存清理', 'error');
         }
+      });
+
+      // Refresh Logic
+      document.getElementById('menuRefresh').addEventListener('click', async () => {
+          const progressDiv = document.getElementById('downloadProgress');
+          const progressFill = document.getElementById('progressFill');
+          const progressText = document.getElementById('progressText');
+          
+          progressDiv.style.display = 'flex';
+          progressFill.style.width = '10%';
+          progressText.textContent = '准备刷新...';
+          
+          try {
+             // Just show progress to indicate action
+             progressFill.style.width = '50%';
+             await new Promise(r => setTimeout(r, 200));
+             
+             progressFill.style.width = '100%';
+             progressText.textContent = '刷新中...';
+             
+             // Wait to show 100%
+             await new Promise(r => setTimeout(r, 200));
+             
+             // Force Reload (true forces reload from server, ignoring browser cache)
+             // We do NOT clear 'shizi-audio-cache' or unregister service workers as requested.
+             window.location.reload(true);
+          } catch (e) {
+             console.error('Refresh error:', e);
+             window.location.reload();
+          }
       });
     }
 
