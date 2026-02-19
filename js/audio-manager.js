@@ -139,8 +139,17 @@ class AudioManager {
 
   async uploadAudio(blob, level, unit, char, text, type, index) {
     this.init();
+    
+    // Ensure type is valid
+    if (!type) {
+        console.warn('Type is missing for upload, inferring from text/char');
+        if (text === char) type = 'char';
+        else if (text.length > 1 && !text.includes(' ')) type = 'word'; // Simple guess
+        else type = 'sentence';
+    }
+
     const filePath = this.getFilePath(level, unit, char, text, type, index);
-    console.log(`Uploading audio to: ${filePath}, Blob size: ${blob.size}`);
+    console.log(`Uploading audio to: ${filePath}, Blob size: ${blob.size}, Type: ${type}`);
 
     try {
       const { data, error } = await this.supabase
@@ -150,7 +159,7 @@ class AudioManager {
           contentType: 'audio/mp3',
           upsert: true,
           metadata: {
-            originalText: encodeURIComponent(text),
+            originalText: text, // Store original text (Supabase handles unicode in JSON)
             type: type
           }
         });
@@ -161,11 +170,71 @@ class AudioManager {
       }
       
       console.log('Upload successful:', data);
+
+      // Insert into audio_records table
+      // We explicitly upsert here to ensure data consistency, regardless of trigger
+      const { error: dbError } = await this.supabase
+        .from('audio_records')
+        .upsert({
+          path: filePath,
+          level: level,
+          unit: unit,
+          char: char,
+          type: type,
+          created_at: new Date()
+        }, { onConflict: 'path' });
+
+      if (dbError) {
+        console.error('DB Insert Error (audio_records):', dbError);
+        // Don't throw, as file upload was successful. 
+        // But this explains why DB might be missing data if trigger also fails/doesn't run.
+      }
+
       return data;
     } catch (err) {
       console.error('Upload failed:', err);
       throw err;
     }
+  }
+
+  async getAllAudioRecords() {
+    this.init();
+    const { data, error } = await this.supabase
+      .from('audio_records')
+      .select('*');
+    if (error) {
+      console.error('Error fetching audio records:', error);
+      return [];
+    }
+    return data;
+  }
+
+  async getAudioStats() {
+    this.init();
+    // Count chars with audio (type='char')
+    // Use standard select count to avoid potential HEAD request issues (ERR_ABORTED)
+    const { count, error } = await this.supabase
+      .from('audio_records')
+      .select('*', { count: 'exact', head: false })
+      .eq('type', 'char')
+      .limit(1);
+    
+    if (error) {
+        console.error('Error counting audio:', error);
+    }
+
+    // Get latest audio
+    const { data: latest, error: latestError } = await this.supabase
+      .from('audio_records')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(); // Use maybeSingle to avoid error if empty
+
+    return { 
+      charCount: count || 0, 
+      latest: latest 
+    };
   }
 
   getAudioUrl(level, unit, char, text, type, index) {
@@ -179,7 +248,15 @@ class AudioManager {
   }
   
   async playAudio(level, unit, char, text, type, index) {
-    const url = this.getAudioUrl(level, unit, char, text, type, index);
+    this.init();
+    const filePath = this.getFilePath(level, unit, char, text, type, index);
+    const { data } = this.supabase
+      .storage
+      .from(SUPABASE_CONFIG.bucket)
+      .getPublicUrl(filePath);
+    
+    const url = data.publicUrl;
+    let playUrl = url;
     
     // Stop current audio
     if (this.currentAudio) {
@@ -187,20 +264,40 @@ class AudioManager {
       this.currentAudio = null;
     }
 
-    // Try to play
-    try {
-        // Optional: Check if file exists by fetching head
-        // const res = await fetch(url, { method: 'HEAD' });
-        // if (!res.ok) throw new Error('Audio not found');
+    // Try to get from cache if available
+     if ('caches' in window) {
+        try {
+           const cache = await caches.open('shizi-audio-cache');
+           const response = await cache.match(url);
+           if (response) {
+              const blob = await response.blob();
+              playUrl = URL.createObjectURL(blob);
+              console.log('Playing from cache:', url);
+           }
+        } catch (e) {
+           console.warn('Cache match failed:', e);
+        }
+     }
+ 
+     // Try to play
+     try {
+         // Revoke previous blob URL to avoid memory leak
+         if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.currentAudioUrl);
+         }
+         this.currentAudioUrl = playUrl;
 
-        this.currentAudio = new Audio(url);
-        // Return a promise that resolves when playback starts or fails
-        await this.currentAudio.play();
-        return true;
-    } catch (e) {
-        console.warn('Audio play failed (likely not exists):', e);
-        return false;
-    }
+         this.currentAudio = new Audio(playUrl);
+         // Handle cleanup on end as well?
+         // this.currentAudio.onended = () => { if(playUrl.startsWith('blob:')) URL.revokeObjectURL(playUrl); }; 
+         // No, because user might replay. Cleaning up on next play is enough.
+         
+         await this.currentAudio.play();
+         return true;
+     } catch (e) {
+         console.warn('Audio play failed (likely not exists):', e);
+         return false;
+     }
   }
 }
 

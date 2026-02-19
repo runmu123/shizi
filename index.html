@@ -822,15 +822,163 @@
       90% { opacity: 1; transform: translateY(0); }
       100% { opacity: 0; transform: translateY(-10px); }
     }
+
+    /* Menu Styles */
+    .menu-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #6b7280;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .menu-btn:hover {
+      background-color: #f3f4f6;
+    }
+    .menu-dropdown {
+      position: absolute;
+      top: 50px;
+      right: 20px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      width: 160px;
+      display: none;
+      flex-direction: column;
+      z-index: 1001;
+      overflow: hidden;
+    }
+    .menu-dropdown.show {
+      display: flex;
+    }
+    .menu-item {
+      padding: 12px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #374151;
+      font-size: 0.95rem;
+      transition: background 0.1s;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .menu-item:last-child {
+      border-bottom: none;
+    }
+    .menu-item:hover {
+      background-color: #f9fafb;
+      color: var(--primary-color);
+    }
+
+    /* Progress Bar */
+    .download-progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+    .progress-track {
+      width: 100px;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary-color);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* Stats Modal Content */
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .stats-label { color: #6b7280; }
+    .stats-value { font-weight: 600; color: #111827; }
+
+    /* Learning Progress Styles */
+    .progress-level-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .progress-level-header {
+      padding: 16px;
+      background: #f9fafb;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    .progress-level-content {
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 16px;
+      background: #fff;
+    }
+    .progress-level-content.show {
+      display: block;
+    }
+    .progress-unit-row {
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+    .progress-unit-name {
+      font-weight: 600;
+      color: #374151;
+      margin-right: 8px;
+    }
+    .progress-char-list {
+      color: #6b7280;
+    }
+    .progress-char.learned {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <header class="navbar">
-    <div class="search-container">
+  <header class="navbar" style="justify-content: space-between; padding: 0 16px;">
+    <!-- Download Progress -->
+    <div id="downloadProgress" class="download-progress" style="display:none;">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span id="progressText">0/0</span>
+    </div>
+
+    <div class="search-container" style="margin: 0 auto;">
       <input type="text" id="searchInput" class="search-input" placeholder="搜索汉字" maxlength="1">
+    </div>
+
+    <!-- Menu Button -->
+    <button class="menu-btn" id="menuBtn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+    </button>
+    
+    <!-- Menu Dropdown -->
+    <div class="menu-dropdown" id="menuDropdown">
+      <button class="menu-item" id="menuDownload">下载语音数据</button>
+      <button class="menu-item" id="menuClearCache">清理语音缓存</button>
+      <button class="menu-item" id="menuStats">显示语音数据</button>
+      <button class="menu-item" id="menuProgress">学习进度</button>
+      <button class="menu-item" id="menuLogin">登录</button>
     </div>
   </header>
 
@@ -924,6 +1072,60 @@
       <div class="modal-actions">
         <button class="modal-btn cancel" id="cancelPassword">取消</button>
         <button class="modal-btn confirm" id="confirmPassword">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-box">
+      <div class="modal-title">用户登录</div>
+      <div class="error-text" id="loginError" style="display:none;"></div>
+      <input type="text" class="modal-input" id="loginInput" placeholder="请输入用户名">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelLogin">取消</button>
+        <button class="modal-btn confirm" id="confirmLogin">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal-box">
+      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>语音数据统计</span>
+        <button class="menu-btn" id="closeStats" style="padding:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+      <div id="statsContent">
+        <div class="stats-row">
+          <span class="stats-label">待学习字总数</span>
+          <span class="stats-value" id="statsTotalChars">0</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">已配置语音(字)</span>
+          <span class="stats-value" id="statsAudioCount">0</span>
+        </div>
+        <div class="stats-row" style="flex-direction:column; gap:8px;">
+          <span class="stats-label">最新录制语音</span>
+          <span class="stats-value" id="statsLastAudio" style="font-weight:400; font-size:0.9rem;">暂无</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learning Progress Modal -->
+  <div class="modal-overlay" id="progressModal">
+    <div class="modal-box" style="max-width: 600px; width: 90%;">
+      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>学习进度</span>
+        <button class="menu-btn" id="closeProgress" style="padding:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+      <div style="margin-bottom: 16px; text-align: center; background: #f3f4f6; padding: 12px; border-radius: 8px;">
+        <span style="color: #6b7280;">已学习字数：</span>
+        <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="progressTotalCount">0</span>
+      </div>
+      <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto;">
+        <!-- Levels will be injected here -->
       </div>
     </div>
   </div>
@@ -1564,13 +1766,358 @@
             quizResult.style.display = 'none';
             showToast(`第 ${strokeData.strokeNum + 1} 笔正确`, 'success');
           },
-          onComplete: (summaryData) => {
+          onComplete: async (summaryData) => {
             quizResult.style.display = 'none';
             showToast(`练习完成！总共错误 ${summaryData.totalMistakes} 次。`, 'success');
+            
+            // Save progress if user is logged in
+            const user = localStorage.getItem('shizi_user');
+            if (user && audioManager.supabase) {
+                const char = document.getElementById('learnChar').textContent;
+                const playBtn = document.getElementById('learnPlayBtn');
+                const level = playBtn ? playBtn.dataset.level : currentLevel;
+                const unit = playBtn ? playBtn.dataset.unit : (unitKeys[currentUnitIndex] || '');
+                
+                try {
+                    await audioManager.supabase.from('user_progress').upsert({
+                        username: user,
+                        char: char,
+                        level: level,
+                        unit: unit,
+                        completed_at: new Date()
+                    }, { onConflict: 'username,char' });
+                    console.log('Progress saved for', char);
+                } catch (e) {
+                    console.error('Error saving progress:', e);
+                }
+            }
           }
         });
       }
     }
+
+    // --- Menu & Modals Logic ---
+     function setupMenuAndModals() {
+       audioManager.init();
+       const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+      
+      // Toggle Menu
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('show');
+      });
+      
+      document.addEventListener('click', () => {
+        menuDropdown.classList.remove('show');
+      });
+
+      // Login Modal
+      const loginModal = document.getElementById('loginModal');
+      const loginInput = document.getElementById('loginInput');
+      const loginError = document.getElementById('loginError');
+      
+      document.getElementById('menuLogin').addEventListener('click', () => {
+        const user = localStorage.getItem('shizi_user');
+        if (user) {
+           if(confirm(`当前已登录为 ${user}，是否注销？`)) {
+             localStorage.removeItem('shizi_user');
+             showToast('已注销', 'info');
+             document.getElementById('menuLogin').textContent = '登录';
+           }
+        } else {
+           loginModal.style.display = 'flex';
+           loginInput.value = '';
+           loginError.style.display = 'none';
+        }
+      });
+      
+      document.getElementById('cancelLogin').addEventListener('click', () => {
+        loginModal.style.display = 'none';
+      });
+      
+      document.getElementById('confirmLogin').addEventListener('click', async () => {
+        const username = loginInput.value.trim();
+        if (!username) {
+          loginError.textContent = '请输入用户名';
+          loginError.style.display = 'block';
+          return;
+        }
+        
+        // Check if user exists in app_users
+        if (audioManager.supabase) {
+           const { data, error } = await audioManager.supabase
+             .from('app_users')
+             .select('*')
+             .eq('username', username)
+             .maybeSingle();
+             
+           if (error) {
+             console.error(error);
+             loginError.textContent = '登录出错，请重试';
+             loginError.style.display = 'block';
+             return;
+           }
+           
+           if (!data) {
+             // User not found
+             showToast('用户名不存在', 'error');
+             loginInput.value = '';
+             return;
+           }
+           
+           // Success
+           localStorage.setItem('shizi_user', username);
+           showToast(`欢迎回来，${username}`, 'success');
+           loginModal.style.display = 'none';
+           document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
+        } else {
+           showToast('数据库未连接', 'error');
+        }
+      });
+
+      // Update Login Menu Text on Load
+      const currentUser = localStorage.getItem('shizi_user');
+      if (currentUser) {
+        document.getElementById('menuLogin').textContent = '注销 (' + currentUser + ')';
+      }
+
+      // Stats Modal
+      const statsModal = document.getElementById('statsModal');
+      document.getElementById('menuStats').addEventListener('click', async () => {
+        statsModal.style.display = 'flex';
+        
+        // 1. Total Chars to Learn (Estimate from loaded data or fetch all yamls?)
+        // Fetching all yamls to count accurately
+        let totalChars = 0;
+        const levels = ['L1', 'L2', 'L3']; // Assuming 3 levels
+        
+        for (const lvl of levels) {
+           try {
+             // Use cache if available
+             let data = levelDataCache[lvl];
+             if (!data) {
+                const res = await fetch(`yaml/contents_${lvl}.yaml`);
+                if (res.ok) {
+                   const text = await res.text();
+                   data = jsyaml.load(text);
+                   levelDataCache[lvl] = data;
+                }
+             }
+             if (data) {
+               Object.values(data).forEach(unitChars => {
+                 if (unitChars) totalChars += Object.keys(unitChars).length;
+               });
+             }
+           } catch (e) { console.warn('Error counting chars for', lvl); }
+        }
+        document.getElementById('statsTotalChars').textContent = totalChars;
+
+        // 2. Audio Stats
+        if (audioManager) {
+           const stats = await audioManager.getAudioStats();
+           document.getElementById('statsAudioCount').textContent = stats.charCount;
+           if (stats.latest) {
+             document.getElementById('statsLastAudio').textContent = 
+               `${stats.latest.level} - ${stats.latest.unit} - ${stats.latest.char}`;
+           } else {
+             document.getElementById('statsLastAudio').textContent = '暂无';
+           }
+        }
+      });
+      
+      document.getElementById('closeStats').addEventListener('click', () => {
+        statsModal.style.display = 'none';
+      });
+
+      // Progress Modal
+      const progressModal = document.getElementById('progressModal');
+      const progressLevelsContainer = document.getElementById('progressLevelsContainer');
+      
+      document.getElementById('menuProgress').addEventListener('click', async () => {
+        const user = localStorage.getItem('shizi_user');
+        if (!user) {
+          showToast('请先登录查看进度', 'info');
+          return;
+        }
+        
+        progressModal.style.display = 'flex';
+        progressLevelsContainer.innerHTML = '<div class="loading">加载中...</div>';
+        
+        if (audioManager.supabase) {
+           const { data: records, error } = await audioManager.supabase
+             .from('user_progress')
+             .select('*')
+             .eq('username', user);
+             
+           if (error) {
+             progressLevelsContainer.innerHTML = '<div class="error-msg">加载失败</div>';
+             return;
+           }
+           
+           document.getElementById('progressTotalCount').textContent = records.length;
+           
+           // Group by Level -> Unit
+           const grouped = {};
+           records.forEach(r => {
+             const lvl = r.level || '未知等级';
+             const unit = r.unit || '未知单元';
+             if (!grouped[lvl]) grouped[lvl] = {};
+             if (!grouped[lvl][unit]) grouped[lvl][unit] = [];
+             grouped[lvl][unit].push(r.char);
+           });
+           
+           // Render
+           let html = '';
+           // Sort levels L1, L2, L3...
+           const levels = Object.keys(grouped).sort(); 
+           
+           if (levels.length === 0) {
+              html = '<div style="text-align:center; padding:20px; color:#6b7280;">暂无学习记录</div>';
+           } else {
+              levels.forEach(lvl => {
+                html += `
+                  <div class="progress-level-item">
+                    <div class="progress-level-header" onclick="this.nextElementSibling.classList.toggle('show')">
+                      <span>${lvl}</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="progress-level-content">
+                `;
+                
+                const units = Object.keys(grouped[lvl]).sort((a,b) => {
+                   // Try to sort by Unit_X number
+                   const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                   const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                   return numA - numB;
+                });
+                
+                units.forEach(unit => {
+                   const chars = grouped[lvl][unit].join('，');
+                   html += `
+                     <div class="progress-unit-row">
+                       <span class="progress-unit-name">${unit}：</span>
+                       <span class="progress-char-list">
+                         ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join('，')}
+                       </span>
+                     </div>
+                   `;
+                });
+                
+                html += `</div></div>`;
+              });
+           }
+           
+           progressLevelsContainer.innerHTML = html;
+        }
+      });
+      
+      document.getElementById('closeProgress').addEventListener('click', () => {
+        progressModal.style.display = 'none';
+      });
+
+      // Download Audio Logic
+      document.getElementById('menuDownload').addEventListener('click', async () => {
+         if (!audioManager.supabase) {
+           showToast('数据库未连接', 'error');
+           return;
+         }
+         
+         const progressDiv = document.getElementById('downloadProgress');
+         const progressFill = document.getElementById('progressFill');
+         const progressText = document.getElementById('progressText');
+         
+         progressDiv.style.display = 'flex';
+         progressFill.style.width = '0%';
+         progressText.textContent = '准备中...';
+         
+         try {
+            const files = await audioManager.getAllAudioRecords();
+            if (!files || files.length === 0) {
+               showToast('没有可下载的语音文件', 'info');
+               progressDiv.style.display = 'none';
+               return;
+            }
+            
+            let downloaded = 0;
+            const total = files.length;
+            progressText.textContent = `0/${total}`;
+            
+            // Try to open cache
+            let cache = null;
+            if ('caches' in window) {
+               try {
+                  cache = await caches.open('shizi-audio-cache');
+               } catch (e) {
+                  console.warn('Cache open failed:', e);
+               }
+            }
+            
+            const chunkSize = 5;
+            for (let i = 0; i < total; i += chunkSize) {
+               const chunk = files.slice(i, i + chunkSize);
+               await Promise.all(chunk.map(async (file) => {
+                  try {
+                    const { data } = audioManager.supabase.storage
+                       .from(SUPABASE_CONFIG.bucket)
+                       .getPublicUrl(file.path);
+                    
+                    const url = data.publicUrl;
+                    
+                    if (cache) {
+                        // cache.add() fetches and puts.
+                        await cache.add(url);
+                    } else {
+                        // Fallback
+                        const res = await fetch(url);
+                        if (res.ok) await res.blob(); 
+                    }
+                  } catch (e) {
+                    console.warn('Failed to download', file.path, e);
+                  } finally {
+                    downloaded++;
+                    const pct = (downloaded / total) * 100;
+                    progressFill.style.width = `${pct}%`;
+                    progressText.textContent = `${downloaded}/${total}`;
+                  }
+               }));
+            }
+            
+            showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
+         } catch (e) {
+            console.error(e);
+            showToast('下载出错', 'error');
+         } finally {
+            setTimeout(() => {
+              progressDiv.style.display = 'none';
+            }, 2000);
+         }
+      });
+
+      // Clear Cache Logic
+      document.getElementById('menuClearCache').addEventListener('click', async () => {
+        if ('caches' in window) {
+            try {
+                const deleted = await caches.delete('shizi-audio-cache');
+                if (deleted) {
+                    showToast('语音缓存已清理', 'success');
+                } else {
+                    showToast('未发现语音缓存', 'info');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('清理缓存失败', 'error');
+            }
+        } else {
+            showToast('浏览器不支持缓存清理', 'error');
+        }
+      });
+    }
+
+    // Initialize
+    setupMenuAndModals();
+    setupLearningEvents();
+    // loadConfig(); // Removed as it is undefined
 
     function setupLearningEvents() {
       // Back Button
