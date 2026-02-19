@@ -247,7 +247,7 @@ class AudioManager {
     return data.publicUrl;
   }
   
-  async playAudio(level, unit, char, text, type, index) {
+  async playAudio(level, unit, char, text, type, index, onStopCallback) {
     this.init();
     const filePath = this.getFilePath(level, unit, char, text, type, index);
     const { data } = this.supabase
@@ -258,46 +258,72 @@ class AudioManager {
     const url = data.publicUrl;
     let playUrl = url;
     
-    // Stop current audio
+    // Stop current audio and notify previous callback
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio = null;
+      if (this.onStopCallback) {
+        this.onStopCallback();
+        this.onStopCallback = null;
+      }
     }
 
     // Try to get from cache if available
-     if ('caches' in window) {
-        try {
-           const cache = await caches.open('shizi-audio-cache');
-           const response = await cache.match(url);
-           if (response) {
-              const blob = await response.blob();
-              playUrl = URL.createObjectURL(blob);
-              console.log('Playing from cache:', url);
-           }
-        } catch (e) {
-           console.warn('Cache match failed:', e);
-        }
-     }
- 
-     // Try to play
-     try {
-         // Revoke previous blob URL to avoid memory leak
-         if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(this.currentAudioUrl);
-         }
-         this.currentAudioUrl = playUrl;
+    if ('caches' in window) {
+       try {
+          const cache = await caches.open('shizi-audio-cache');
+          const response = await cache.match(url);
+          if (response) {
+             const blob = await response.blob();
+             playUrl = URL.createObjectURL(blob);
+             console.log('Playing from cache:', url);
+          }
+       } catch (e) {
+          console.warn('Cache match failed:', e);
+       }
+    }
 
-         this.currentAudio = new Audio(playUrl);
-         // Handle cleanup on end as well?
-         // this.currentAudio.onended = () => { if(playUrl.startsWith('blob:')) URL.revokeObjectURL(playUrl); }; 
-         // No, because user might replay. Cleaning up on next play is enough.
-         
-         await this.currentAudio.play();
-         return true;
-     } catch (e) {
-         console.warn('Audio play failed (likely not exists):', e);
-         return false;
-     }
+    // Try to play
+    try {
+        // Revoke previous blob URL to avoid memory leak
+        if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
+           URL.revokeObjectURL(this.currentAudioUrl);
+        }
+        this.currentAudioUrl = playUrl;
+
+        this.currentAudio = new Audio(playUrl);
+        this.onStopCallback = onStopCallback;
+
+        // Cleanup on end
+        this.currentAudio.onended = () => {
+          if (this.onStopCallback) {
+            this.onStopCallback();
+            this.onStopCallback = null;
+          }
+          this.currentAudio = null;
+        };
+
+        // Cleanup on error
+        this.currentAudio.onerror = (e) => {
+          console.warn('Audio playback error', e);
+          if (this.onStopCallback) {
+            this.onStopCallback();
+            this.onStopCallback = null;
+          }
+          this.currentAudio = null;
+        };
+        
+        await this.currentAudio.play();
+        return true;
+    } catch (e) {
+        console.warn('Audio play failed (likely not exists):', e);
+        // If immediate fail, callback is NOT stored yet (or rather, we should call it if stored)
+        if (this.onStopCallback) {
+             this.onStopCallback();
+             this.onStopCallback = null;
+        }
+        return false;
+    }
   }
 }
 
