@@ -907,7 +907,7 @@
 
     <!-- Quiz Controls -->
     <div class="controls" id="quizControls" style="display:none;">
-      <button class="control-btn primary" id="startQuizBtn">开始练习</button>
+      <button class="control-btn primary" id="startQuizBtn">重置</button>
       <button class="control-btn" id="hintBtn">提示</button>
     </div>
 
@@ -1552,6 +1552,26 @@
     const strokeInfo = document.getElementById('strokeInfo');
     const quizResult = document.getElementById('quizResult');
 
+    function startQuizLogic() {
+      if (writer) {
+        quizResult.style.display = 'none';
+        writer.quiz({
+          onMistake: (strokeData) => {
+            quizResult.style.display = 'none';
+            showToast('笔画错误，请重试。', 'error');
+          },
+          onCorrectStroke: (strokeData) => {
+            quizResult.style.display = 'none';
+            showToast(`第 ${strokeData.strokeNum + 1} 笔正确`, 'success');
+          },
+          onComplete: (summaryData) => {
+            quizResult.style.display = 'none';
+            showToast(`练习完成！总共错误 ${summaryData.totalMistakes} 次。`, 'success');
+          }
+        });
+      }
+    }
+
     function setupLearningEvents() {
       // Back Button
       document.getElementById('backBtn').addEventListener('click', exitLearning);
@@ -1580,31 +1600,7 @@
       });
 
       // Quiz Controls
-      document.getElementById('startQuizBtn').addEventListener('click', () => {
-        if (writer) {
-          quizResult.style.display = 'none';
-          writer.quiz({
-            onMistake: (strokeData) => {
-              quizResult.style.display = 'block';
-              quizResult.textContent = '笔画错误，请重试。';
-              quizResult.style.color = '#dc2626';
-              quizResult.style.borderColor = '#fecaca';
-              quizResult.style.backgroundColor = '#fef2f2';
-            },
-            onCorrectStroke: (strokeData) => {
-              quizResult.style.display = 'none';
-              strokeInfo.textContent = `第 ${strokeData.strokeNum + 1} 笔正确`;
-            },
-            onComplete: (summaryData) => {
-              quizResult.style.display = 'block';
-              quizResult.textContent = `练习完成！总共错误 ${summaryData.totalMistakes} 次。`;
-              quizResult.style.color = '#166534';
-              quizResult.style.borderColor = '#bbf7d0';
-              quizResult.style.backgroundColor = '#f0fdf4';
-            }
-          });
-        }
-      });
+      document.getElementById('startQuizBtn').addEventListener('click', startQuizLogic);
       
       document.getElementById('hintBtn').addEventListener('click', () => {
         if(writer) writer.animateCharacter(); 
@@ -1632,6 +1628,7 @@
       appEl.style.display = 'none';
       document.querySelector('.navbar').style.display = 'none';
       document.querySelector('.toolbar').style.display = 'none';
+      document.body.style.paddingTop = '20px'; // Remove top padding for learning view
       learningView.classList.add('active');
       window.scrollTo(0, 0);
 
@@ -1664,6 +1661,7 @@
       appEl.style.display = 'flex';
       document.querySelector('.navbar').style.display = 'flex';
       document.querySelector('.toolbar').style.display = 'flex';
+      document.body.style.paddingTop = '120px'; // Restore top padding
       
       if (writer) {
         writerTarget.innerHTML = '';
@@ -1685,7 +1683,10 @@
       } else {
         animateControls.style.display = 'none';
         quizControls.style.display = 'flex';
-        if (writer) writer.hideCharacter();
+        if (writer) {
+          writer.hideCharacter();
+          startQuizLogic();
+        }
       }
       
       quizResult.style.display = 'none';
