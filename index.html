@@ -2124,27 +2124,51 @@
            
            // Render
            let html = '';
-           // Sort levels L1, L2, L3...
-           const levels = Object.keys(grouped).sort(); 
+           
+           // Helper for Chinese numbers (1-99)
+           const getCnNum = (str) => {
+              const m = str.match(/第(.+)单元/);
+              if (!m) return 0;
+              const s = m[1];
+              const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+              if (map[s]) return map[s];
+              if (s.startsWith('十')) return 10 + (map[s[1]] || 0);
+              if (s.endsWith('十')) return (map[s[0]] || 0) * 10;
+              if (s.includes('十')) {
+                 const p = s.split('十');
+                 return (map[p[0]] || 0) * 10 + (map[p[1]] || 0);
+              }
+              return 0;
+           };
+
+           // Sort levels Descending (level_2, level_1)
+           const levels = Object.keys(grouped).sort((a, b) => {
+              const na = parseInt(a.replace(/\D/g, '')) || 0;
+              const nb = parseInt(b.replace(/\D/g, '')) || 0;
+              return nb - na;
+           }); 
            
            if (levels.length === 0) {
               html = '<div style="text-align:center; padding:20px; color:#6b7280;">暂无学习记录</div>';
            } else {
-              levels.forEach(lvl => {
+              levels.forEach((lvl, index) => {
+                // Default expand the first level (latest)
+                const isExpanded = index === 0;
+                const headerClass = isExpanded ? 'progress-level-header active' : 'progress-level-header';
+                const contentClass = isExpanded ? 'progress-level-content show' : 'progress-level-content';
+
                 html += `
                   <div class="progress-level-item">
-                    <div class="progress-level-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('show')">
+                    <div class="${headerClass}" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('show')">
                       <span>${lvl}</span>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
-                    <div class="progress-level-content">
+                    <div class="${contentClass}">
                 `;
                 
+                // Sort units Descending (Unit 8, Unit 7...)
                 const units = Object.keys(grouped[lvl]).sort((a,b) => {
-                   // Try to sort by Unit_X number
-                   const numA = parseInt(a.replace(/\D/g, '')) || 0;
-                   const numB = parseInt(b.replace(/\D/g, '')) || 0;
-                   return numA - numB;
+                   return getCnNum(b) - getCnNum(a);
                 });
                 
                 units.forEach(unit => {
