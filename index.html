@@ -1042,9 +1042,7 @@
       <div class="level-selector-wrapper" id="levelSelector">
         <button class="level-selector-btn" id="currentLevelBtn">L1</button>
         <div class="level-dropdown" id="levelDropdown">
-          <button class="level-option active" data-level="L1">L1</button>
-          <button class="level-option" data-level="L2">L2</button>
-          <button class="level-option" data-level="L3">L3</button>
+          <!-- Options will be generated dynamically -->
         </div>
       </div>
 
@@ -1177,13 +1175,62 @@
 
   <script>
     // State
-    const LEVELS = ['L1', 'L2', 'L3'];
+    let LEVELS = [];
     let currentLevel = 'L1';
     let currentData = null; // Full parsed YAML data
     const levelDataCache = {}; // Cache for loaded levels
     let unitKeys = [];      // Array of unit names (e.g. "第一单元")
     let currentUnitIndex = 0;
     let isTeachingMode = false;
+
+    // Initialize levels dynamically
+    async function initLevels() {
+      const dropdown = document.getElementById('levelDropdown');
+      dropdown.innerHTML = '';
+      LEVELS = [];
+      
+      let i = 1;
+      while (true) {
+        const level = `L${i}`;
+        try {
+          const res = await fetch(`yaml/contents_${level}.yaml`, { method: 'HEAD' });
+          if (res.ok) {
+            LEVELS.push(level);
+            const btn = document.createElement('button');
+            btn.className = 'level-option';
+            btn.dataset.level = level;
+            btn.textContent = level;
+            dropdown.appendChild(btn);
+            i++;
+          } else {
+            break;
+          }
+        } catch (e) {
+          console.warn('Level check failed for', level, e);
+          break;
+        }
+        if (i > 20) break; // Safety limit
+      }
+      
+      if (LEVELS.length === 0) {
+        // Fallback
+        LEVELS = ['L1'];
+        currentLevel = 'L1';
+        dropdown.innerHTML = '<button class="level-option" data-level="L1">L1</button>';
+      } else {
+        if (!LEVELS.includes(currentLevel)) {
+          currentLevel = LEVELS[0];
+        }
+      }
+      
+      // Set active state
+      const opts = dropdown.querySelectorAll('.level-option');
+      opts.forEach(o => {
+          const isActive = o.dataset.level === currentLevel;
+          o.classList.toggle('active', isActive);
+      });
+      document.getElementById('currentLevelBtn').textContent = currentLevel;
+    }
 
     // Elements
     const appEl = document.getElementById('app');
@@ -1269,12 +1316,13 @@
     const unitSelect = document.getElementById('unitSelect');
     const currentLevelBtn = document.getElementById('currentLevelBtn');
     const levelDropdown = document.getElementById('levelDropdown');
-    const levelOptions = document.querySelectorAll('.level-option');
+    // levelOptions removed as it's dynamic
     const searchInput = document.getElementById('searchInput');
     const unitNavigator = document.querySelector('.unit-navigator');
 
     // Init
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initLevels();
       loadLevel(currentLevel);
       setupEventListeners();
       
@@ -1371,14 +1419,17 @@
         currentModeBtn.classList.remove('active');
       });
 
-      // Level Selection
-      levelOptions.forEach(opt => {
-        opt.addEventListener('click', () => {
-          const level = opt.dataset.level;
-          if (level !== currentLevel) {
+      // Level Selection (Delegation)
+      levelDropdown.addEventListener('click', (e) => {
+        const opt = e.target.closest('.level-option');
+        if (!opt) return;
+        
+        const level = opt.dataset.level;
+        if (level !== currentLevel) {
              // Update UI
              currentLevelBtn.textContent = level;
-             levelOptions.forEach(o => o.classList.remove('active'));
+             const options = levelDropdown.querySelectorAll('.level-option');
+             options.forEach(o => o.classList.remove('active'));
              opt.classList.add('active');
              levelDropdown.classList.remove('show');
              currentLevelBtn.classList.remove('active');
@@ -1386,11 +1437,10 @@
              // Load Data
              currentLevel = level;
              loadLevel(level);
-          } else {
+        } else {
              levelDropdown.classList.remove('show');
              currentLevelBtn.classList.remove('active');
-          }
-        });
+        }
       });
 
       // Search
@@ -1953,9 +2003,8 @@
         // 1. Total Chars to Learn (Estimate from loaded data or fetch all yamls?)
         // Fetching all yamls to count accurately
         let totalChars = 0;
-        const levels = ['L1', 'L2', 'L3']; // Assuming 3 levels
         
-        for (const lvl of levels) {
+        for (const lvl of LEVELS) {
            try {
              // Use cache if available
              let data = levelDataCache[lvl];
