@@ -1040,7 +1040,7 @@
       
       <!-- Level Selector -->
       <div class="level-selector-wrapper" id="levelSelector">
-        <button class="level-selector-btn" id="currentLevelBtn">L1</button>
+        <button class="level-selector-btn" id="currentLevelBtn">L0</button>
         <div class="level-dropdown" id="levelDropdown">
           <!-- Options will be generated dynamically -->
         </div>
@@ -1176,7 +1176,7 @@
   <script>
     // State
     let LEVELS = [];
-    let currentLevel = 'L1';
+    let currentLevel = 'L0';
     let currentData = null; // Full parsed YAML data
     const levelDataCache = {}; // Cache for loaded levels
     let unitKeys = [];      // Array of unit names (e.g. "第一单元")
@@ -1189,7 +1189,7 @@
       dropdown.innerHTML = '';
       LEVELS = [];
       
-      let i = 1;
+      let i = 0;
       while (true) {
         const level = `L${i}`;
         try {
@@ -1203,6 +1203,11 @@
             dropdown.appendChild(btn);
             i++;
           } else {
+            // If L0 not found, try L1
+            if (i === 0) {
+              i++;
+              continue;
+            }
             break;
           }
         } catch (e) {
