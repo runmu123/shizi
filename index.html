@@ -72,7 +72,7 @@
       left: 20px;
       background: transparent;
       border: 1px solid #e5e7eb;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border-radius: 8px;
       cursor: pointer;
       font-family: system-ui, sans-serif;
@@ -81,6 +81,7 @@
       display: flex;
       align-items: center;
       gap: 4px;
+      font-size: 1.2rem;
     }
 
     .back-btn:hover {
@@ -1193,8 +1194,19 @@
       while (true) {
         const level = `L${i}`;
         try {
-          const res = await fetch(`yaml/contents_${level}.yaml`, { method: 'HEAD' });
+          // Use GET instead of HEAD to avoid potential server configuration issues
+          const res = await fetch(`yaml/contents_${level}.yaml`, { method: 'GET' });
           if (res.ok) {
+            // Since we fetched the content, cache it immediately to avoid reloading
+            const text = await res.text();
+            try {
+              if (window.jsyaml) {
+                levelDataCache[level] = jsyaml.load(text);
+              }
+            } catch (yamlErr) {
+              console.warn('Failed to parse YAML for', level, yamlErr);
+            }
+
             LEVELS.push(level);
             const btn = document.createElement('button');
             btn.className = 'level-option';
@@ -1808,6 +1820,23 @@
       let html = `<div class="unit-title">${unitName}</div>`;
       
       if (unitChars) {
+        // Generate Unit Summary (List of all chars in this unit)
+        const allChars = Object.keys(unitChars);
+        if (allChars.length > 0) {
+          html += `
+            <div style="
+              text-align: center; 
+              margin: -10px 0 20px 0; 
+              padding: 0 16px; 
+              color: #666; 
+              font-size: 1.5rem;
+              font-family: 'KaiTi', 'STKaiti', serif;
+            ">
+              ${allChars.join('，')}
+            </div>
+          `;
+        }
+
         for (const [char, info] of Object.entries(unitChars)) {
           // info might be null if yaml has empty key
           const words = (info && info.词) ? info.词 : [];
@@ -1978,15 +2007,24 @@
            }
            
            if (!data) {
-             // User not found
-             showToast('用户名不存在', 'error');
-             loginInput.value = '';
-             return;
+             // User not found, create new one
+             const { error: insertError } = await audioManager.supabase
+               .from('app_users')
+               .insert([{ username: username }]);
+             
+             if (insertError) {
+               console.error('Create user error:', insertError);
+               showToast('创建用户失败', 'error');
+               return;
+             }
+             
+             showToast(`欢迎新用户 ${username}`, 'success');
+           } else {
+             showToast(`欢迎回来，${username}`, 'success');
            }
            
-           // Success
+           // Common Success Logic
            localStorage.setItem('shizi_user', username);
-           showToast(`欢迎回来，${username}`, 'success');
            loginModal.style.display = 'none';
            document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
         } else {
