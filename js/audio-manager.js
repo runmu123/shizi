@@ -48,7 +48,7 @@ class AudioManager {
          toneType: 'none', 
          separator: '',
          nonZh: 'consecutive' 
-       }).replace(/\s+/g, '');
+       }).replace(/\s+/g, '').replace(/ü/g, 'v');
     }
     return char;
   }
