@@ -160,11 +160,12 @@
     .mode-tab {
       flex: 1;
       text-align: center;
-      padding: 8px;
+      padding: 12px;
       cursor: pointer;
       border-radius: 6px;
       color: #6b7280;
-      font-size: 0.95rem;
+      font-size: 1.2rem;
+      font-weight: 500;
       transition: all 0.2s;
     }
 
@@ -2419,7 +2420,7 @@
       document.getElementById('playBtn').addEventListener('click', () => {
         if (writer) {
           currentStroke = 0;
-          writer.animateCharacter({ strokeAnimationSpeed: 0.01 }); // User requested 0.5x speed
+          writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 }); // Slower speed and delay
         }
       });
       document.getElementById('strokeBtn').addEventListener('click', animateStrokeByStroke);
@@ -2434,7 +2435,7 @@
       document.getElementById('startQuizBtn').addEventListener('click', startQuizLogic);
       
       document.getElementById('hintBtn').addEventListener('click', () => {
-        if(writer) writer.animateCharacter({ strokeAnimationSpeed: 0.5 }); // User requested 0.5x speed
+        if(writer) writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 }); // Slower speed and delay
       });
     }
 
@@ -2602,8 +2603,8 @@
         height: size,
         padding: 20,
         showOutline: true,
-        strokeAnimationSpeed: 1,
-        delayBetweenStrokes: 300,
+        strokeAnimationSpeed: 0.5, // 默认慢速
+        delayBetweenStrokes: 500, // 默认笔画间隔慢一点
         strokeColor: '#1c1917',
         outlineColor: '#d6d3d1',
         drawingColor: '#d97706',
