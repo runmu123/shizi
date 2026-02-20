@@ -1094,12 +1094,12 @@
     <div class="controls" id="animateControls">
       <button class="control-btn primary" id="playBtn">播放动画</button>
       <button class="control-btn" id="strokeBtn">逐笔播放</button>
-      <button class="control-btn" id="resetBtn">重置</button>
+      <button class="control-btn" id="resetBtn">重新来</button>
     </div>
 
     <!-- Quiz Controls -->
     <div class="controls" id="quizControls" style="display:none;">
-      <button class="control-btn primary" id="startQuizBtn">重置</button>
+      <button class="control-btn primary" id="startQuizBtn">重新来</button>
       <button class="control-btn" id="hintBtn">提示</button>
     </div>
 
@@ -1586,9 +1586,44 @@
           }
         } else {
           // Playing Logic
+          
+          // Check if we need to stop looping or current playback
+          if (isLoopingAudio) {
+             isLoopingAudio = false;
+             if (audioManager.currentAudio) {
+                audioManager.currentAudio.pause();
+                // onStop callback in loop will handle UI reset
+                // But we should ensure it triggers immediately to update UI
+                // audioManager.playAudio handles onStop callback on pause? 
+                // No, playAudio pauses old one but doesn't trigger onended. 
+                // We must manually trigger or nullify.
+                // audioManager.currentAudio.pause() does NOT trigger onended.
+                // We should manually call the stored callback or let the loop logic fail?
+                // Best is to just rely on our manual reset here or wait for playAudio to handle it?
+                // Actually, if we just pause, the loop's onStop might not run if it was attached to onended.
+                // We need to trigger the cleanup.
+                if (audioManager.onStopCallback) {
+                   audioManager.onStopCallback();
+                   audioManager.onStopCallback = null;
+                }
+             }
+             return;
+          }
+
+          // Check if just playing normally and want to stop
+          if (btn.classList.contains('playing')) {
+             if (audioManager.currentAudio) {
+                audioManager.currentAudio.pause();
+                if (audioManager.onStopCallback) {
+                   audioManager.onStopCallback();
+                   audioManager.onStopCallback = null;
+                }
+             }
+             return;
+          }
+
           btn.classList.add('playing');
-          btn.disabled = true;
-          // btn.innerHTML = '...'; // Keep original icon
+          // btn.disabled = true; // Allow stop
           
           const onStop = () => {
              btn.classList.remove('playing');
@@ -1892,6 +1927,7 @@
     let currentMode = 'animate';
     let currentStroke = 0;
     let totalStrokes = 0;
+    let isLoopingAudio = false; // Flag for audio looping
     const learningView = document.getElementById('learningView');
     const learnCharEl = document.getElementById('learnChar');
     const learnPinyinEl = document.getElementById('learnPinyin');
@@ -2383,7 +2419,7 @@
       document.getElementById('playBtn').addEventListener('click', () => {
         if (writer) {
           currentStroke = 0;
-          writer.animateCharacter();
+          writer.animateCharacter({ strokeAnimationSpeed: 0.01 }); // User requested 0.5x speed
         }
       });
       document.getElementById('strokeBtn').addEventListener('click', animateStrokeByStroke);
@@ -2398,7 +2434,7 @@
       document.getElementById('startQuizBtn').addEventListener('click', startQuizLogic);
       
       document.getElementById('hintBtn').addEventListener('click', () => {
-        if(writer) writer.animateCharacter(); 
+        if(writer) writer.animateCharacter({ strokeAnimationSpeed: 0.5 }); // User requested 0.5x speed
       });
     }
 
@@ -2449,9 +2485,66 @@
       learnPinyinEl.textContent = pinyinText;
       
       initWriter(char);
+      
+      // Auto-start audio loop if not in teaching (recording) mode
+      if (!isTeachingMode) {
+        startAudioLoop(char, level, unit);
+      }
+    }
+
+    function startAudioLoop(char, level, unit) {
+      isLoopingAudio = true;
+      const btn = document.getElementById('learnPlayBtn');
+      
+      const playNext = async () => {
+        if (!isLoopingAudio) return;
+        
+        btn.classList.add('playing');
+        btn.disabled = false; // Allow user to click to stop
+        
+        const onStop = () => {
+           if (isLoopingAudio) {
+               // Continue looping with a short delay
+               setTimeout(playNext, 800);
+           } else {
+               btn.classList.remove('playing');
+               btn.disabled = false;
+               // Restore icon
+               updateLearningViewBtn();
+           }
+        };
+
+        // Reuse existing play logic via audioManager
+        // Note: We need text/type. Assuming defaults based on enterLearning context.
+        // enterLearning sets dataset. We can use that.
+        const text = btn.dataset.text || char; 
+        const type = btn.dataset.type || 'char';
+        const index = btn.dataset.index || '';
+
+        try {
+            const success = await audioManager.playAudio(level, unit, char, text, type, index, onStop);
+            if (!success) {
+                // If audio fails, stop looping to avoid infinite error loop
+                isLoopingAudio = false;
+                onStop();
+            }
+        } catch (e) {
+            console.error(e);
+            isLoopingAudio = false;
+            onStop();
+        }
+      };
+      
+      playNext();
     }
 
     function exitLearning() {
+      isLoopingAudio = false; // Stop loop
+      if (audioManager.currentAudio) {
+          audioManager.currentAudio.pause();
+          audioManager.currentAudio = null;
+      }
+      
       learningView.classList.remove('active');
       appEl.style.display = 'flex';
       document.querySelector('.navbar').style.display = 'flex';
