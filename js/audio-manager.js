@@ -268,18 +268,29 @@ class AudioManager {
       }
     }
 
-    // Try to get from cache if available
+    // Try to get from cache; if not cached, fetch and store for future clears
     if ('caches' in window) {
        try {
           const cache = await caches.open('shizi-audio-cache');
-          const response = await cache.match(url);
+          let response = await cache.match(url);
           if (response) {
              const blob = await response.blob();
              playUrl = URL.createObjectURL(blob);
              console.log('Playing from cache:', url);
+          } else {
+             try {
+                await cache.add(url);
+                response = await cache.match(url);
+                if (response) {
+                   const blob = await response.blob();
+                   playUrl = URL.createObjectURL(blob);
+                }
+             } catch (fetchErr) {
+                console.warn('Failed to cache audio during playback:', fetchErr);
+             }
           }
        } catch (e) {
-          console.warn('Cache match failed:', e);
+          console.warn('Cache operation failed:', e);
        }
     }
 

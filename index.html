@@ -2275,35 +2275,29 @@
                }
             }
             
-            const chunkSize = 5;
-            for (let i = 0; i < total; i += chunkSize) {
-               const chunk = files.slice(i, i + chunkSize);
-               await Promise.all(chunk.map(async (file) => {
-                  try {
-                    const { data } = audioManager.supabase.storage
-                       .from(SUPABASE_CONFIG.bucket)
-                       .getPublicUrl(file.path);
-                    
-                    const url = data.publicUrl;
-                    
-                    if (cache) {
-                        // cache.add() fetches and puts.
-                        await cache.add(url);
-                    } else {
-                        // Fallback
-                        const res = await fetch(url);
-                        if (res.ok) await res.blob(); 
-                    }
-                  } catch (e) {
-                    console.warn('Failed to download', file.path, e);
-                  } finally {
-                    downloaded++;
-                    const pct = (downloaded / total) * 100;
-                    progressFill.style.width = `${pct}%`;
-                    progressText.textContent = `${downloaded}/${total}`;
-                  }
-               }));
-            }
+            await Promise.all(files.map(async (file) => {
+               try {
+                 const { data } = audioManager.supabase.storage
+                    .from(SUPABASE_CONFIG.bucket)
+                    .getPublicUrl(file.path);
+
+                 const url = data.publicUrl;
+
+                 if (cache) {
+                     await cache.add(url);
+                 } else {
+                     const res = await fetch(url);
+                     if (res.ok) await res.blob();
+                 }
+               } catch (e) {
+                 console.warn('Failed to download', file.path, e);
+               } finally {
+                 downloaded++;
+                 const pct = (downloaded / total) * 100;
+                 progressFill.style.width = `${pct}%`;
+                 progressText.textContent = `${downloaded}/${total}`;
+               }
+            }));
             
             showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
          } catch (e) {
@@ -2320,12 +2314,30 @@
       document.getElementById('menuClearCache').addEventListener('click', async () => {
         if ('caches' in window) {
             try {
-                const deleted = await caches.delete('shizi-audio-cache');
-                if (deleted) {
-                    showToast('语音缓存已清理', 'success');
-                } else {
+                const cache = await caches.open('shizi-audio-cache');
+                const keys = await cache.keys();
+                if (keys.length === 0) {
                     showToast('未发现语音缓存', 'info');
+                    return;
                 }
+                // Sum up sizes via Content-Length headers
+                let totalBytes = 0;
+                for (const req of keys) {
+                    const res = await cache.match(req);
+                    if (res) {
+                        const cl = res.headers.get('content-length');
+                        if (cl) {
+                            totalBytes += parseInt(cl, 10);
+                        } else {
+                            // fallback: read body to get actual size
+                            const buf = await res.arrayBuffer();
+                            totalBytes += buf.byteLength;
+                        }
+                    }
+                }
+                await caches.delete('shizi-audio-cache');
+                const mb = (totalBytes / 1024 / 1024).toFixed(2);
+                showToast(`语音缓存已清理，共 ${keys.length} 个文件，${mb} MB`, 'success');
             } catch (e) {
                 console.error(e);
                 showToast('清理缓存失败', 'error');
