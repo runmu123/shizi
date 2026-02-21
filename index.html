@@ -2345,11 +2345,12 @@
                  const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
                  if (cache) {
-                     // Fetch with timestamp URL, store with baseUrl as key
-                     const res = await fetch(url, { cache: 'reload' });
+                     // Use cache: 'no-store' to prevent browser HTTP Cache from storing
+                     // This avoids duplicate storage (HTTP Cache + Cache Storage)
+                     const res = await fetch(url, { cache: 'no-store' });
                      if (res.ok) await cache.put(baseUrl, res);
                  } else {
-                     const res = await fetch(url, { cache: 'reload' });
+                     const res = await fetch(url, { cache: 'no-store' });
                      if (res.ok) await res.blob();
                  }
                } catch (e) {

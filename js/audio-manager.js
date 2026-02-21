@@ -283,8 +283,10 @@ class AudioManager {
              console.log('Playing from cache:', baseUrl);
           } else {
              try {
-                // Fetch with timestamp URL to bypass ALL cache layers (browser + CDN)
-                const fetched = await fetch(url, { cache: 'reload' });
+                // Use cache: 'no-store' to prevent browser HTTP Cache from storing
+                // This avoids duplicate storage (HTTP Cache + Cache Storage)
+                // URL with timestamp bypasses CDN cache
+                const fetched = await fetch(url, { cache: 'no-store' });
                 if (fetched.ok) {
                    // Store with baseUrl as key (without timestamp) for future lookups
                    await cache.put(baseUrl, fetched.clone());
