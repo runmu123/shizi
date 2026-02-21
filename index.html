@@ -16,16 +16,16 @@
   <script src="js/audio-manager.js"></script>
   <style>
     :root {
-      --primary-color: #d97706; /* amber-600 */
-      --primary-hover: #b45309; /* amber-700 */
-      --bg-color: #fef3c7; /* amber-50 */
+      --primary-color: #d97706; /* 主色 */
+      --primary-hover: #b45309; /* 主色悬停 */
+      --bg-color: #fef3c7; /* 背景色 */
       --card-bg: #fff;
-      --text-color: #1c1917; /* stone-900 */
-      --highlight-color: #dc2626; /* red-600 */
-      --grid-border: #fca5a5; /* red-300 */
-      --grid-line: #fecaca; /* red-200 */
-      --tag-bg: #fcd34d; /* amber-300 */
-      --tag-text: #78350f; /* amber-900 */
+      --text-color: #1c1917; /* 文字色 */
+      --highlight-color: #dc2626; /* 高亮色 */
+      --grid-border: #fca5a5; /* 格子边框 */
+      --grid-line: #fecaca; /* 格子线 */
+      --tag-bg: #fcd34d; /* 标签背景 */
+      --tag-text: #78350f; /* 标签文字 */
       --nav-bg: #fff;
       --nav-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
@@ -40,14 +40,14 @@
       font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
       background-color: #fdfbf7;
       color: var(--text-color);
-      padding-top: 120px; /* Space for fixed navbar and toolbar */
+      padding-top: 120px; /* 为固定导航栏和工具栏留出空间 */
       padding-bottom: 20px;
       padding-left: 20px;
       padding-right: 20px;
       min-height: 100vh;
     }
 
-    /* Learning View Styles */
+    /* 学习视图样式 */
     .learning-view {
       display: none;
       max-width: 600px;
@@ -119,7 +119,7 @@
       position: relative;
     }
 
-    /* Tian Zi Ge lines for writer */
+    /* 田字格线 */
     .writer-container::before {
       content: '';
       position: absolute;
@@ -227,7 +227,7 @@
       border-color: var(--primary-color);
     }
 
-    /* Wrapper for text and button to keep them aligned */
+    /* 文字和按钮的对齐包装器 */
     .text-btn-row {
       display: flex;
       align-items: center;
@@ -236,7 +236,7 @@
       width: 100%;
     }
 
-    /* Navbar */
+    /* 导航栏 */
     .navbar {
       position: fixed;
       top: 0;
@@ -244,10 +244,10 @@
       right: 0;
       height: 60px;
       background: var(--nav-bg);
-      box-shadow: none; /* Removed shadow as toolbar has one below */
+      box-shadow: none; /* 工具栏下方有阴影，此处移除 */
       display: flex;
       align-items: center;
-      justify-content: center; /* Center content */
+      justify-content: center; /* 居中内容 */
       padding: 0 20px;
       z-index: 100;
       border-bottom: 1px solid #f3f4f6;
@@ -382,7 +382,7 @@
       border-color: #d1d5db;
     }
 
-    /* Search Bar */
+    /* 搜索栏 */
     .search-container {
       flex: 1;
       display: flex;
@@ -403,7 +403,7 @@
       background: #f9fafb url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="%239ca3af"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>') no-repeat 12px center;
       background-size: 16px;
       padding-left: 36px;
-      /* Center text: balance padding-right with padding-left */
+      /* 居中文字：左右内边距平衡 */
       padding-right: 36px;
       text-align: center;
     }
@@ -415,7 +415,7 @@
       max-width: 300px;
     }
 
-    /* Hidden select covering the indicator */
+    /* 隐藏的选择框覆盖在指示器上 */
     .unit-select {
       position: absolute;
       top: 0;
@@ -442,7 +442,7 @@
       font-weight: 700;
     }
 
-    /* Card Styles */
+    /* 卡片样式 */
     .card {
       background: var(--card-bg);
       border-radius: 16px;
@@ -461,14 +461,14 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Container for the character and its play button */
+    /* 汉字和播放按钮的容器 */
     .char-header-container {
       display: flex;
       align-items: center;
       gap: 16px;
     }
 
-    /* Left: Character Box (Tian Zi Ge) */
+    /* 左侧：田字格汉字框 */
     .char-box {
       flex-shrink: 0;
       width: 100px;
@@ -482,7 +482,7 @@
       justify-content: center;
     }
 
-    /* Word Item Style */
+    /* 词语项样式 */
     .word-item {
       display: inline-flex;
       align-items: center;
@@ -491,10 +491,10 @@
     }
 
     .word-text {
-      /* font style for word */
+      /* 词语字体样式 */
     }
 
-    /* Grid lines */
+    /* 格子线 */
     .char-box::before,
     .char-box::after {
       content: '';
@@ -529,7 +529,7 @@
       color: #1f2937;
     }
 
-    /* Right: Content Box */
+    /* 右侧：内容区 */
     .content-box {
       flex: 1;
       display: flex;
@@ -565,7 +565,7 @@
       font-family: 'Noto Serif SC', serif;
     }
 
-    /* Override previous words style */
+    /* 覆盖之前的词语样式 */
     .words {
       display: flex;
       flex-wrap: wrap;
@@ -593,12 +593,12 @@
       border: 1px solid #fecaca;
     }
 
-    /* Play Button Styles */
+    /* 播放按钮样式 */
     .play-btn {
       background: none;
       border: none;
       cursor: pointer;
-      color: #9ca3af; /* gray-400 */
+      color: #9ca3af; /* 灰色 */
       padding: 4px;
       border-radius: 50%;
       display: inline-flex;
@@ -606,7 +606,7 @@
       justify-content: center;
       transition: all 0.2s;
       flex-shrink: 0;
-      margin-left: 8px; /* Space from content */
+      margin-left: 8px; /* 与内容的间距 */
     }
     
     .play-btn:hover,
@@ -620,14 +620,14 @@
       height: 20px;
     }
 
-    /* Adjust row for play button alignment */
+    /* 调整行以对齐播放按钮 */
     .row {
       display: flex;
-      align-items: flex-start; /* Align to top for multiline content */
+      align-items: flex-start; /* 多行内容时顶部对齐 */
       gap: 12px;
     }
     
-    /* Learning View Header adjustment */
+    /* 学习视图标题调整 */
     .char-header-row {
       display: flex;
       align-items: center;
@@ -637,13 +637,13 @@
     }
     
     .big-char {
-      margin-bottom: 0; /* Override previous margin */
+      margin-bottom: 0; /* 覆盖之前的边距 */
     }
 
-    /* Toolbar Styles */
+    /* 工具栏样式 */
     .toolbar {
       position: fixed;
-      top: 60px; /* Below navbar */
+      top: 60px; /* 导航栏下方 */
       left: 0;
       right: 0;
       height: 50px;
@@ -665,12 +665,12 @@
       max-width: 800px;
     }
 
-    /* Push level selector and unit navigator to the right */
+    /* 将级别选择器和单元导航推向右侧 */
     #levelSelector {
       margin-left: auto;
     }
 
-    /* Reuse Level Selector Styles for Mode Selector */
+    /* 复用级别选择器样式给模式选择器 */
     .mode-option {
       padding: 8px 12px;
       cursor: pointer;
@@ -695,7 +695,7 @@
       font-weight: 600;
     }
 
-    /* Modal Styles */
+    /* 弹窗样式 */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -783,7 +783,7 @@
       text-align: left;
     }
 
-    /* Toast Notification Styles */
+    /* 提示消息样式 */
     .toast-container {
       position: fixed;
       top: 70px;
@@ -816,15 +816,15 @@
     }
 
     .toast.success {
-      background: rgba(22, 163, 74, 0.85); /* green-600 */
+      background: rgba(22, 163, 74, 0.85); /* 绿色 */
     }
 
     .toast.error {
-      background: rgba(220, 38, 38, 0.85); /* red-600 */
+      background: rgba(220, 38, 38, 0.85); /* 红色 */
     }
     
     .toast.info {
-      background: rgba(59, 130, 246, 0.85); /* blue-500 */
+      background: rgba(59, 130, 246, 0.85); /* 蓝色 */
     }
 
     @keyframes fadeInOut {
@@ -834,7 +834,7 @@
       100% { opacity: 0; transform: translateY(-10px); }
     }
 
-    /* Menu Styles */
+    /* 菜单样式 */
     .menu-btn {
       background: none;
       border: none;
@@ -886,7 +886,7 @@
       color: var(--primary-color);
     }
 
-    /* Progress Bar */
+    /* 进度条 */
     .download-progress {
       display: flex;
       align-items: center;
@@ -909,7 +909,7 @@
       transition: width 0.3s;
     }
 
-    /* Stats Modal Content */
+    /* 统计弹窗内容 */
     .stats-row {
       display: flex;
       justify-content: space-between;
@@ -919,7 +919,7 @@
     .stats-label { color: #6b7280; }
     .stats-value { font-weight: 600; color: #111827; }
 
-    /* Learning Progress Styles */
+    /* 学习进度样式 */
     .progress-level-item {
       border: 1px solid #e5e7eb;
       border-radius: 8px;
@@ -945,7 +945,7 @@
     }
     .progress-level-content {
       display: none;
-      /* Max height reduced for approx 5 rows. */
+      /* 最大高度约 5 行 */
       max-height: 220px;
       overflow-y: auto;
       padding: 16px;
@@ -999,11 +999,11 @@
   </style>
 </head>
 <body>
-  <!-- Toast Container -->
+  <!-- 提示消息容器 -->
   <div id="toastContainer" class="toast-container"></div>
 
   <header class="navbar" style="justify-content: space-between; padding: 0 16px;">
-    <!-- Download Progress -->
+    <!-- 下载进度 -->
     <div id="downloadProgress" class="download-progress" style="display:none;">
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <span id="progressText">0/0</span>
@@ -1013,12 +1013,12 @@
       <input type="text" id="searchInput" class="search-input" placeholder="搜索汉字" maxlength="1">
     </div>
 
-    <!-- Menu Button -->
+    <!-- 菜单按钮 -->
     <button class="menu-btn" id="menuBtn">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
     </button>
     
-    <!-- Menu Dropdown -->
+    <!-- 菜单下拉 -->
     <div class="menu-dropdown" id="menuDropdown">
       <button class="menu-item" id="menuDownload">下载语音数据</button>
       <button class="menu-item" id="menuClearCache">清理语音缓存</button>
@@ -1031,7 +1031,7 @@
 
   <div class="toolbar">
     <div class="toolbar-content">
-      <!-- Mode Selector -->
+      <!-- 模式选择器 -->
       <div class="level-selector-wrapper" id="modeSelector">
         <button class="level-selector-btn" id="currentModeBtn">学习模式</button>
         <div class="level-dropdown" id="modeDropdown">
@@ -1040,15 +1040,15 @@
         </div>
       </div>
       
-      <!-- Level Selector -->
+      <!-- 级别选择器 -->
       <div class="level-selector-wrapper" id="levelSelector">
         <button class="level-selector-btn" id="currentLevelBtn">L0</button>
         <div class="level-dropdown" id="levelDropdown">
-          <!-- Options will be generated dynamically -->
+          <!-- 选项将动态生成 -->
         </div>
       </div>
 
-      <!-- Unit Navigator -->
+      <!-- 单元导航 -->
       <div class="unit-navigator">
         <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
         <div class="unit-indicator">
@@ -1064,7 +1064,7 @@
     <div class="loading">加载中...</div>
   </div>
 
-  <!-- Learning View -->
+  <!-- 学习视图 -->
   <div class="learning-view" id="learningView">
     <button class="back-btn" id="backBtn">
       <span>&larr;</span> 返回
@@ -1091,14 +1091,14 @@
       <div class="writer-target" id="writerTarget"></div>
     </div>
 
-    <!-- Animate Controls -->
+    <!-- 动画控制 -->
     <div class="controls" id="animateControls">
       <button class="control-btn primary" id="playBtn">播放动画</button>
       <button class="control-btn" id="strokeBtn">逐笔播放</button>
       <button class="control-btn" id="resetBtn">重新来</button>
     </div>
 
-    <!-- Quiz Controls -->
+    <!-- 测验控制 -->
     <div class="controls" id="quizControls" style="display:none;">
       <button class="control-btn primary" id="startQuizBtn">重新来</button>
       <button class="control-btn" id="hintBtn">提示</button>
@@ -1108,7 +1108,7 @@
     <div class="error-msg" id="quizResult" style="display:none; margin-top:10px;"></div>
   </div>
 
-  <!-- Password Modal -->
+  <!-- 密码弹窗 -->
   <div class="modal-overlay" id="passwordModal">
     <div class="modal-box">
       <div class="modal-title">输入密码进入教学模式</div>
@@ -1121,7 +1121,7 @@
     </div>
   </div>
 
-  <!-- Login Modal -->
+  <!-- 登录弹窗 -->
   <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
       <div class="modal-title">用户登录</div>
@@ -1134,7 +1134,7 @@
     </div>
   </div>
 
-  <!-- Stats Modal -->
+  <!-- 统计弹窗 -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal-box">
       <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1158,7 +1158,19 @@
     </div>
   </div>
 
-  <!-- Learning Progress Modal -->
+  <!-- 确认弹窗 -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <div class="modal-title" id="confirmTitle">确认</div>
+      <p id="confirmMessage" style="color: #6b7280; margin-bottom: 20px; font-size: 1rem; white-space: pre-line;">确定要执行此操作吗？</p>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelConfirm">取消</button>
+        <button class="modal-btn confirm" id="confirmConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 学习进度弹窗 -->
   <div class="modal-overlay" id="progressModal">
     <div class="modal-box" style="max-width: 600px; width: 90%;">
       <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1170,22 +1182,22 @@
         <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="progressTotalCount">0</span>
       </div>
       <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto;">
-        <!-- Levels will be injected here -->
+        <!-- 等级内容将在此注入 -->
       </div>
     </div>
   </div>
 
   <script>
-    // State
+    // 状态变量
     let LEVELS = [];
     let currentLevel = 'L0';
-    let currentData = null; // Full parsed YAML data
-    const levelDataCache = {}; // Cache for loaded levels
-    let unitKeys = [];      // Array of unit names (e.g. "第一单元")
+    let currentData = null;
+    const levelDataCache = {};
+    let unitKeys = [];
     let currentUnitIndex = 0;
     let isTeachingMode = false;
 
-    // ===== Persistence: Save/Load current position =====
+    // ===== 位置记忆：保存/加载当前位置 =====
     function saveCurrentPosition() {
       const data = {
         level: currentLevel,
@@ -1203,7 +1215,7 @@
           return JSON.parse(saved);
         }
       } catch (e) {
-        console.warn('Failed to load saved position:', e);
+        console.warn('加载保存的位置失败:', e);
       }
       return null;
     }
@@ -1212,7 +1224,7 @@
       localStorage.removeItem('shizi_position');
     }
 
-    // Initialize levels dynamically
+    // 动态初始化级别列表
     async function initLevels() {
       const dropdown = document.getElementById('levelDropdown');
       dropdown.innerHTML = '';
@@ -1222,17 +1234,15 @@
       while (true) {
         const level = `L${i}`;
         try {
-          // Use GET instead of HEAD to avoid potential server configuration issues
           const res = await fetch(`yaml/contents_${level}.yaml`, { method: 'GET' });
           if (res.ok) {
-            // Since we fetched the content, cache it immediately to avoid reloading
             const text = await res.text();
             try {
               if (window.jsyaml) {
                 levelDataCache[level] = jsyaml.load(text);
               }
             } catch (yamlErr) {
-              console.warn('Failed to parse YAML for', level, yamlErr);
+              console.warn('解析 YAML 失败:', level, yamlErr);
             }
 
             LEVELS.push(level);
@@ -1243,7 +1253,6 @@
             dropdown.appendChild(btn);
             i++;
           } else {
-            // If L0 not found, try L1
             if (i === 0) {
               i++;
               continue;
@@ -1251,14 +1260,13 @@
             break;
           }
         } catch (e) {
-          console.warn('Level check failed for', level, e);
+          console.warn('检查级别失败:', level, e);
           break;
         }
-        if (i > 20) break; // Safety limit
+        if (i > 20) break;
       }
       
       if (LEVELS.length === 0) {
-        // Fallback
         LEVELS = ['L1'];
         currentLevel = 'L1';
         dropdown.innerHTML = '<button class="level-option" data-level="L1">L1</button>';
@@ -1268,7 +1276,6 @@
         }
       }
       
-      // Set active state
       const opts = dropdown.querySelectorAll('.level-option');
       opts.forEach(o => {
           const isActive = o.dataset.level === currentLevel;
@@ -1277,34 +1284,30 @@
       document.getElementById('currentLevelBtn').textContent = currentLevel;
     }
 
-    // Elements
+    // DOM 元素
     const appEl = document.getElementById('app');
     const prevBtn = document.getElementById('prevUnit');
-    const teachingModeToggle = document.getElementById('teachingModeToggle'); // Now removed, will be null
+    const teachingModeToggle = document.getElementById('teachingModeToggle');
 
-    // New Elements
     const currentModeBtn = document.getElementById('currentModeBtn');
     const modeDropdown = document.getElementById('modeDropdown');
     const modeOptions = document.querySelectorAll('.mode-option');
 
-    // Password Modal Elements
+    // 密码弹窗元素
     const passwordModal = document.getElementById('passwordModal');
     const passwordInput = document.getElementById('passwordInput');
     const passwordError = document.getElementById('passwordError');
     const confirmPasswordBtn = document.getElementById('confirmPassword');
     const cancelPasswordBtn = document.getElementById('cancelPassword');
 
-    // Toast Function
+    // 提示消息
     function showToast(message, type = 'default') {
       const container = document.getElementById('toastContainer');
-      
-      // Clear previous toasts to ensure only one is displayed at a time
       container.innerHTML = '';
 
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       
-      // Add icon based on type
       let icon = '';
       if (type === 'success') {
         icon = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -1317,7 +1320,6 @@
       toast.innerHTML = `${icon}<span>${message}</span>`;
       container.appendChild(toast);
       
-      // Remove after animation (3s)
       setTimeout(() => {
         toast.remove();
       }, 3000);
@@ -1336,8 +1338,7 @@
       const title = isTeachingMode ? '录音' : '播放';
       const style = isSmall ? 'padding: 2px; margin-left: 2px;' : '';
       
-      // Ensure text is safe for attribute
-       const safeText = text ? text.replace(/"/g, '&quot;') : '';
+      const safeText = text ? text.replace(/"/g, '&quot;') : '';
        
        return `
          <button class="play-btn" 
@@ -1361,21 +1362,20 @@
     const unitSelect = document.getElementById('unitSelect');
     const currentLevelBtn = document.getElementById('currentLevelBtn');
     const levelDropdown = document.getElementById('levelDropdown');
-    // levelOptions removed as it's dynamic
     const searchInput = document.getElementById('searchInput');
     const unitNavigator = document.querySelector('.unit-navigator');
 
-    // Init
+    // 初始化
     document.addEventListener('DOMContentLoaded', async () => {
       await initLevels();
       
-      // Try to restore saved position
+      // 尝试恢复保存的位置
       const savedPos = loadSavedPosition();
       if (savedPos && savedPos.level && LEVELS.includes(savedPos.level)) {
         currentLevel = savedPos.level;
       }
       
-      // Update UI to show correct level
+      // 更新 UI 显示正确的级别
       document.getElementById('currentLevelBtn').textContent = currentLevel;
       const opts = document.getElementById('levelDropdown').querySelectorAll('.level-option');
       opts.forEach(o => {
@@ -1385,7 +1385,7 @@
       loadLevel(currentLevel, savedPos);
       setupEventListeners();
       
-      // Close dropdown when clicking outside
+      // 点击外部关闭下拉菜单
       document.addEventListener('click', (e) => {
         if (!e.target.closest('.level-selector-wrapper')) {
           levelDropdown.classList.remove('show');
@@ -1397,26 +1397,24 @@
     });
 
     function setupEventListeners() {
-      // Mode Dropdown Toggle
+      // 模式下拉菜单切换
       currentModeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         modeDropdown.classList.toggle('show');
         currentModeBtn.classList.toggle('active');
-        // Close level dropdown if open
         levelDropdown.classList.remove('show');
         currentLevelBtn.classList.remove('active');
       });
 
-      // Mode Selection
+      // 模式选择
       modeOptions.forEach(opt => {
         opt.addEventListener('click', () => {
           const mode = opt.dataset.mode;
-          // 'learn' or 'teach'
           const newModeIsTeaching = (mode === 'teach');
           
           if (isTeachingMode !== newModeIsTeaching) {
              if (newModeIsTeaching) {
-               // Prompt for password
+               // 需要输入密码
                passwordModal.classList.add('active');
                passwordInput.value = '';
                passwordError.style.display = 'none';
@@ -1424,7 +1422,7 @@
                modeDropdown.classList.remove('show');
                currentModeBtn.classList.remove('active');
              } else {
-               // Switch back to learning mode directly
+               // 直接切换回学习模式
                switchTeachingMode(false);
                modeDropdown.classList.remove('show');
                currentModeBtn.classList.remove('active');
@@ -1436,7 +1434,7 @@
         });
       });
 
-      // Password Modal Events
+      // 密码弹窗事件
       const handlePasswordSubmit = () => {
         const password = passwordInput.value.trim();
         if (password === 'kaishen') {
@@ -1461,31 +1459,29 @@
         passwordModal.classList.remove('active');
       });
 
-      // Close modal when clicking outside
+      // 点击外部关闭弹窗
       passwordModal.addEventListener('click', (e) => {
         if (e.target === passwordModal) {
           passwordModal.classList.remove('active');
         }
       });
 
-      // Level Dropdown Toggle
+      // 级别下拉菜单切换
       currentLevelBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         levelDropdown.classList.toggle('show');
         currentLevelBtn.classList.toggle('active');
-        // Close mode dropdown if open
         modeDropdown.classList.remove('show');
         currentModeBtn.classList.remove('active');
       });
 
-      // Level Selection (Delegation)
+      // 级别选择（事件委托）
       levelDropdown.addEventListener('click', (e) => {
         const opt = e.target.closest('.level-option');
         if (!opt) return;
         
         const level = opt.dataset.level;
         if (level !== currentLevel) {
-             // Update UI
              currentLevelBtn.textContent = level;
              const options = levelDropdown.querySelectorAll('.level-option');
              options.forEach(o => o.classList.remove('active'));
@@ -1493,35 +1489,32 @@
              levelDropdown.classList.remove('show');
              currentLevelBtn.classList.remove('active');
              
-             // Load Data
              currentLevel = level;
              loadLevel(level);
-             saveCurrentPosition(); // Save position when switching level
+             saveCurrentPosition();
         } else {
              levelDropdown.classList.remove('show');
              currentLevelBtn.classList.remove('active');
         }
       });
 
-      // Search
+      // 搜索
       searchInput.addEventListener('input', (e) => {
         const val = e.target.value.trim();
         if (val && val.length === 1) {
-          // Perform search
           searchChar(val);
         } else if (val.length === 0) {
-          // Restore view
           unitNavigator.style.visibility = 'visible';
           renderUnit();
         }
       });
       
-      // Navigation
+      // 导航按钮
       prevBtn.addEventListener('click', () => {
         if (currentUnitIndex > 0) {
           currentUnitIndex--;
           renderUnit();
-          saveCurrentPosition(); // Save position when navigating
+          saveCurrentPosition();
         }
       });
 
@@ -1529,21 +1522,21 @@
         if (currentUnitIndex < unitKeys.length - 1) {
           currentUnitIndex++;
           renderUnit();
-          saveCurrentPosition(); // Save position when navigating
+          saveCurrentPosition();
         }
       });
 
-      // Unit Select Dropdown
+      // 单元选择下拉框
       unitSelect.addEventListener('change', (e) => {
         const idx = parseInt(e.target.value, 10);
         if (!isNaN(idx) && idx >= 0 && idx < unitKeys.length) {
           currentUnitIndex = idx;
           renderUnit();
-          saveCurrentPosition(); // Save position when selecting
+          saveCurrentPosition();
         }
       });
 
-      // Character Click (Enter Learning Mode)
+      // 点击汉字进入学习模式
       appEl.addEventListener('click', (e) => {
         const charBox = e.target.closest('.char-box');
         if (charBox) {
@@ -1564,12 +1557,11 @@
         }
       });
 
-      // Global Audio Play/Record Handler
+      // 全局音频播放/录音处理
       document.addEventListener('click', async (e) => {
         const btn = e.target.closest('.play-btn');
         if (!btn) return;
         
-        // Prevent double clicks if already processing
         if (btn.classList.contains('processing') || btn.disabled) return;
 
         e.stopPropagation(); 
@@ -1583,19 +1575,19 @@
         const index = (indexStr !== '' && indexStr !== undefined && indexStr !== null) ? parseInt(indexStr, 10) : null;
         
         if (!text || !level || !unit) {
-          console.warn('Missing audio context:', {text, type, rootChar, level, unit});
+          console.warn('缺少音频上下文:', {text, type, rootChar, level, unit});
           return;
         }
 
         const originalHtml = btn.innerHTML;
 
         if (isTeachingMode) {
-          // Recording Logic
+          // 录音逻辑
           if (audioManager.isRecording) {
-             // Stop recording
+             // 停止录音
              btn.classList.add('recording-processing');
              btn.disabled = true;
-             btn.innerHTML = '...'; // Show processing state
+             btn.innerHTML = '...';
              showToast('正在上传...', 'info');
              
              try {
@@ -1612,12 +1604,11 @@
              } finally {
                btn.classList.remove('recording-processing');
                btn.classList.remove('recording-active');
-               btn.disabled = false;
-               // Restore icon
+              btn.disabled = false;
                updateBtnIcon(btn, true);
-             }
+            }
           } else {
-             // Start recording
+             // 开始录音
              try {
                await audioManager.startRecording();
                btn.classList.add('recording-active');
@@ -1631,23 +1622,13 @@
              }
           }
         } else {
-          // Playing Logic
+          // 播放逻辑
           
-          // Check if we need to stop looping or current playback
+          // 检查是否需要停止循环播放或当前播放
           if (isLoopingAudio) {
              isLoopingAudio = false;
              if (audioManager.currentAudio) {
                 audioManager.currentAudio.pause();
-                // onStop callback in loop will handle UI reset
-                // But we should ensure it triggers immediately to update UI
-                // audioManager.playAudio handles onStop callback on pause? 
-                // No, playAudio pauses old one but doesn't trigger onended. 
-                // We must manually trigger or nullify.
-                // audioManager.currentAudio.pause() does NOT trigger onended.
-                // We should manually call the stored callback or let the loop logic fail?
-                // Best is to just rely on our manual reset here or wait for playAudio to handle it?
-                // Actually, if we just pause, the loop's onStop might not run if it was attached to onended.
-                // We need to trigger the cleanup.
                 if (audioManager.onStopCallback) {
                    audioManager.onStopCallback();
                    audioManager.onStopCallback = null;
@@ -1656,7 +1637,7 @@
              return;
           }
 
-          // Check if just playing normally and want to stop
+          // 检查是否正在播放，需要停止
           if (btn.classList.contains('playing')) {
              if (audioManager.currentAudio) {
                 audioManager.currentAudio.pause();
@@ -1669,7 +1650,6 @@
           }
 
           btn.classList.add('playing');
-          // btn.disabled = true; // Allow stop
           
           const onStop = () => {
              btn.classList.remove('playing');
@@ -1707,7 +1687,7 @@
     function switchTeachingMode(enable) {
       isTeachingMode = enable;
       
-      // Update UI
+      // 更新 UI
       currentModeBtn.textContent = isTeachingMode ? '教学模式' : '学习模式';
       modeOptions.forEach(o => {
         if (o.dataset.mode === (isTeachingMode ? 'teach' : 'learn')) {
@@ -1717,7 +1697,7 @@
         }
       });
 
-      // Re-render
+      // 重新渲染
       if (unitNavigator.style.visibility === 'hidden') {
          const val = searchInput.value.trim();
          if (val && val.length === 1) {
@@ -1729,7 +1709,7 @@
          renderUnit();
       }
 
-      // Update Learning View if active
+      // 更新学习视图按钮
       if (document.getElementById('learningView').classList.contains('active')) {
         updateLearningViewBtn();
       }
@@ -1743,45 +1723,44 @@
         if (!data) {
           const response = await fetch(`yaml/contents_${level}.yaml`);
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP 错误! 状态码: ${response.status}`);
           }
           const text = await response.text();
           data = jsyaml.load(text);
-          if (!data) throw new Error('YAML data is empty or invalid');
+          if (!data) throw new Error('YAML 数据为空或无效');
           levelDataCache[level] = data;
         }
 
         currentData = data;
         unitKeys = Object.keys(data);
         
-        // Try to restore saved unit index
-        currentUnitIndex = 0; // default
+        // 尝试恢复保存的单元索引
+        currentUnitIndex = 0;
         if (savedPos && savedPos.level === level) {
-          // Try to match by unit name first (more reliable)
+          // 优先按单元名称匹配
           if (savedPos.unitName) {
             const idxByName = unitKeys.indexOf(savedPos.unitName);
             if (idxByName !== -1) {
               currentUnitIndex = idxByName;
             }
           } else if (savedPos.unitIndex !== undefined && savedPos.unitIndex < unitKeys.length) {
-            // Fallback to index if name not found
             currentUnitIndex = savedPos.unitIndex;
           }
         }
 
-        // Populate Select Options
+        // 填充单元选择下拉框
         unitSelect.innerHTML = '';
         unitKeys.forEach((key, index) => {
           const option = document.createElement('option');
           option.value = index;
-          option.textContent = key; // e.g. "第一单元"
+          option.textContent = key;
           unitSelect.appendChild(option);
         });
 
         renderUnit();
 
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('加载数据失败:', err);
         appEl.innerHTML = `
           <div class="error-msg">
             <h3>加载失败</h3>
@@ -1795,8 +1774,7 @@
 
     function highlightChar(text, char) {
       if (!text) return '';
-      // Replace all occurrences of the char with a span.highlight
-      // Use simple replace for first occurrence or regex for all
+      // 将所有匹配的字符用高亮 span 包裹
       try {
         const regex = new RegExp(char, 'g');
         return text.replace(regex, `<span class="highlight">${char}</span>`);
@@ -1807,18 +1785,18 @@
 
     async function searchChar(char) {
       appEl.innerHTML = '<div class="loading">正在全库搜索...</div>';
-      // Hide nav during search result view
+      // 搜索结果视图隐藏导航
       unitNavigator.style.visibility = 'hidden';
 
       let foundInfo = null;
       let foundLevel = '';
       let foundUnit = '';
       
-      // Iterate through all levels
+      // 遍历所有级别
       for (const level of LEVELS) {
         let data = levelDataCache[level];
         
-        // Fetch if not cached
+        // 如果未缓存则获取
         if (!data) {
           try {
             const response = await fetch(`yaml/contents_${level}.yaml`);
@@ -1828,12 +1806,12 @@
               levelDataCache[level] = data;
             }
           } catch (e) {
-            console.error(`Error fetching ${level} for search:`, e);
+            console.error(`获取 ${level} 数据出错:`, e);
           }
         }
 
         if (data) {
-          // Search in this level
+          // 在此级别中搜索
           for (const [unit, chars] of Object.entries(data)) {
             if (chars && chars[char]) {
               foundInfo = chars[char];
@@ -1844,7 +1822,7 @@
           }
         }
 
-        if (foundInfo) break; // Stop if found
+        if (foundInfo) break; // 找到后停止
       }
 
       if (foundInfo) {
@@ -1905,17 +1883,17 @@
       const unitName = unitKeys[currentUnitIndex];
       const unitChars = currentData[unitName];
 
-      // Update Navigation UI
+      // 更新导航 UI
       indicatorText.textContent = `${currentUnitIndex + 1}/${unitKeys.length}`;
       unitSelect.value = currentUnitIndex;
       prevBtn.disabled = currentUnitIndex === 0;
       nextBtn.disabled = currentUnitIndex === unitKeys.length - 1;
 
-      // Render Cards
+      // 渲染卡片
       let html = `<div class="unit-title">${unitName}</div>`;
       
       if (unitChars) {
-        // Generate Unit Summary (List of all chars in this unit)
+        // 生成单元摘要（显示该单元所有汉字）
         const allChars = Object.keys(unitChars);
         if (allChars.length > 0) {
           html += `
@@ -1933,7 +1911,7 @@
         }
 
         for (const [char, info] of Object.entries(unitChars)) {
-          // info might be null if yaml has empty key
+          // info 可能为空（当 yaml 中有空键时）
           const words = (info && info.词) ? info.词 : [];
           const sentence = (info && info.句) ? info.句 : '';
           
@@ -1975,19 +1953,19 @@
 
       appEl.innerHTML = html;
       
-      // Scroll to top
+      // 滚动到顶部
       window.scrollTo(0, 0);
     }
 
-    // --- Learning View Logic ---
+    // --- 学习视图逻辑 ---
 
-    // Removed hardcoded pinyinDict in favor of pinyin-pro library
+    // 使用 pinyin-pro 库替代硬编码拼音字典
 
     let writer = null;
     let currentMode = 'animate';
     let currentStroke = 0;
     let totalStrokes = 0;
-    let isLoopingAudio = false; // Flag for audio looping
+    let isLoopingAudio = false; // 音频循环标志
     const learningView = document.getElementById('learningView');
     const learnCharEl = document.getElementById('learnChar');
     const learnPinyinEl = document.getElementById('learnPinyin');
@@ -2013,7 +1991,7 @@
             quizResult.style.display = 'none';
             showToast(`练习完成！总共错误 ${summaryData.totalMistakes} 次。`, 'success');
             
-            // Save progress if user is logged in
+            // 如果用户已登录则保存进度
             const user = localStorage.getItem('shizi_user');
             if (user && audioManager.supabase) {
                 const char = document.getElementById('learnChar').textContent;
@@ -2029,9 +2007,9 @@
                         unit: unit,
                         completed_at: new Date()
                     }, { onConflict: 'username,char' });
-                    console.log('Progress saved for', char);
+                    console.log('进度已保存:', char);
                 } catch (e) {
-                    console.error('Error saving progress:', e);
+                    console.error('保存进度出错:', e);
                 }
             }
           }
@@ -2039,13 +2017,13 @@
       }
     }
 
-    // --- Menu & Modals Logic ---
+    // --- 菜单和弹窗逻辑 ---
      function setupMenuAndModals() {
        audioManager.init();
        const menuBtn = document.getElementById('menuBtn');
       const menuDropdown = document.getElementById('menuDropdown');
       
-      // Toggle Menu
+      // 菜单切换
       menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         menuDropdown.classList.toggle('show');
@@ -2055,19 +2033,48 @@
         menuDropdown.classList.remove('show');
       });
 
-      // Login Modal
+      // 登录弹窗
       const loginModal = document.getElementById('loginModal');
       const loginInput = document.getElementById('loginInput');
       const loginError = document.getElementById('loginError');
       
+      // 确认弹窗
+      const confirmModal = document.getElementById('confirmModal');
+      const confirmTitle = document.getElementById('confirmTitle');
+      const confirmMessage = document.getElementById('confirmMessage');
+      const cancelConfirmBtn = document.getElementById('cancelConfirm');
+      const confirmConfirmBtn = document.getElementById('confirmConfirm');
+      let confirmCallback = null;
+      
+      // 显示确认弹窗
+      function showConfirm(title, message, callback) {
+        confirmTitle.textContent = title;
+        confirmMessage.textContent = message;
+        confirmCallback = callback;
+        confirmModal.style.display = 'flex';
+      }
+      
+      cancelConfirmBtn.addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        confirmCallback = null;
+      });
+      
+      confirmConfirmBtn.addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        if (confirmCallback) {
+          confirmCallback();
+          confirmCallback = null;
+        }
+      });
+      
       document.getElementById('menuLogin').addEventListener('click', () => {
         const user = localStorage.getItem('shizi_user');
         if (user) {
-           if(confirm(`当前已登录为 ${user}，是否注销？`)) {
+           showConfirm('注销确认', `当前已登录为「${user}」\n确定要注销吗？`, () => {
              localStorage.removeItem('shizi_user');
              showToast('已注销', 'info');
              document.getElementById('menuLogin').textContent = '登录';
-           }
+           });
         } else {
            loginModal.style.display = 'flex';
            loginInput.value = '';
@@ -2087,7 +2094,7 @@
           return;
         }
         
-        // Check if user exists in app_users
+        // 检查用户是否存在
         if (audioManager.supabase) {
            const { data, error } = await audioManager.supabase
              .from('app_users')
@@ -2103,13 +2110,13 @@
            }
            
            if (!data) {
-             // User not found, create new one
+             // 用户不存在，创建新用户
              const { error: insertError } = await audioManager.supabase
                .from('app_users')
                .insert([{ username: username }]);
              
              if (insertError) {
-               console.error('Create user error:', insertError);
+               console.error('创建用户失败:', insertError);
                showToast('创建用户失败', 'error');
                return;
              }
@@ -2119,7 +2126,6 @@
              showToast(`欢迎回来，${username}`, 'success');
            }
            
-           // Common Success Logic
            localStorage.setItem('shizi_user', username);
            loginModal.style.display = 'none';
            document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
@@ -2128,24 +2134,22 @@
         }
       });
 
-      // Update Login Menu Text on Load
+      // 加载时更新登录菜单文字
       const currentUser = localStorage.getItem('shizi_user');
       if (currentUser) {
         document.getElementById('menuLogin').textContent = '注销 (' + currentUser + ')';
       }
 
-      // Stats Modal
+      // 统计弹窗
       const statsModal = document.getElementById('statsModal');
       document.getElementById('menuStats').addEventListener('click', async () => {
         statsModal.style.display = 'flex';
         
-        // 1. Total Chars to Learn (Estimate from loaded data or fetch all yamls?)
-        // Fetching all yamls to count accurately
+        // 统计待学习汉字总数
         let totalChars = 0;
         
         for (const lvl of LEVELS) {
            try {
-             // Use cache if available
              let data = levelDataCache[lvl];
              if (!data) {
                 const res = await fetch(`yaml/contents_${lvl}.yaml`);
@@ -2160,11 +2164,11 @@
                  if (unitChars) totalChars += Object.keys(unitChars).length;
                });
              }
-           } catch (e) { console.warn('Error counting chars for', lvl); }
+           } catch (e) { console.warn('统计汉字数量出错:', lvl); }
         }
         document.getElementById('statsTotalChars').textContent = totalChars;
 
-        // 2. Audio Stats
+        // 音频统计
         if (audioManager) {
            const stats = await audioManager.getAudioStats();
            document.getElementById('statsAudioCount').textContent = stats.charCount;
@@ -2181,7 +2185,7 @@
         statsModal.style.display = 'none';
       });
 
-      // Progress Modal
+      // 学习进度弹窗
       const progressModal = document.getElementById('progressModal');
       const progressLevelsContainer = document.getElementById('progressLevelsContainer');
       
@@ -2208,7 +2212,7 @@
            
            document.getElementById('progressTotalCount').textContent = records.length;
            
-           // Group by Level -> Unit
+           // 按级别和单元分组
            const grouped = {};
            records.forEach(r => {
              const lvl = r.level || '未知等级';
@@ -2218,10 +2222,10 @@
              grouped[lvl][unit].push(r.char);
            });
            
-           // Render
+           // 渲染
            let html = '';
            
-           // Helper for Chinese numbers (1-99)
+           // 中文数字转换辅助函数
            const getCnNum = (str) => {
               const m = str.match(/第(.+)单元/);
               if (!m) return 0;
@@ -2237,7 +2241,7 @@
               return 0;
            };
 
-           // Sort levels Descending (level_2, level_1)
+           // 等级倒序排列（level_2, level_1）
            const levels = Object.keys(grouped).sort((a, b) => {
               const na = parseInt(a.replace(/\D/g, '')) || 0;
               const nb = parseInt(b.replace(/\D/g, '')) || 0;
@@ -2248,7 +2252,7 @@
               html = '<div style="text-align:center; padding:20px; color:#6b7280;">暂无学习记录</div>';
            } else {
               levels.forEach((lvl, index) => {
-                // Default expand the first level (latest)
+                // 默认展开第一个等级（最新的）
                 const isExpanded = index === 0;
                 const headerClass = isExpanded ? 'progress-level-header active' : 'progress-level-header';
                 const contentClass = isExpanded ? 'progress-level-content show' : 'progress-level-content';
@@ -2262,13 +2266,12 @@
                     <div class="${contentClass}">
                 `;
                 
-                // Sort units Descending (Unit 8, Unit 7...)
+                // 单元倒序排列
                 const units = Object.keys(grouped[lvl]).sort((a,b) => {
                    return getCnNum(b) - getCnNum(a);
                 });
                 
                 units.forEach(unit => {
-                   // Using English colon and comma as requested
                    const chars = grouped[lvl][unit].join(', ');
                    html += `
                      <div class="progress-unit-row">
@@ -2297,7 +2300,7 @@
         progressModal.style.display = 'none';
       });
 
-      // Download Audio Logic
+      // 下载语音数据
       document.getElementById('menuDownload').addEventListener('click', async () => {
          if (!audioManager.supabase) {
            showToast('数据库未连接', 'error');
@@ -2324,13 +2327,13 @@
             const total = files.length;
             progressText.textContent = `0/${total}`;
             
-            // Try to open cache
+            // 打开缓存
             let cache = null;
             if ('caches' in window) {
                try {
                   cache = await caches.open('shizi-audio-cache');
                } catch (e) {
-                  console.warn('Cache open failed:', e);
+                  console.warn('打开缓存失败:', e);
                }
             }
             
@@ -2341,12 +2344,11 @@
                     .getPublicUrl(file.path);
 
                  const baseUrl = data.publicUrl;
-                 // Add timestamp to bypass ALL cache layers (browser + CDN)
+                 // 添加时间戳绕过所有缓存层（浏览器 + CDN）
                  const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
                  if (cache) {
-                     // Use cache: 'no-store' to prevent browser HTTP Cache from storing
-                     // This avoids duplicate storage (HTTP Cache + Cache Storage)
+                     // 使用 no-store 避免存入 HTTP Cache，防止重复存储
                      const res = await fetch(url, { cache: 'no-store' });
                      if (res.ok) await cache.put(baseUrl, res);
                  } else {
@@ -2354,7 +2356,7 @@
                      if (res.ok) await res.blob();
                  }
                } catch (e) {
-                 console.warn('Failed to download', file.path, e);
+                 console.warn('下载失败', file.path, e);
                } finally {
                  downloaded++;
                  const pct = (downloaded / total) * 100;
@@ -2374,7 +2376,7 @@
          }
       });
 
-      // Clear Cache Logic
+      // 清除缓存
       document.getElementById('menuClearCache').addEventListener('click', async () => {
         if ('caches' in window) {
             try {
@@ -2384,7 +2386,7 @@
                     showToast('未发现语音缓存', 'info');
                     return;
                 }
-                // Sum up sizes via Content-Length headers
+                // 统计缓存总大小（通过 Content-Length 头）
                 let totalBytes = 0;
                 for (const req of keys) {
                     const res = await cache.match(req);
@@ -2393,9 +2395,9 @@
                         if (cl) {
                             totalBytes += parseInt(cl, 10);
                         } else {
-                            // fallback: read body to get actual size
-                            const buf = await res.arrayBuffer();
-                            totalBytes += buf.byteLength;
+                        // 备用方案：读取响应体获取实际大小
+                        const buf = await res.arrayBuffer();
+                        totalBytes += buf.byteLength;
                         }
                     }
                 }
@@ -2411,7 +2413,7 @@
         }
       });
 
-      // Refresh Logic
+      // 刷新页面
       document.getElementById('menuRefresh').addEventListener('click', async () => {
           const progressDiv = document.getElementById('downloadProgress');
           const progressFill = document.getElementById('progressFill');
@@ -2422,39 +2424,36 @@
           progressText.textContent = '准备刷新...';
           
           try {
-             // Just show progress to indicate action
              progressFill.style.width = '50%';
              await new Promise(r => setTimeout(r, 200));
              
              progressFill.style.width = '100%';
              progressText.textContent = '刷新中...';
              
-             // Wait to show 100%
              await new Promise(r => setTimeout(r, 200));
              
-             // Force Reload (true forces reload from server, ignoring browser cache)
-             // We do NOT clear 'shizi-audio-cache' or unregister service workers as requested.
+             // 强制刷新（忽略浏览器缓存）
              window.location.reload(true);
           } catch (e) {
-             console.error('Refresh error:', e);
+             console.error('刷新出错:', e);
              window.location.reload();
           }
       });
     }
 
     async function navigateToUnit(level, unitName) {
-      // Close modal
+      // 关闭弹窗
       document.getElementById('progressModal').style.display = 'none';
       
-      // Exit learning view if active
+      // 如果正在学习则退出学习视图
       if (document.getElementById('learningView').classList.contains('active')) {
         exitLearning();
       }
 
-      // Switch Level if needed
+      // 如果需要切换等级
       if (currentLevel !== level) {
          currentLevel = level;
-         // Update UI for level
+         // 更新等级按钮 UI
          document.getElementById('currentLevelBtn').textContent = level;
          document.querySelectorAll('.level-option').forEach(opt => {
            opt.classList.toggle('active', opt.dataset.level === level);
@@ -2463,29 +2462,27 @@
          await loadLevel(level);
       }
 
-      // Find Unit Index in current keys
+      // 查找单元索引
       const index = unitKeys.indexOf(unitName);
       if (index !== -1) {
         currentUnitIndex = index;
         renderUnit();
-        saveCurrentPosition(); // Save position after navigation
-        // Show success toast
+        saveCurrentPosition();
         showToast(`已跳转到 ${level} ${unitName}`, 'success');
       } else {
         showToast(`未找到单元: ${unitName}`, 'error');
       }
     }
 
-    // Initialize
+    // 初始化
     setupMenuAndModals();
     setupLearningEvents();
-    // loadConfig(); // Removed as it is undefined
 
     function setupLearningEvents() {
-      // Back Button
+      // 返回按钮
       document.getElementById('backBtn').addEventListener('click', exitLearning);
 
-      // Mode Tabs
+      // 模式切换
       document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           const mode = tab.dataset.mode;
@@ -2493,11 +2490,11 @@
         });
       });
 
-      // Animate Controls
+      // 动画控制
       document.getElementById('playBtn').addEventListener('click', () => {
         if (writer) {
           currentStroke = 0;
-          writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 }); // Slower speed and delay
+          writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 });
         }
       });
       document.getElementById('strokeBtn').addEventListener('click', animateStrokeByStroke);
@@ -2508,11 +2505,11 @@
         }
       });
 
-      // Quiz Controls
+      // 测验控制
       document.getElementById('startQuizBtn').addEventListener('click', startQuizLogic);
       
       document.getElementById('hintBtn').addEventListener('click', () => {
-        if(writer) writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 }); // Slower speed and delay
+        if(writer) writer.animateCharacter({ strokeAnimationSpeed: 0.5, delayBetweenStrokes: 500 });
       });
     }
 
@@ -2537,13 +2534,13 @@
       appEl.style.display = 'none';
       document.querySelector('.navbar').style.display = 'none';
       document.querySelector('.toolbar').style.display = 'none';
-      document.body.style.paddingTop = '20px'; // Remove top padding for learning view
+      document.body.style.paddingTop = '20px';
       learningView.classList.add('active');
       window.scrollTo(0, 0);
 
       updateLearningViewBtn();
       
-      // Update Play Button Data
+      // 更新播放按钮的数据属性
       const learnPlayBtn = document.getElementById('learnPlayBtn');
       if (learnPlayBtn) {
         learnPlayBtn.dataset.text = char;
@@ -2555,16 +2552,15 @@
       }
 
       learnCharEl.textContent = char;
-      // Use pinyin-pro library via global variable pinyinPro
+      // 使用 pinyin-pro 库获取拼音
       const { pinyin } = pinyinPro;
-      // Get all pronunciations for polyphonic characters (multiple: true)
-      // toneType: 'symbol' is default, returns string separated by spaces
+      // 获取多音字的所有读音
       const pinyinText = pinyin(char, { multiple: true });
       learnPinyinEl.textContent = pinyinText;
       
       initWriter(char);
       
-      // Auto-start audio loop if not in teaching (recording) mode
+      // 如果不是录音模式，自动开始音频循环
       if (!isTeachingMode) {
         startAudioLoop(char, level, unit);
       }
@@ -2578,23 +2574,21 @@
         if (!isLoopingAudio) return;
         
         btn.classList.add('playing');
-        btn.disabled = false; // Allow user to click to stop
+        btn.disabled = false; // 允许用户点击停止
         
         const onStop = () => {
            if (isLoopingAudio) {
-               // Continue looping with a short delay
+               // 短暂延迟后继续循环
                setTimeout(playNext, 800);
            } else {
                btn.classList.remove('playing');
                btn.disabled = false;
-               // Restore icon
+               // 恢复图标
                updateLearningViewBtn();
            }
         };
 
-        // Reuse existing play logic via audioManager
-        // Note: We need text/type. Assuming defaults based on enterLearning context.
-        // enterLearning sets dataset. We can use that.
+        // 通过 audioManager 播放音频
         const text = btn.dataset.text || char; 
         const type = btn.dataset.type || 'char';
         const index = btn.dataset.index || '';
@@ -2602,7 +2596,7 @@
         try {
             const success = await audioManager.playAudio(level, unit, char, text, type, index, onStop);
             if (!success) {
-                // If audio fails, stop looping to avoid infinite error loop
+                // 如果播放失败，停止循环
                 isLoopingAudio = false;
                 onStop();
             }
@@ -2617,7 +2611,7 @@
     }
 
     function exitLearning() {
-      isLoopingAudio = false; // Stop loop
+      isLoopingAudio = false; // 停止循环
       if (audioManager.currentAudio) {
           audioManager.currentAudio.pause();
           audioManager.currentAudio = null;
@@ -2627,7 +2621,7 @@
       appEl.style.display = 'flex';
       document.querySelector('.navbar').style.display = 'flex';
       document.querySelector('.toolbar').style.display = 'flex';
-      document.body.style.paddingTop = '120px'; // Restore top padding
+      document.body.style.paddingTop = '120px'; // 恢复顶部间距
       
       if (writer) {
         writerTarget.innerHTML = '';
@@ -2714,7 +2708,7 @@
           }
         });
       } else {
-        // Reset if clicked again after finish or handle completion
+        // 演示完成后重置
         currentStroke = 0;
         strokeInfo.textContent = '共 ' + totalStrokes + ' 笔 — 演示完成';
         writer.showCharacter();

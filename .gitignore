@@ -1,3 +1,4 @@
 start_claude.bat
 *.md
 .claude/
+.*/

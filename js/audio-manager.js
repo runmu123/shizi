@@ -1,36 +1,35 @@
-// Audio Manager for recording, uploading, and playing audio using Supabase
+// 音频管理器：录音、上传、播放音频（使用 Supabase）
 class AudioManager {
   constructor() {
     this.supabase = null;
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.isRecording = false;
-    this.currentAudio = null; // For playing
-    this.recordingCallback = null; // To update UI during recording
+    this.currentAudio = null;
+    this.recordingCallback = null;
   }
 
   init() {
     if (this.supabase) return;
     
     if (typeof supabase === 'undefined') {
-      console.error('Supabase library not loaded');
+      console.error('Supabase 库未加载');
       return;
     }
     if (typeof SUPABASE_CONFIG === 'undefined') {
-      console.error('SUPABASE_CONFIG not found');
+      console.error('SUPABASE_CONFIG 未找到');
       return;
     }
     this.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
   }
 
-  // Helper to get unit number (e.g. "第一单元" -> "1")
+  // 获取单元编号（如 "第一单元" -> "1"）
   getUnitCode(unit) {
     const numMap = {
       '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
       '六': '6', '七': '7', '八': '8', '九': '9', '十': '10',
       '十一': '11', '十二': '12'
     };
-    // Match "第X单元"
     const match = unit.match(/第([一二三四五六七八九十]+)单元/);
     if (match) {
        const numStr = match[1];
@@ -39,11 +38,9 @@ class AudioManager {
     return unit; 
   }
 
-  // Helper to get pinyin (e.g. "口" -> "kou")
+  // 获取拼音（如 "口" -> "kou"）
   getPinyin(char) {
     if (typeof pinyinPro !== 'undefined') {
-       // toneType: 'none' removes tones
-       // nonZh: 'consecutive' keeps non-Chinese chars together
        return pinyinPro.pinyin(char, { 
          toneType: 'none', 
          separator: '',
@@ -53,7 +50,7 @@ class AudioManager {
     return char;
   }
 
-  // Generate path: L1/Unit_1/kou/filename.mp3
+  // 生成文件路径：L1/Unit_1/kou/filename.mp3
   getFilePath(level, unit, char, text, type, index) {
     const unitCode = this.getUnitCode(unit);
     const charPy = this.getPinyin(char);
@@ -69,7 +66,6 @@ class AudioManager {
       filename = 'sentence.mp3';
     } else if (type === 'word') {
        if (index !== undefined && index !== null) {
-         // User requested word_数字 based on order
          filename = `word_${index + 1}.mp3`;
        } else {
          const hash = md5(text.trim());
@@ -85,11 +81,11 @@ class AudioManager {
 
   async startRecording() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Media devices not supported');
+      throw new Error('不支持媒体设备');
     }
 
     try {
-      console.log('Requesting microphone access...');
+      console.log('正在请求麦克风权限...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
@@ -97,15 +93,15 @@ class AudioManager {
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
-          console.log('Recorded chunk size:', event.data.size);
+          console.log('录音块大小:', event.data.size);
         }
       };
 
       this.mediaRecorder.start();
       this.isRecording = true;
-      console.log('Recording started');
+      console.log('录音已开始');
     } catch (err) {
-      console.error('Error starting recording:', err);
+      console.error('启动录音失败:', err);
       throw err;
     }
   }
@@ -122,7 +118,7 @@ class AudioManager {
           const audioBlob = new Blob(this.audioChunks, { type: 'audio/mp3' });
           this.isRecording = false;
           this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
-          console.log('Recording stopped, blob size:', audioBlob.size);
+          console.log('录音已停止，blob 大小:', audioBlob.size);
           resolve(audioBlob);
         } catch (error) {
           reject(error);
@@ -140,16 +136,15 @@ class AudioManager {
   async uploadAudio(blob, level, unit, char, text, type, index) {
     this.init();
     
-    // Ensure type is valid
     if (!type) {
-        console.warn('Type is missing for upload, inferring from text/char');
+        console.warn('上传缺少类型，正在推断');
         if (text === char) type = 'char';
-        else if (text.length > 1 && !text.includes(' ')) type = 'word'; // Simple guess
+        else if (text.length > 1 && !text.includes(' ')) type = 'word';
         else type = 'sentence';
     }
 
     const filePath = this.getFilePath(level, unit, char, text, type, index);
-    console.log(`Uploading audio to: ${filePath}, Blob size: ${blob.size}, Type: ${type}`);
+    console.log(`上传音频到: ${filePath}, Blob 大小: ${blob.size}, 类型: ${type}`);
 
     try {
       const { data, error } = await this.supabase
@@ -159,20 +154,19 @@ class AudioManager {
           contentType: 'audio/mp3',
           upsert: true,
           metadata: {
-            originalText: text, // Store original text (Supabase handles unicode in JSON)
+            originalText: text,
             type: type
           }
         });
 
       if (error) {
-        console.error('Supabase upload error:', error);
+        console.error('Supabase 上传错误:', error);
         throw error;
       }
       
-      console.log('Upload successful:', data);
+      console.log('上传成功:', data);
 
-      // Insert into audio_records table
-      // We explicitly upsert here to ensure data consistency, regardless of trigger
+      // 写入 audio_records 表
       const { error: dbError } = await this.supabase
         .from('audio_records')
         .upsert({
@@ -185,14 +179,12 @@ class AudioManager {
         }, { onConflict: 'path' });
 
       if (dbError) {
-        console.error('DB Insert Error (audio_records):', dbError);
-        // Don't throw, as file upload was successful. 
-        // But this explains why DB might be missing data if trigger also fails/doesn't run.
+        console.error('数据库写入错误 (audio_records):', dbError);
       }
 
       return data;
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error('上传失败:', err);
       throw err;
     }
   }
@@ -203,7 +195,7 @@ class AudioManager {
       .from('audio_records')
       .select('*');
     if (error) {
-      console.error('Error fetching audio records:', error);
+      console.error('获取音频记录失败:', error);
       return [];
     }
     return data;
@@ -211,8 +203,6 @@ class AudioManager {
 
   async getAudioStats() {
     this.init();
-    // Count chars with audio (type='char')
-    // Use standard select count to avoid potential HEAD request issues (ERR_ABORTED)
     const { count, error } = await this.supabase
       .from('audio_records')
       .select('*', { count: 'exact', head: false })
@@ -220,16 +210,15 @@ class AudioManager {
       .limit(1);
     
     if (error) {
-        console.error('Error counting audio:', error);
+        console.error('统计音频数量失败:', error);
     }
 
-    // Get latest audio
     const { data: latest, error: latestError } = await this.supabase
       .from('audio_records')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle(); // Use maybeSingle to avoid error if empty
+      .maybeSingle();
 
     return { 
       charCount: count || 0, 
@@ -255,13 +244,12 @@ class AudioManager {
       .from(SUPABASE_CONFIG.bucket)
       .getPublicUrl(filePath);
     
-    // Use the base URL for cache key (without timestamp)
     const baseUrl = data.publicUrl;
-    // Add timestamp to URL to bypass ALL cache layers (browser + CDN)
+    // 添加时间戳绕过 CDN 缓存
     const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     let playUrl = url;
     
-    // Stop current audio and notify previous callback
+    // 停止当前播放并触发回调
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio = null;
@@ -271,8 +259,7 @@ class AudioManager {
       }
     }
 
-    // Try to get from cache; if not cached, fetch and store for future clears
-    // Use baseUrl (without timestamp) as cache key for consistent matching
+    // 从缓存读取或从服务器获取
     if ('caches' in window) {
        try {
           const cache = await caches.open('shizi-audio-cache');
@@ -280,31 +267,28 @@ class AudioManager {
           if (cached) {
              const blob = await cached.blob();
              playUrl = URL.createObjectURL(blob);
-             console.log('Playing from cache:', baseUrl);
+             console.log('从缓存播放:', baseUrl);
           } else {
              try {
-                // Use cache: 'no-store' to prevent browser HTTP Cache from storing
-                // This avoids duplicate storage (HTTP Cache + Cache Storage)
-                // URL with timestamp bypasses CDN cache
+                // 使用 no-store 避免重复存储到 HTTP Cache
                 const fetched = await fetch(url, { cache: 'no-store' });
                 if (fetched.ok) {
-                   // Store with baseUrl as key (without timestamp) for future lookups
                    await cache.put(baseUrl, fetched.clone());
                    const blob = await fetched.blob();
                    playUrl = URL.createObjectURL(blob);
                 }
              } catch (fetchErr) {
-                console.warn('Failed to cache audio during playback:', fetchErr);
+                console.warn('播放时缓存音频失败:', fetchErr);
              }
           }
        } catch (e) {
-          console.warn('Cache operation failed:', e);
+          console.warn('缓存操作失败:', e);
        }
     }
 
-    // Try to play
+    // 播放
     try {
-        // Revoke previous blob URL to avoid memory leak
+        // 释放之前的 blob URL 避免内存泄漏
         if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
            URL.revokeObjectURL(this.currentAudioUrl);
         }
@@ -313,7 +297,6 @@ class AudioManager {
         this.currentAudio = new Audio(playUrl);
         this.onStopCallback = onStopCallback;
 
-        // Cleanup on end
         this.currentAudio.onended = () => {
           if (this.onStopCallback) {
             this.onStopCallback();
@@ -322,9 +305,8 @@ class AudioManager {
           this.currentAudio = null;
         };
 
-        // Cleanup on error
         this.currentAudio.onerror = (e) => {
-          console.warn('Audio playback error', e);
+          console.warn('音频播放错误', e);
           if (this.onStopCallback) {
             this.onStopCallback();
             this.onStopCallback = null;
@@ -335,8 +317,7 @@ class AudioManager {
         await this.currentAudio.play();
         return true;
     } catch (e) {
-        console.warn('Audio play failed (likely not exists):', e);
-        // If immediate fail, callback is NOT stored yet (or rather, we should call it if stored)
+        console.warn('音频播放失败（可能不存在）:', e);
         if (this.onStopCallback) {
              this.onStopCallback();
              this.onStopCallback = null;
