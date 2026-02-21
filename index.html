@@ -464,8 +464,15 @@
     /* 汉字和播放按钮的容器 */
     .char-header-container {
       display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    
+    /* 字和按钮的包装器 */
+    .char-with-btn {
+      position: relative;
+      display: flex;
       align-items: center;
-      gap: 16px;
     }
 
     /* 左侧：田字格汉字框 */
@@ -480,6 +487,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    
+    /* 卡片中播放按钮相对于包装器定位在田字格右边 */
+    .char-with-btn > .play-btn {
+      position: absolute;
+      left: 100%;
+      margin-left: 8px;
     }
 
     /* 词语项样式 */
@@ -631,15 +645,23 @@
     
     /* 学习视图标题调整 */
     .char-header-row {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16px;
       margin-bottom: 8px;
     }
     
+    /* 学习页面大字 */
     .big-char {
-      margin-bottom: 0; /* 覆盖之前的边距 */
+      text-align: center;
+    }
+    
+    /* 学习页面播放按钮相对于大字定位在右边 */
+    .char-header-row > .play-btn {
+      position: absolute;
+      left: 50%;
+      margin-left: 2rem;
     }
 
     /* 工具栏样式 */
@@ -1850,10 +1872,12 @@
         <div class="unit-title">${level} - ${unit}</div>
         <div class="card">
           <div class="char-header-container">
-            <div class="char-box">
-              <div class="char-text">${char}</div>
+            <div class="char-with-btn">
+              <div class="char-box">
+                <div class="char-text">${char}</div>
+              </div>
+              ${getBtnHtml(char, 'char', char, level, unit, false)}
             </div>
-            ${getBtnHtml(char, 'char', char, level, unit, false)}
           </div>
           <div class="content-box">
             <div class="row">
@@ -1926,10 +1950,12 @@
           html += `
             <div class="card">
               <div class="char-header-container">
-                <div class="char-box">
-                  <div class="char-text">${char}</div>
+                <div class="char-with-btn">
+                  <div class="char-box">
+                    <div class="char-text">${char}</div>
+                  </div>
+                  ${getBtnHtml(char, 'char', char, currentLevel, unitName, false)}
                 </div>
-                ${getBtnHtml(char, 'char', char, currentLevel, unitName, false)}
               </div>
               <div class="content-box">
                 <div class="row">
