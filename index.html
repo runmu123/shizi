@@ -2281,12 +2281,16 @@
                     .from(SUPABASE_CONFIG.bucket)
                     .getPublicUrl(file.path);
 
-                 const url = data.publicUrl;
+                 const baseUrl = data.publicUrl;
+                 // Add timestamp to bypass ALL cache layers (browser + CDN)
+                 const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
                  if (cache) {
-                     await cache.add(url);
+                     // Fetch with timestamp URL, store with baseUrl as key
+                     const res = await fetch(url, { cache: 'reload' });
+                     if (res.ok) await cache.put(baseUrl, res);
                  } else {
-                     const res = await fetch(url);
+                     const res = await fetch(url, { cache: 'reload' });
                      if (res.ok) await res.blob();
                  }
                } catch (e) {

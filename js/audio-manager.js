@@ -255,7 +255,10 @@ class AudioManager {
       .from(SUPABASE_CONFIG.bucket)
       .getPublicUrl(filePath);
     
-    const url = data.publicUrl;
+    // Use the base URL for cache key (without timestamp)
+    const baseUrl = data.publicUrl;
+    // Add timestamp to URL to bypass ALL cache layers (browser + CDN)
+    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     let playUrl = url;
     
     // Stop current audio and notify previous callback
@@ -269,20 +272,23 @@ class AudioManager {
     }
 
     // Try to get from cache; if not cached, fetch and store for future clears
+    // Use baseUrl (without timestamp) as cache key for consistent matching
     if ('caches' in window) {
        try {
           const cache = await caches.open('shizi-audio-cache');
-          let response = await cache.match(url);
-          if (response) {
-             const blob = await response.blob();
+          const cached = await cache.match(baseUrl);
+          if (cached) {
+             const blob = await cached.blob();
              playUrl = URL.createObjectURL(blob);
-             console.log('Playing from cache:', url);
+             console.log('Playing from cache:', baseUrl);
           } else {
              try {
-                await cache.add(url);
-                response = await cache.match(url);
-                if (response) {
-                   const blob = await response.blob();
+                // Fetch with timestamp URL to bypass ALL cache layers (browser + CDN)
+                const fetched = await fetch(url, { cache: 'reload' });
+                if (fetched.ok) {
+                   // Store with baseUrl as key (without timestamp) for future lookups
+                   await cache.put(baseUrl, fetched.clone());
+                   const blob = await fetched.blob();
                    playUrl = URL.createObjectURL(blob);
                 }
              } catch (fetchErr) {
