@@ -1185,6 +1185,33 @@
     let currentUnitIndex = 0;
     let isTeachingMode = false;
 
+    // ===== Persistence: Save/Load current position =====
+    function saveCurrentPosition() {
+      const data = {
+        level: currentLevel,
+        unitIndex: currentUnitIndex,
+        unitName: unitKeys[currentUnitIndex] || '',
+        timestamp: Date.now()
+      };
+      localStorage.setItem('shizi_position', JSON.stringify(data));
+    }
+
+    function loadSavedPosition() {
+      try {
+        const saved = localStorage.getItem('shizi_position');
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn('Failed to load saved position:', e);
+      }
+      return null;
+    }
+
+    function clearSavedPosition() {
+      localStorage.removeItem('shizi_position');
+    }
+
     // Initialize levels dynamically
     async function initLevels() {
       const dropdown = document.getElementById('levelDropdown');
@@ -1341,7 +1368,21 @@
     // Init
     document.addEventListener('DOMContentLoaded', async () => {
       await initLevels();
-      loadLevel(currentLevel);
+      
+      // Try to restore saved position
+      const savedPos = loadSavedPosition();
+      if (savedPos && savedPos.level && LEVELS.includes(savedPos.level)) {
+        currentLevel = savedPos.level;
+      }
+      
+      // Update UI to show correct level
+      document.getElementById('currentLevelBtn').textContent = currentLevel;
+      const opts = document.getElementById('levelDropdown').querySelectorAll('.level-option');
+      opts.forEach(o => {
+        o.classList.toggle('active', o.dataset.level === currentLevel);
+      });
+      
+      loadLevel(currentLevel, savedPos);
       setupEventListeners();
       
       // Close dropdown when clicking outside
@@ -1455,6 +1496,7 @@
              // Load Data
              currentLevel = level;
              loadLevel(level);
+             saveCurrentPosition(); // Save position when switching level
         } else {
              levelDropdown.classList.remove('show');
              currentLevelBtn.classList.remove('active');
@@ -1479,6 +1521,7 @@
         if (currentUnitIndex > 0) {
           currentUnitIndex--;
           renderUnit();
+          saveCurrentPosition(); // Save position when navigating
         }
       });
 
@@ -1486,6 +1529,7 @@
         if (currentUnitIndex < unitKeys.length - 1) {
           currentUnitIndex++;
           renderUnit();
+          saveCurrentPosition(); // Save position when navigating
         }
       });
 
@@ -1495,6 +1539,7 @@
         if (!isNaN(idx) && idx >= 0 && idx < unitKeys.length) {
           currentUnitIndex = idx;
           renderUnit();
+          saveCurrentPosition(); // Save position when selecting
         }
       });
 
@@ -1690,7 +1735,7 @@
       }
     }
 
-    async function loadLevel(level) {
+    async function loadLevel(level, savedPos = null) {
       appEl.innerHTML = '<div class="loading">正在加载数据...</div>';
       
       try {
@@ -1708,7 +1753,21 @@
 
         currentData = data;
         unitKeys = Object.keys(data);
-        currentUnitIndex = 0;
+        
+        // Try to restore saved unit index
+        currentUnitIndex = 0; // default
+        if (savedPos && savedPos.level === level) {
+          // Try to match by unit name first (more reliable)
+          if (savedPos.unitName) {
+            const idxByName = unitKeys.indexOf(savedPos.unitName);
+            if (idxByName !== -1) {
+              currentUnitIndex = idxByName;
+            }
+          } else if (savedPos.unitIndex !== undefined && savedPos.unitIndex < unitKeys.length) {
+            // Fallback to index if name not found
+            currentUnitIndex = savedPos.unitIndex;
+          }
+        }
 
         // Populate Select Options
         unitSelect.innerHTML = '';
@@ -2408,6 +2467,7 @@
       if (index !== -1) {
         currentUnitIndex = index;
         renderUnit();
+        saveCurrentPosition(); // Save position after navigation
         // Show success toast
         showToast(`已跳转到 ${level} ${unitName}`, 'success');
       } else {
