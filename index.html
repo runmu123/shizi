@@ -1239,6 +1239,11 @@
     let unitKeys = [];
     let currentUnitIndex = 0;
     let isTeachingMode = false;
+    
+    // 检测是否为刷新操作
+    const isReload = (performance.getEntriesByType("navigation")[0]?.type === 'reload') || 
+                     (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+    const cacheSuffix = isReload ? `?t=${Date.now()}` : '';
 
     // ===== 位置记忆：保存/加载当前位置 =====
     function saveCurrentPosition() {
@@ -1277,7 +1282,7 @@
       while (true) {
         const level = `L${i}`;
         try {
-          const res = await fetch(`yaml/contents_${level}.yaml`, { method: 'GET' });
+          const res = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`, { method: 'GET' });
           if (res.ok) {
             const text = await res.text();
             try {
@@ -1789,7 +1794,7 @@
       try {
         let data = levelDataCache[level];
         if (!data) {
-          const response = await fetch(`yaml/contents_${level}.yaml`);
+          const response = await fetch(`yaml/contents_${level}.yaml?t=?tnew D$te().getTtme()().getTime()}`);
           if (!response.ok) {
             throw new Error(`HTTP 错误! 状态码: ${response.status}`);
           }
@@ -1867,7 +1872,7 @@
         // 如果未缓存则获取
         if (!data) {
           try {
-            const response = await fetch(`yaml/contents_${level}.yaml`);
+            const response = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`);
             if (response.ok) {
               const text = await response.text();
               data = jsyaml.load(text);
@@ -2224,7 +2229,7 @@
            try {
              let data = levelDataCache[lvl];
              if (!data) {
-                const res = await fetch(`yaml/contents_${lvl}.yaml`);
+                const res = await fetch(`yaml/contents_${lvl}.yaml${cacheSuffix}`);
                 if (res.ok) {
                    const text = await res.text();
                    data = jsyaml.load(text);
@@ -2324,7 +2329,7 @@
            await Promise.all(levels.map(async (lvl) => {
                if (!levelDataCache[lvl]) {
                    try {
-                       const res = await fetch(`yaml/contents_${lvl}.yaml`);
+                       const res = await fetch(`yaml/contents_${lvl}.yaml${cacheSuffix}`);
                        if (res.ok) {
                            const text = await res.text();
                            levelDataCache[lvl] = jsyaml.load(text);
