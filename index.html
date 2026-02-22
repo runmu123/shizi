@@ -1138,7 +1138,7 @@
     <div class="controls" id="animateControls">
       <button class="control-btn primary" id="playBtn">播放动画</button>
       <button class="control-btn" id="strokeBtn">逐笔播放</button>
-      <button class="control-btn" id="resetBtn">重新来</button>
+      <!-- <button class="control-btn" id="resetBtn">重新来</button> -->
     </div>
 
     <!-- 测验控制 -->
@@ -2609,12 +2609,12 @@
         }
       });
       document.getElementById('strokeBtn').addEventListener('click', animateStrokeByStroke);
-      document.getElementById('resetBtn').addEventListener('click', () => {
+      /* document.getElementById('resetBtn').addEventListener('click', () => {
         if (writer) {
            writer.cancelQuiz();
            initWriter(learnCharEl.textContent);
         }
-      });
+      }); */
 
       // 测验控制
       document.getElementById('startQuizBtn').addEventListener('click', startQuizLogic);
