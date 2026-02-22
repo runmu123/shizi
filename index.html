@@ -851,6 +851,23 @@
       background: rgba(59, 130, 246, 0.85); /* 蓝色 */
     }
 
+    /* 测验提示消息样式 */
+    .quiz-toast-container {
+      position: absolute;
+      top: 220px; /* 大致在拼音位置，根据实际情况调整 */
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* .quiz-toast 已移除，复用 .toast 样式 */
+
     @keyframes fadeInOut {
       0% { opacity: 0; transform: translateY(-10px); }
       10% { opacity: 1; transform: translateY(0); }
@@ -1104,6 +1121,8 @@
         </button>
       </div>
       <div class="pinyin" id="learnPinyin"></div>
+      <!-- 测验提示容器 -->
+      <div id="quizToastContainer" class="quiz-toast-container"></div>
     </div>
 
     <div class="mode-tabs">
@@ -1347,6 +1366,31 @@
       setTimeout(() => {
         toast.remove();
       }, 3000);
+    }
+
+    function showQuizToast(message, type = 'success') {
+      const container = document.getElementById('quizToastContainer');
+      if (!container) return;
+      container.innerHTML = ''; 
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`; // 复用 toast 样式
+      
+      let icon = '';
+      if (type === 'success') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      } else if (type === 'error') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+      } else if (type === 'info') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+      }
+      
+      toast.innerHTML = `${icon}<span>${message}</span>`;
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 2000);
     }
 
     function getBtnHtml(text, type, rootChar, level, unit, isSmall = false, index = null) {
@@ -2009,15 +2053,15 @@
         writer.quiz({
           onMistake: (strokeData) => {
             quizResult.style.display = 'none';
-            showToast('笔画错误，请重试。', 'error');
+            showQuizToast('笔画错误，请重试。', 'error');
           },
           onCorrectStroke: (strokeData) => {
             quizResult.style.display = 'none';
-            showToast(`第 ${strokeData.strokeNum + 1} 笔正确`, 'success');
+            showQuizToast(`第 ${strokeData.strokeNum + 1} 笔正确`, 'success');
           },
           onComplete: async (summaryData) => {
             quizResult.style.display = 'none';
-            showToast(`练习完成！总共错误 ${summaryData.totalMistakes} 次。`, 'success');
+            showQuizToast(`练习完成！总共错误 ${summaryData.totalMistakes} 次。`, 'success');
             
             // 如果用户已登录则保存进度
             const user = localStorage.getItem('shizi_user');
@@ -2276,6 +2320,19 @@
               return nb - na;
            }); 
            
+           // 确保加载所有需要的 YAML 数据以确定排序
+           await Promise.all(levels.map(async (lvl) => {
+               if (!levelDataCache[lvl]) {
+                   try {
+                       const res = await fetch(`yaml/contents_${lvl}.yaml`);
+                       if (res.ok) {
+                           const text = await res.text();
+                           levelDataCache[lvl] = jsyaml.load(text);
+                       }
+                   } catch (e) { console.warn('加载YAML失败', lvl); }
+               }
+           }));
+           
            if (levels.length === 0) {
               html = '<div style="text-align:center; padding:20px; color:#6b7280;">暂无学习记录</div>';
            } else {
@@ -2300,13 +2357,32 @@
                 });
                 
                 units.forEach(unit => {
-                   const chars = grouped[lvl][unit].join(', ');
+                   let displayChars = grouped[lvl][unit];
+                   
+                   // 尝试按 YAML 顺序排序
+                   if (levelDataCache[lvl] && levelDataCache[lvl][unit]) {
+                       const standardOrder = Object.keys(levelDataCache[lvl][unit]);
+                       const learnedSet = new Set(displayChars);
+                       
+                       // 按照标准顺序筛选已学习的字
+                       const sorted = standardOrder.filter(c => learnedSet.has(c));
+                       
+                       // 把不在标准顺序里的字（可能有旧数据）追加到后面
+                       displayChars.forEach(c => {
+                           if (!standardOrder.includes(c)) {
+                               sorted.push(c);
+                           }
+                       });
+                       displayChars = sorted;
+                   }
+
+                   const chars = displayChars.join(', ');
                    html += `
                      <div class="progress-unit-row">
                        <div class="progress-unit-info">
                          <span class="progress-unit-name">${unit}: </span>
                          <span class="progress-char-list">
-                           ${grouped[lvl][unit].map(c => `<span class="progress-char learned">${c}</span>`).join(', ')}
+                           ${displayChars.map(c => `<span class="progress-char learned">${c}</span>`).join(', ')}
                          </span>
                        </div>
                        <button class="progress-nav-btn" onclick="navigateToUnit('${lvl}', '${unit}')" title="前往该单元">
@@ -2376,6 +2452,13 @@
                  const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
                  if (cache) {
+                     // 检查是否已在缓存中
+                     const cachedRes = await cache.match(baseUrl);
+                     if (cachedRes) {
+                         // 已存在，跳过下载
+                         return;
+                     }
+
                      // 使用 no-store 避免存入 HTTP Cache，防止重复存储
                      const res = await fetch(url, { cache: 'no-store' });
                      if (res.ok) await cache.put(baseUrl, res);
@@ -2592,6 +2675,9 @@
       if (!isTeachingMode) {
         startAudioLoop(char, level, unit);
       }
+      
+      // 默认进入书写练习模式
+      switchMode('quiz');
     }
 
     function startAudioLoop(char, level, unit) {
