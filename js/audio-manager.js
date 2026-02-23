@@ -22,19 +22,41 @@ class AudioManager {
     this.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
   }
 
-  // 获取单元编号（如 "第一单元" -> "1"）
+  // 获取单元编号（如 "第一单元" -> "1", "第一百二十三单元" -> "123"）
   getUnitCode(unit) {
-    const numMap = {
-      '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
-      '六': '6', '七': '7', '八': '8', '九': '9', '十': '10',
-      '十一': '11', '十二': '12'
-    };
-    const match = unit.match(/第([一二三四五六七八九十]+)单元/);
-    if (match) {
-       const numStr = match[1];
-       return numMap[numStr] || numStr;
+    // 如果已经是数字或包含数字
+    const numMatch = unit.match(/\d+/);
+    if (numMatch) return numMatch[0];
+
+    const match = unit.match(/第(.+)单元/);
+    if (!match) return unit;
+    
+    const s = match[1];
+    const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+    const units = { '十': 10, '百': 100, '千': 1000 };
+    
+    let result = 0;
+    let temp = 0;
+    let hasNum = false;
+
+    for (let i = 0; i < s.length; i++) {
+      const char = s[i];
+      if (map[char] !== undefined) {
+        temp = map[char];
+        hasNum = true;
+      } else if (units[char]) {
+        if (char === '十' && temp === 0 && result === 0) temp = 1;
+        result += temp * units[char];
+        temp = 0;
+        hasNum = true;
+      }
     }
-    return unit; 
+    result += temp;
+    
+    // 如果无法解析且不含数字字符，返回原始字符串
+    if (!hasNum) return s;
+
+    return result;
   }
 
   // 获取拼音（如 "口" -> "kou"）
