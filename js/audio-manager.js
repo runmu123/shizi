@@ -6,7 +6,6 @@ class AudioManager {
     this.audioChunks = [];
     this.isRecording = false;
     this.currentAudio = null;
-    this.recordingCallback = null;
   }
 
   init() {
@@ -235,7 +234,19 @@ class AudioManager {
       .getPublicUrl(filePath);
     return data.publicUrl;
   }
-  
+
+  // 停止当前音频播放并触发回调
+  stopCurrentAudio() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+    if (this.onStopCallback) {
+      this.onStopCallback();
+      this.onStopCallback = null;
+    }
+  }
+
   async playAudio(level, unit, char, text, type, index, onStopCallback) {
     this.init();
     const filePath = this.getFilePath(level, unit, char, text, type, index);
@@ -250,14 +261,7 @@ class AudioManager {
     let playUrl = url;
     
     // 停止当前播放并触发回调
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio = null;
-      if (this.onStopCallback) {
-        this.onStopCallback();
-        this.onStopCallback = null;
-      }
-    }
+    this.stopCurrentAudio();
 
     // 从缓存读取或从服务器获取
     if ('caches' in window) {
