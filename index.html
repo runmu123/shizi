@@ -1042,6 +1042,12 @@
 <body>
   <!-- 提示消息容器 -->
   <div id="toastContainer" class="toast-container"></div>
+  
+  <!-- 登录提醒 (固定) -->
+  <div id="loginReminder" class="toast error" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:2000; cursor:pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: none;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <span>您还未登录！，点击这里去登录</span>
+  </div>
 
   <header class="navbar" style="justify-content: space-between; padding: 0 16px;">
     <!-- 下载进度 -->
@@ -2098,6 +2104,48 @@
      function setupMenuAndModals() {
        audioManager.init();
        const menuBtn = document.getElementById('menuBtn');
+       
+       // 登录提醒逻辑
+       const loginReminder = document.getElementById('loginReminder');
+       const loginModal = document.getElementById('loginModal');
+       const loginInput = document.getElementById('loginInput');
+       const loginError = document.getElementById('loginError');
+       
+       function checkLoginStatus() {
+         const user = localStorage.getItem('shizi_user');
+         if (!user) {
+           // 未登录：显示登录弹窗（如果未显示），并隐藏提示（避免重叠）
+           if (loginModal.style.display !== 'flex') {
+             loginModal.style.display = 'flex';
+           }
+           loginReminder.style.display = 'none';
+         } else {
+           // 已登录：隐藏提醒，确保弹窗关闭
+           loginReminder.style.display = 'none';
+           if (loginModal.style.display === 'flex') {
+             loginModal.style.display = 'none';
+           }
+         }
+       }
+       
+       // 点击提醒打开登录框
+       loginReminder.addEventListener('click', () => {
+         loginModal.style.display = 'flex';
+         loginReminder.style.display = 'none';
+         loginInput.focus();
+       });
+
+       // 点击弹窗外部关闭（并显示提醒）
+       loginModal.addEventListener('click', (e) => {
+         if (e.target === loginModal) {
+           loginModal.style.display = 'none';
+           const user = localStorage.getItem('shizi_user');
+           if (!user) {
+             loginReminder.style.display = 'flex';
+           }
+         }
+       });
+
       const menuDropdown = document.getElementById('menuDropdown');
       
       // 菜单切换
@@ -2110,10 +2158,8 @@
         menuDropdown.classList.remove('show');
       });
 
-      // 登录弹窗
-      const loginModal = document.getElementById('loginModal');
-      const loginInput = document.getElementById('loginInput');
-      const loginError = document.getElementById('loginError');
+      // 登录弹窗变量已在上方定义
+
       
       // 确认弹窗
       const confirmModal = document.getElementById('confirmModal');
@@ -2151,6 +2197,7 @@
              localStorage.removeItem('shizi_user');
              showToast('已注销', 'info');
              document.getElementById('menuLogin').textContent = '登录';
+             checkLoginStatus(); // 注销后触发登录检测
            });
         } else {
            loginModal.style.display = 'flex';
@@ -2161,6 +2208,10 @@
       
       document.getElementById('cancelLogin').addEventListener('click', () => {
         loginModal.style.display = 'none';
+        const user = localStorage.getItem('shizi_user');
+        if (!user) {
+          loginReminder.style.display = 'flex';
+        }
       });
       
       document.getElementById('confirmLogin').addEventListener('click', async () => {
@@ -2206,6 +2257,7 @@
            localStorage.setItem('shizi_user', username);
            loginModal.style.display = 'none';
            document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
+           checkLoginStatus(); // 登录成功后更新状态
         } else {
            showToast('数据库未连接', 'error');
         }
@@ -2216,6 +2268,9 @@
       if (currentUser) {
         document.getElementById('menuLogin').textContent = '注销 (' + currentUser + ')';
       }
+      
+      // 检查登录状态
+      checkLoginStatus();
 
       // 统计弹窗
       const statsModal = document.getElementById('statsModal');
