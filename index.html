@@ -1034,7 +1034,10 @@
   <!-- 登录提醒 (固定) -->
   <div id="loginReminder" class="toast error" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:2000; cursor:pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: none;">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-    <span>您还未登录！，点击这里去登录</span>
+    <div style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4; margin-left: 4px;">
+      <span style="font-weight: 600;">您还未登录！</span>
+      <span style="font-weight: 600;">点击这里去登录</span>
+    </div>
   </div>
 
   <header class="navbar" style="justify-content: space-between; padding: 0 16px;">
