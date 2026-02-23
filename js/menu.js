@@ -473,16 +473,24 @@ export function setupMenuAndModals() {
             .getPublicUrl(file.path);
 
           const baseUrl = data.publicUrl;
-          const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+          const url = cacheSuffix 
+            ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
+            : baseUrl;
 
           if (cache) {
+            // 如果是强制刷新，先删除旧缓存
+            if (cacheSuffix) {
+              await cache.delete(baseUrl);
+            }
             const cachedRes = await cache.match(baseUrl);
             if (cachedRes) return;
 
-            const res = await fetch(url, { cache: 'no-store' });
-            if (res.ok) await cache.put(baseUrl, res);
+            const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
+            const res = await fetch(url, fetchOpts);
+            if (res.ok) await cache.put(baseUrl, res.clone()); // 存入 clone 后的响应
           } else {
-            const res = await fetch(url, { cache: 'no-store' });
+            const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
+            const res = await fetch(url, fetchOpts);
             if (res.ok) await res.blob();
           }
         } catch (e) {
@@ -562,10 +570,12 @@ export function setupMenuAndModals() {
 
       await new Promise(r => setTimeout(r, 200));
 
+      sessionStorage.setItem('shizi_force_refresh', 'true');
       window.location.reload(true);
     } catch (e) {
       console.error('刷新出错:', e);
-      window.location.reload();
+      sessionStorage.setItem('shizi_force_refresh', 'true');
+      window.location.reload(true);
     }
   });
 }

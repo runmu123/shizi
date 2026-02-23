@@ -1,9 +1,12 @@
 // 共享可变状态
-const navigationEntry = performance.getEntriesByType('navigation')[0];
-const isReload = (navigationEntry?.type === 'reload') ||
-  (window.performance?.navigation?.type === 1);
+const forceRefreshKey = 'shizi_force_refresh';
+const shouldForceRefresh = sessionStorage.getItem(forceRefreshKey) === 'true';
 
-export const cacheSuffix = isReload ? `?t=${Date.now()}` : '';
+if (shouldForceRefresh) {
+  sessionStorage.removeItem(forceRefreshKey);
+}
+
+export const cacheSuffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
 
 export const state = {
   LEVELS: [],

@@ -1,9 +1,14 @@
 // 入口文件
-import { state } from './state.js';
+import { state, cacheSuffix } from './state.js';
 import { loadSavedPosition } from './position.js';
 import { initLevels, loadLevel, setupEventListeners } from './app.js';
 import { setupMenuAndModals } from './menu.js';
 import { setupLearningEvents } from './learning.js';
+
+// 初始化全局音频管理器缓存后缀
+if (window.audioManager) {
+  audioManager.cacheSuffix = cacheSuffix;
+}
 
 // ES 模块在 DOM 解析完成后执行（等同 defer），可直接操作 DOM
 setupMenuAndModals();

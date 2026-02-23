@@ -15,13 +15,15 @@
   <script src="js/config.js"></script>
   <script>
     (() => {
-      const t = Date.now();
+      const shouldForceRefresh = sessionStorage.getItem('shizi_force_refresh') === 'true';
+      const suffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
+      
       const audioScript = document.createElement('script');
-      audioScript.src = `js/audio-manager.js?t=${t}`;
+      audioScript.src = `js/audio-manager.js${suffix}`;
       audioScript.onload = () => {
         const mainScript = document.createElement('script');
         mainScript.type = 'module';
-        mainScript.src = `js/main.js?t=${t}`;
+        mainScript.src = `js/main.js${suffix}`;
         document.body.appendChild(mainScript);
       };
       document.head.appendChild(audioScript);
