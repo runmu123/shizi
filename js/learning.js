@@ -7,6 +7,8 @@ const STROKE_ANIMATION_SPEED = 0.5;
 const STROKE_DELAY = 500;
 const AUDIO_LOOP_DELAY = 800;
 
+let savedScrollPosition = 0;
+
 export function updateLearningViewBtn() {
   const btn = document.getElementById('learnPlayBtn');
   if (!btn) return;
@@ -210,6 +212,8 @@ export function enterLearning(char, level, unit) {
   const learnCharEl = document.getElementById('learnChar');
   const learnPinyinEl = document.getElementById('learnPinyin');
 
+  savedScrollPosition = window.scrollY;
+
   appEl.style.display = 'none';
   document.querySelector('.navbar').style.display = 'none';
   document.querySelector('.toolbar').style.display = 'none';
@@ -261,6 +265,7 @@ export function exitLearning() {
   document.querySelector('.navbar').style.display = 'flex';
   document.querySelector('.toolbar').style.display = 'flex';
   document.body.style.paddingTop = '120px';
+  window.scrollTo(0, savedScrollPosition);
 
   if (state.writer) {
     writerTarget.innerHTML = '';
