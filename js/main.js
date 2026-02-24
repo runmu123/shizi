@@ -15,20 +15,22 @@ setupMenuAndModals();
 setupLearningEvents();
 
 (async () => {
-  await initLevels();
-
-  // 尝试恢复保存的位置
   const savedPos = loadSavedPosition();
-  if (savedPos && savedPos.level && state.LEVELS.includes(savedPos.level)) {
+  if (savedPos && savedPos.level) {
     state.currentLevel = savedPos.level;
   }
+
+  // 并行执行：初始化等级列表 和 加载当前等级数据
+  const initLevelsPromise = initLevels();
+
+  await loadLevel(state.currentLevel, savedPos);
+  setupEventListeners();
+
+  await initLevelsPromise;
 
   // 更新 UI 显示正确的级别
   document.getElementById('currentLevelBtn').textContent = state.currentLevel;
   document.getElementById('levelDropdown').querySelectorAll('.level-option').forEach(o => {
     o.classList.toggle('active', o.dataset.level === state.currentLevel);
   });
-
-  await loadLevel(state.currentLevel, savedPos);
-  setupEventListeners();
 })();
