@@ -12,21 +12,40 @@
   <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
-  <script src="js/config.js"></script>
   <script>
     (() => {
       const shouldForceRefresh = sessionStorage.getItem('shizi_force_refresh') === 'true';
       const suffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
+
+      // 1. 注入 config.js (带有时间戳)
+      const configScript = document.createElement('script');
+      configScript.src = `js/config.js${suffix}`;
+      configScript.async = false; // 保证按顺序执行
+      document.head.appendChild(configScript);
       
+      // 2. 注入 audio-manager.js (带有时间戳)
       const audioScript = document.createElement('script');
       audioScript.src = `js/audio-manager.js${suffix}`;
-      audioScript.onload = () => {
-        const mainScript = document.createElement('script');
-        mainScript.type = 'module';
-        mainScript.src = `js/main.js${suffix}`;
-        document.body.appendChild(mainScript);
-      };
+      audioScript.async = false; // 保证在 config.js 之后
       document.head.appendChild(audioScript);
+
+      // 3. 注入 main.js (带有时间戳)
+      const mainScript = document.createElement('script');
+      mainScript.type = 'module';
+      mainScript.src = `js/main.js${suffix}`;
+      document.head.appendChild(mainScript);
+
+      // 4. 预加载核心模块
+      const modules = [
+        'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js', 
+        'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js'
+      ];
+      modules.forEach(path => {
+        const link = document.createElement('link');
+        link.rel = 'modulepreload';
+        link.href = `${path}${suffix}`;
+        document.head.appendChild(link);
+      });
     })();
   </script>
   <style>
