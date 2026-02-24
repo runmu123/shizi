@@ -14,6 +14,7 @@ export function setupMenuAndModals() {
   const loginModal = document.getElementById('loginModal');
   const loginInput = document.getElementById('loginInput');
   const loginError = document.getElementById('loginError');
+  const loginLoadingModal = document.getElementById('loginLoadingModal');
 
   // ===== 确认弹窗 =====
   const confirmModal = document.getElementById('confirmModal');
@@ -253,13 +254,16 @@ export function setupMenuAndModals() {
     }
   });
 
-  document.getElementById('confirmLogin').addEventListener('click', async () => {
+  async function handleLogin() {
     const username = loginInput.value.trim();
     if (!username) {
       loginError.textContent = '请输入用户名';
       loginError.style.display = 'block';
       return;
     }
+
+    loginModal.classList.remove('active');
+    loginLoadingModal.classList.add('active');
 
     if (audioManager.supabase) {
       const { data, error } = await audioManager.supabase
@@ -270,6 +274,8 @@ export function setupMenuAndModals() {
 
       if (error) {
         console.error(error);
+        loginLoadingModal.classList.remove('active');
+        loginModal.classList.add('active');
         loginError.textContent = '登录出错，请重试';
         loginError.style.display = 'block';
         return;
@@ -282,6 +288,7 @@ export function setupMenuAndModals() {
 
         if (insertError) {
           console.error('创建用户失败:', insertError);
+          loginLoadingModal.classList.remove('active');
           showToast('创建用户失败', 'error');
           return;
         }
@@ -292,13 +299,23 @@ export function setupMenuAndModals() {
       }
 
       localStorage.setItem(USER_KEY, username);
-      loginModal.classList.remove('active');
+      loginLoadingModal.classList.remove('active');
       document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
       checkLoginStatus();
     } else {
+      loginLoadingModal.classList.remove('active');
       showToast('数据库未连接', 'error');
     }
+  }
+
+  loginInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLogin();
+    }
   });
+
+  document.getElementById('confirmLogin').addEventListener('click', handleLogin);
 
   // 加载时更新登录菜单文字
   const currentUser = localStorage.getItem(USER_KEY);
