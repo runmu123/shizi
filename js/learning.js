@@ -48,14 +48,19 @@ function startQuizLogic() {
         const unit = playBtn ? playBtn.dataset.unit : (state.unitKeys[state.currentUnitIndex] || '');
 
         try {
-          await audioManager.supabase.from('user_progress').upsert({
+          const { error } = await audioManager.supabase.from('user_progress').insert({
             username: user,
             char: char,
             level: level,
             unit: unit,
             completed_at: new Date(),
-          }, { onConflict: 'username,char' });
-          console.log('进度已保存:', char);
+          });
+          if (error) {
+            console.error('保存进度出错:', error);
+            console.error('错误详情:', error.message, error.hint);
+          } else {
+            console.log('进度已保存:', char, level, unit);
+          }
         } catch (e) {
           console.error('保存进度出错:', e);
         }

@@ -29,11 +29,11 @@ export function setupMenuAndModals() {
 
     const m = str.match(/第(.+)单元/);
     if (!m) return 0;
-    
+
     const s = m[1];
     const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
     const units = { '十': 10, '百': 100, '千': 1000 };
-    
+
     let result = 0;
     let temp = 0;
     let hasNum = false;
@@ -84,11 +84,25 @@ export function setupMenuAndModals() {
   const sortChars = (lvl, unit, chars) => {
     if (state.levelDataCache[lvl] && state.levelDataCache[lvl][unit]) {
       const standardOrder = Object.keys(state.levelDataCache[lvl][unit]);
-      const charSet = new Set(chars);
-      const sorted = standardOrder.filter(c => charSet.has(c));
-      // 追加未在标准顺序中的字符（防卫性编程）
+      // 按标准顺序排序已学习的汉字，保留重复项
+      const sorted = [];
+      const charCount = {};
       chars.forEach(c => {
-        if (!standardOrder.includes(c)) sorted.push(c);
+        charCount[c] = (charCount[c] || 0) + 1;
+      });
+      standardOrder.forEach(c => {
+        if (charCount[c]) {
+          for (let i = 0; i < charCount[c]; i++) {
+            sorted.push(c);
+          }
+          delete charCount[c];
+        }
+      });
+      // 追加未在标准顺序中的字符
+      Object.keys(charCount).forEach(c => {
+        for (let i = 0; i < charCount[c]; i++) {
+          sorted.push(c);
+        }
       });
       return sorted;
     }
@@ -99,7 +113,7 @@ export function setupMenuAndModals() {
   const renderContentList = async (container, groupedData, options = {}) => {
     const { showNav = false, emptyText = '暂无记录' } = options;
     const levels = sortLevels(Object.keys(groupedData));
-    
+
     if (levels.length === 0) {
       container.innerHTML = `<div style="text-align:center; padding:20px; color:#6b7280;">${emptyText}</div>`;
       return;
@@ -113,7 +127,7 @@ export function setupMenuAndModals() {
       const isExpanded = index === 0;
       const headerClass = isExpanded ? 'progress-level-header active' : 'progress-level-header';
       const contentClass = isExpanded ? 'progress-level-content show' : 'progress-level-content';
-      
+
       html += `
         <div class="progress-level-item">
           <div class="${headerClass}">
@@ -148,7 +162,7 @@ export function setupMenuAndModals() {
       });
       html += `</div></div>`;
     });
-    
+
     container.innerHTML = html;
   };
 
@@ -335,7 +349,7 @@ export function setupMenuAndModals() {
     if (audioManager) {
       try {
         const records = await audioManager.getAllAudioRecords();
-        
+
         // 统计去重后的字数
         const uniqueChars = new Set(records.map(r => `${r.level}-${r.unit}-${r.char}`));
         document.getElementById('statsAudioCount').textContent = uniqueChars.size;
@@ -410,16 +424,18 @@ export function setupMenuAndModals() {
         return;
       }
 
-      document.getElementById('progressTotalCount').textContent = records.length;
+      // 获取所有去重的汉字数量用于统计
+      const uniqueChars = new Set(records.map(r => r.char));
+      document.getElementById('progressTotalCount').textContent = uniqueChars.size;
 
-      // 按级别和单元分组
+      // 按级别和单元分组（不去重）
       const grouped = {};
       records.forEach(r => {
         const lvl = r.level || '未知等级';
         const unit = r.unit || '未知单元';
         if (!grouped[lvl]) grouped[lvl] = {};
-        if (!grouped[lvl][unit]) grouped[lvl][unit] = new Set();
-        grouped[lvl][unit].add(r.char);
+        if (!grouped[lvl][unit]) grouped[lvl][unit] = [];
+        grouped[lvl][unit].push(r.char);
       });
 
       await renderContentList(progressLevelsContainer, grouped, { showNav: true, emptyText: '暂无学习记录' });
@@ -473,7 +489,7 @@ export function setupMenuAndModals() {
             .getPublicUrl(file.path);
 
           const baseUrl = data.publicUrl;
-          const url = cacheSuffix 
+          const url = cacheSuffix
             ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
             : baseUrl;
 
