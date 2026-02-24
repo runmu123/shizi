@@ -247,6 +247,24 @@ function updateBtnIcon(btn, isTeaching) {
 
 // ===== 事件绑定 =====
 export function setupEventListeners() {
+  let scrollPosition = 0;
+
+  function lockScroll() {
+    scrollPosition = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollPosition}px`;
+    document.body.style.width = '100%';
+  }
+
+  function unlockScroll() {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollPosition);
+  }
+
   const currentModeBtn = document.getElementById('currentModeBtn');
   const modeDropdown = document.getElementById('modeDropdown');
   const modeOptions = document.querySelectorAll('.mode-option');
@@ -287,6 +305,7 @@ export function setupEventListeners() {
             switchTeachingMode(true);
           } else {
             passwordModal.classList.add('active');
+            lockScroll();
             passwordInput.value = '';
             passwordError.style.display = 'none';
             passwordInput.focus();
@@ -309,6 +328,7 @@ export function setupEventListeners() {
     if (password === TEACH_PASSWORD) {
       switchTeachingMode(true);
       passwordModal.classList.remove('active');
+      unlockScroll();
     } else {
       passwordError.style.display = 'block';
       passwordInput.value = '';
@@ -324,11 +344,13 @@ export function setupEventListeners() {
 
   document.getElementById('cancelPassword').addEventListener('click', () => {
     passwordModal.classList.remove('active');
+    unlockScroll();
   });
 
   passwordModal.addEventListener('click', (e) => {
     if (e.target === passwordModal) {
       passwordModal.classList.remove('active');
+      unlockScroll();
     }
   });
 

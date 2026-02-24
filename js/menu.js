@@ -8,6 +8,24 @@ import { navigateToUnit } from './app.js';
 export function setupMenuAndModals() {
   audioManager.init();
 
+  let scrollPosition = 0;
+
+  function lockScroll() {
+    scrollPosition = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollPosition}px`;
+    document.body.style.width = '100%';
+  }
+
+  function unlockScroll() {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollPosition);
+  }
+
   const menuBtn = document.getElementById('menuBtn');
   const menuDropdown = document.getElementById('menuDropdown');
   const loginReminder = document.getElementById('loginReminder');
@@ -172,15 +190,18 @@ export function setupMenuAndModals() {
     confirmMessage.textContent = message;
     confirmCallback = callback;
     confirmModal.classList.add('active');
+    lockScroll();
   }
 
   document.getElementById('cancelConfirm').addEventListener('click', () => {
     confirmModal.classList.remove('active');
     confirmCallback = null;
+    unlockScroll();
   });
 
   document.getElementById('confirmConfirm').addEventListener('click', () => {
     confirmModal.classList.remove('active');
+    unlockScroll();
     if (confirmCallback) {
       confirmCallback();
       confirmCallback = null;
@@ -193,18 +214,21 @@ export function setupMenuAndModals() {
     if (!user) {
       if (!loginModal.classList.contains('active')) {
         loginModal.classList.add('active');
+        lockScroll();
       }
       loginReminder.style.display = 'none';
     } else {
       loginReminder.style.display = 'none';
       if (loginModal.classList.contains('active')) {
         loginModal.classList.remove('active');
+        unlockScroll();
       }
     }
   }
 
   loginReminder.addEventListener('click', () => {
     loginModal.classList.add('active');
+    lockScroll();
     loginReminder.style.display = 'none';
     loginInput.focus();
   });
@@ -212,6 +236,7 @@ export function setupMenuAndModals() {
   loginModal.addEventListener('click', (e) => {
     if (e.target === loginModal) {
       loginModal.classList.remove('active');
+      unlockScroll();
       const user = localStorage.getItem(USER_KEY);
       if (!user) {
         loginReminder.style.display = 'flex';
@@ -241,6 +266,7 @@ export function setupMenuAndModals() {
       });
     } else {
       loginModal.classList.add('active');
+      lockScroll();
       loginInput.value = '';
       loginError.style.display = 'none';
     }
@@ -248,6 +274,7 @@ export function setupMenuAndModals() {
 
   document.getElementById('cancelLogin').addEventListener('click', () => {
     loginModal.classList.remove('active');
+    unlockScroll();
     const user = localStorage.getItem(USER_KEY);
     if (!user) {
       loginReminder.style.display = 'flex';
@@ -300,10 +327,12 @@ export function setupMenuAndModals() {
 
       localStorage.setItem(USER_KEY, username);
       loginLoadingModal.classList.remove('active');
+      unlockScroll();
       document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
       checkLoginStatus();
     } else {
       loginLoadingModal.classList.remove('active');
+      unlockScroll();
       showToast('数据库未连接', 'error');
     }
   }
@@ -340,6 +369,7 @@ export function setupMenuAndModals() {
 
   document.getElementById('menuStats').addEventListener('click', async () => {
     statsModal.classList.add('active');
+    lockScroll();
     statsAudioListContainer.innerHTML = '<div class="loading">加载中...</div>';
 
     let totalChars = 0;
@@ -392,6 +422,7 @@ export function setupMenuAndModals() {
 
   document.getElementById('closeStats').addEventListener('click', () => {
     statsModal.classList.remove('active');
+    unlockScroll();
   });
 
   // ===== 学习进度弹窗 =====
@@ -428,6 +459,7 @@ export function setupMenuAndModals() {
     }
 
     progressModal.classList.add('active');
+    lockScroll();
     progressLevelsContainer.innerHTML = '<div class="loading">加载中...</div>';
 
     if (audioManager.supabase) {
@@ -461,6 +493,7 @@ export function setupMenuAndModals() {
 
   document.getElementById('closeProgress').addEventListener('click', () => {
     progressModal.classList.remove('active');
+    unlockScroll();
   });
 
   // ===== 下载语音数据 =====
