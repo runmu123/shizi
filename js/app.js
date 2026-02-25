@@ -204,6 +204,9 @@ export function switchTeachingMode(enable) {
   if (document.getElementById('learningView').classList.contains('active')) {
     updateLearningViewBtn();
   }
+
+  // 保存当前位置和模式
+  saveCurrentPosition();
 }
 
 // ===== 导航到指定单元 =====
