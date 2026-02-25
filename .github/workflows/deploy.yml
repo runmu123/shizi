@@ -1,0 +1,52 @@
+name: Deploy to PinMe
+
+on:
+  # Automatic trigger on specific file changes
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'index.html'         # Main HTML file
+      - 'js/**'              # JavaScript files
+      - 'yaml/**'            # YAML data files
+      - 'css/**'             # CSS files
+      - 'assets/**'          # Static assets
+      - 'package.json'       # Dependency changes (if exists)
+
+  # Manual trigger option
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Custom domain name (optional)'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PinMe CLI
+        run: npm install -g pinme
+
+      - name: Deploy to PinMe
+        env:
+          PINME_APPKEY: ${{ secrets.PINME_APPKEY }}
+        run: |
+          # Set up PinMe authentication
+          pinme set-appkey "$PINME_APPKEY"
+          
+          # Deploy with custom or default domain
+          if [ -n "${{ github.event.inputs.domain }}" ]; then
+            DOMAIN="${{ github.event.inputs.domain }}"
+          else
+            # Auto-generate domain from repository name
+            DOMAIN=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+          fi
+          
+          # Upload entire project directory
+          pinme upload "." --domain "$DOMAIN"

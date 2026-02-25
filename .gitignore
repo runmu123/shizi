@@ -1,4 +1,8 @@
 start_claude.bat
-*.md
+markdownlint_rules.md
+request.md
+CLAUDE.md
 .claude/
-.*/
+.catpaw/
+.claude/
+.trae/
