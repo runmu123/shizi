@@ -40,7 +40,7 @@
       // 4. 预加载核心模块
       const modules = [
         'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
-        'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js'
+        'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js', 'js/batch-record.js'
       ];
       modules.forEach(path => {
         const link = document.createElement('link');
@@ -1144,6 +1144,247 @@
       color: var(--primary-color);
       font-weight: bold;
     }
+
+    /* 批量录音页面样式 */
+    .batch-record-view {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #fdfbf7;
+      z-index: 150;
+      padding-top: 60px;
+    }
+
+    .batch-record-view.active {
+      display: flex;
+    }
+
+    .batch-record-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 160;
+    }
+
+    .batch-record-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .batch-record-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 4px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .batch-record-close-btn:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .batch-record-content {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    .batch-record-left {
+      flex: 1;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .batch-record-right {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .batch-record-section {
+      margin-bottom: 24px;
+    }
+
+    .batch-record-section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f3f4f6;
+    }
+
+    .batch-record-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .batch-record-item:hover {
+      border-color: var(--primary-color);
+      background: #fff7ed;
+    }
+
+    .batch-record-item.active {
+      border-color: var(--primary-color);
+      background: #fff7ed;
+      box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+    }
+
+    .batch-record-item.completed {
+      border-color: #22c55e;
+      background: #f0fdf4;
+    }
+
+    .batch-record-item.completed .item-status {
+      color: #22c55e;
+    }
+
+    .batch-record-item-text {
+      flex: 1;
+      font-size: 1.1rem;
+      color: #374151;
+    }
+
+    .batch-record-item-type {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-left: 8px;
+    }
+
+    .item-status {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    .item-status.completed {
+      color: #22c55e;
+    }
+
+    .batch-record-btn {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--primary-color);
+      background: #fff;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .batch-record-btn:hover {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .batch-record-btn.primary {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .batch-record-btn.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    .batch-record-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .batch-record-btn.recording {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #fff;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    .batch-record-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .batch-record-info {
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .batch-record-info-title {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .batch-record-info-text {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      font-weight: 700;
+    }
+
+    .batch-record-info-sub {
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .batch-record-btns-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .keyboard-hint {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-align: center;
+      margin-top: 4px;
+    }
   </style>
 </head>
 
@@ -1329,6 +1570,14 @@
     </div>
   </div>
 
+  <!-- 上传中弹窗 -->
+  <div class="modal-overlay" id="uploadingModal">
+    <div class="modal-box" style="max-width: 280px;">
+      <div class="modal-title" style="margin-bottom: 24px;" id="uploadingText">正在上传 0/0</div>
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
   <!-- 统计弹窗 -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal-box" style="max-width: 600px; width: 90%;">
@@ -1390,6 +1639,84 @@
       </div>
       <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto;">
         <!-- 等级内容将在此注入 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量录音页面 -->
+  <div class="batch-record-view" id="batchRecordView">
+    <div class="batch-record-header">
+      <div class="batch-record-title">批量录音</div>
+      <button class="batch-record-close-btn" id="batchRecordClose">&times;</button>
+    </div>
+    <div class="batch-record-content">
+      <div class="batch-record-left" id="batchRecordLeft">
+        <!-- 左侧内容：字、词、句列表 -->
+      </div>
+      <div class="batch-record-right">
+        <div class="batch-record-info">
+          <div class="batch-record-info-title">当前内容</div>
+          <div class="batch-record-info-text" id="batchRecordCurrentText">-</div>
+          <div class="batch-record-info-sub" id="batchRecordCurrentType">-</div>
+        </div>
+        <div class="batch-record-info">
+          <div class="batch-record-info-title">进度</div>
+          <div class="batch-record-info-text"><span id="batchRecordProgress">0</span> / <span
+              id="batchRecordTotal">0</span></div>
+          <div class="batch-record-info-sub">已完成录音</div>
+        </div>
+        <button class="batch-record-btn primary" id="batchRecordBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+          录音
+        </button>
+        <div class="keyboard-hint">按空格键录音</div>
+        <button class="batch-record-btn" id="batchRecordUploadBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          上传
+        </button>
+        <div class="keyboard-hint">按 Enter 键上传</div>
+        <div class="batch-record-btns-row">
+          <button class="batch-record-btn" id="batchRecordPrevBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
+            上一个
+          </button>
+          <button class="batch-record-btn" id="batchRecordNextBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            下一个
+          </button>
+        </div>
+        <div class="keyboard-hint">按 ↑ ↓ 键切换</div>
+        <div class="batch-record-btns-row">
+          <button class="batch-record-btn" id="batchRecordPrevUnitBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一单元
+          </button>
+          <button class="batch-record-btn" id="batchRecordNextUnitBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            下一单元
+          </button>
+        </div>
+        <div class="keyboard-hint">按 ← → 键切换单元</div>
       </div>
     </div>
   </div>

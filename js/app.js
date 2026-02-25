@@ -5,6 +5,7 @@ import { showToast } from './toast.js';
 import { saveCurrentPosition } from './position.js';
 import { renderUnit, renderSearchResult, escapeHtml } from './ui.js';
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
+import { enterBatchRecord } from './batch-record.js';
 
 // ===== 级别初始化 =====
 export async function initLevels() {
@@ -296,33 +297,33 @@ export function setupEventListeners() {
 
   modeOptions.forEach(opt => {
     opt.addEventListener('click', () => {
-      const mode = opt.dataset.mode;
-      const newModeIsTeaching = (mode === 'teach');
+        const mode = opt.dataset.mode;
+        const newModeIsTeaching = (mode === 'teach');
 
-      if (state.isTeachingMode !== newModeIsTeaching) {
-        if (newModeIsTeaching) {
-          modeDropdown.classList.remove('show');
-          currentModeBtn.classList.remove('active');
-          const currentUser = localStorage.getItem(USER_KEY);
-          if (currentUser === 'admin') {
-            switchTeachingMode(true);
+        if (state.isTeachingMode !== newModeIsTeaching) {
+          if (newModeIsTeaching) {
+            modeDropdown.classList.remove('show');
+            currentModeBtn.classList.remove('active');
+            const currentUser = localStorage.getItem(USER_KEY);
+            if (currentUser === 'admin') {
+              switchTeachingMode(true);
+            } else {
+              passwordModal.classList.add('active');
+              lockScroll();
+              passwordInput.value = '';
+              passwordError.style.display = 'none';
+              passwordInput.focus();
+            }
           } else {
-            passwordModal.classList.add('active');
-            lockScroll();
-            passwordInput.value = '';
-            passwordError.style.display = 'none';
-            passwordInput.focus();
+            switchTeachingMode(false);
+            modeDropdown.classList.remove('show');
+            currentModeBtn.classList.remove('active');
           }
         } else {
-          switchTeachingMode(false);
           modeDropdown.classList.remove('show');
           currentModeBtn.classList.remove('active');
         }
-      } else {
-        modeDropdown.classList.remove('show');
-        currentModeBtn.classList.remove('active');
-      }
-    });
+      });
   });
 
   // ===== 密码弹窗 =====
@@ -537,6 +538,15 @@ export function setupEventListeners() {
         showToast('播放失败: ' + err.message, 'error');
         onStop();
       }
+    }
+  });
+
+  // ===== 批量录音按钮事件 =====
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#batchRecordBtnMain');
+    if (btn) {
+      e.stopPropagation();
+      enterBatchRecord();
     }
   });
 
