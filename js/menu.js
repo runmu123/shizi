@@ -600,7 +600,7 @@ export function setupMenuAndModals() {
               const cachedRes = await cache.match(baseUrl);
               if (cachedRes) return;
 
-              const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
+              const fetchOpts = cacheSuffix ? { cache: 'no-store' } : {};
               const res = await fetch(url, fetchOpts);
               if (res.ok) await cache.put(baseUrl, res.clone());
             } else {
