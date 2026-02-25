@@ -574,16 +574,20 @@ export function setupMenuAndModals() {
 
         await Promise.all(batch.map(async (file) => {
           try {
+            // 获取文件 URL
             const { data } = audioManager.supabase.storage
               .from(SUPABASE_CONFIG.bucket)
               .getPublicUrl(file.path);
-
+            
             const baseUrl = data.publicUrl;
-            const url = cacheSuffix
-              ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
+            
+            // 构造实际请求 URL（处理强制刷新后缀）
+            const suffix = cacheSuffix ? cacheSuffix.replace('?', '') : '';
+            const url = suffix
+              ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${suffix}`
               : baseUrl;
 
-            // 尝试获取或创建缓存
+            // 确保缓存对象存在
             if (!cache && 'caches' in window) {
               try {
                 cache = await caches.open(AUDIO_CACHE_NAME);
@@ -593,30 +597,47 @@ export function setupMenuAndModals() {
             }
 
             if (cache) {
-              // 如果是强制刷新，先删除旧缓存
-              if (cacheSuffix) {
-                await cache.delete(baseUrl);
+              // 1. 检查是否存在有效缓存
+              // 如果设置了强制刷新后缀，则视为无效，需要重新下载
+              const matchReq = new Request(baseUrl);
+              const cachedRes = await cache.match(matchReq);
+              
+              if (cachedRes && !cacheSuffix) {
+                // 有缓存且非强制刷新，跳过下载
+                return;
               }
-              const cachedRes = await cache.match(baseUrl);
-              if (cachedRes) return;
 
-              const fetchOpts = cacheSuffix ? { cache: 'no-store' } : {};
+              // 2. 强制刷新模式下，先清理旧缓存
+              if (cacheSuffix) {
+                await cache.delete(matchReq);
+              }
+
+              // 3. 执行网络请求下载
+              // cache: 'reload' 确保从网络获取，不读取 HTTP 缓存
+              const fetchOpts = { cache: 'reload' };
               const res = await fetch(url, fetchOpts);
-              if (res.ok) await cache.put(baseUrl, res.clone());
+              
+              if (res.ok) {
+                // 4. 存入 Cache API
+                // 注意：这里使用 baseUrl (不带后缀) 作为 key，确保后续播放时能命中
+                // 响应必须 clone，因为 put 会消耗 body
+                await cache.put(matchReq, res.clone());
+              }
             } else {
-              // 浏览器不支持缓存 API，仍然下载但不缓存
+              // 浏览器不支持缓存 API，仍然下载但不缓存（仅预热 HTTP 缓存）
               const res = await fetch(url);
-              if (res.ok) await res.blob();
+              if (res.ok) await res.blob(); // 消耗流
             }
           } catch (e) {
             console.warn('下载失败', file.path, e);
-          } finally {
-            downloaded++;
-            const pct = (downloaded / total) * 100;
-            progressFill.style.width = `${pct}%`;
-            progressText.textContent = `${downloaded}/${total}`;
           }
         }));
+
+        // 更新进度条（每批次更新一次 DOM，减少重绘）
+        downloaded = Math.min(downloaded + batch.length, total);
+        const pct = (downloaded / total) * 100;
+        progressFill.style.width = `${pct}%`;
+        progressText.textContent = `${downloaded}/${total}`;
       }
 
       showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
