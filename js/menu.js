@@ -9,6 +9,7 @@ export function setupMenuAndModals() {
   audioManager.init();
 
   let scrollPosition = 0;
+  let batchSize = 20; // 默认批次大小
 
   function lockScroll() {
     scrollPosition = window.scrollY;
@@ -497,7 +498,42 @@ export function setupMenuAndModals() {
   });
 
   // ===== 下载语音数据 =====
-  document.getElementById('menuDownload').addEventListener('click', async () => {
+  document.getElementById('menuDownload').addEventListener('click', () => {
+    // 显示批次大小输入弹窗
+    const modal = document.getElementById('batchSizeModal');
+    const input = document.getElementById('batchSizeInput');
+    if (modal && input) {
+      input.value = batchSize;
+      modal.classList.add('active');
+      lockScroll();
+      input.focus();
+    }
+  });
+
+  // ===== 批次大小弹窗事件 =====
+  document.getElementById('confirmBatchSize').addEventListener('click', () => {
+    const input = document.getElementById('batchSizeInput');
+    const modal = document.getElementById('batchSizeModal');
+    const value = parseInt(input.value);
+
+    if (value && value >= 1 && value <= 100) {
+      batchSize = value;
+      modal.classList.remove('active');
+      unlockScroll();
+      startDownload();
+    } else {
+      showToast('请输入1-100之间的数字', 'error');
+    }
+  });
+
+  document.getElementById('cancelBatchSize').addEventListener('click', () => {
+    const modal = document.getElementById('batchSizeModal');
+    modal.classList.remove('active');
+    unlockScroll();
+  });
+
+  // 开始下载
+  async function startDownload() {
     if (!audioManager.supabase) {
       showToast('数据库未连接', 'error');
       return;
@@ -532,11 +568,10 @@ export function setupMenuAndModals() {
         }
       }
 
-      // 分批下载，每批50个
-      const batchSize = 50;
+      // 分批下载，每批用户指定的数量
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
-        
+
         await Promise.all(batch.map(async (file) => {
           try {
             const { data } = audioManager.supabase.storage
@@ -584,7 +619,7 @@ export function setupMenuAndModals() {
         progressDiv.style.display = 'none';
       }, 2000);
     }
-  });
+  }
 
   // ===== 清除缓存 =====
   document.getElementById('menuClearCache').addEventListener('click', async () => {

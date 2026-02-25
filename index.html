@@ -1579,6 +1579,21 @@
     </div>
   </div>
 
+  <!-- 批次大小输入弹窗 -->
+  <div class="modal-overlay" id="batchSizeModal">
+    <div class="modal-box">
+      <div class="modal-title">设置下载批次大小</div>
+      <div style="margin-bottom: 16px; color: #6b7280; font-size: 0.9rem;">
+        每批并行下载的文件数量，建议性能较差的手机使用较小的值
+      </div>
+      <input type="number" class="modal-input" id="batchSizeInput" placeholder="批次大小" min="1" max="100" value="50">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelBatchSize">取消</button>
+        <button class="modal-btn confirm" id="confirmBatchSize">确认</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 统计弹窗 -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal-box" style="max-width: 600px; width: 90%;">
