@@ -532,42 +532,48 @@ export function setupMenuAndModals() {
         }
       }
 
-      await Promise.all(files.map(async (file) => {
-        try {
-          const { data } = audioManager.supabase.storage
-            .from(SUPABASE_CONFIG.bucket)
-            .getPublicUrl(file.path);
+      // 分批下载，每批50个
+      const batchSize = 50;
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (file) => {
+          try {
+            const { data } = audioManager.supabase.storage
+              .from(SUPABASE_CONFIG.bucket)
+              .getPublicUrl(file.path);
 
-          const baseUrl = data.publicUrl;
-          const url = cacheSuffix
-            ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
-            : baseUrl;
+            const baseUrl = data.publicUrl;
+            const url = cacheSuffix
+              ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
+              : baseUrl;
 
-          if (cache) {
-            // 如果是强制刷新，先删除旧缓存
-            if (cacheSuffix) {
-              await cache.delete(baseUrl);
+            if (cache) {
+              // 如果是强制刷新，先删除旧缓存
+              if (cacheSuffix) {
+                await cache.delete(baseUrl);
+              }
+              const cachedRes = await cache.match(baseUrl);
+              if (cachedRes) return;
+
+              const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
+              const res = await fetch(url, fetchOpts);
+              if (res.ok) await cache.put(baseUrl, res.clone());
+            } else {
+              const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
+              const res = await fetch(url, fetchOpts);
+              if (res.ok) await res.blob();
             }
-            const cachedRes = await cache.match(baseUrl);
-            if (cachedRes) return;
-
-            const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
-            const res = await fetch(url, fetchOpts);
-            if (res.ok) await cache.put(baseUrl, res.clone()); // 存入 clone 后的响应
-          } else {
-            const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
-            const res = await fetch(url, fetchOpts);
-            if (res.ok) await res.blob();
+          } catch (e) {
+            console.warn('下载失败', file.path, e);
+          } finally {
+            downloaded++;
+            const pct = (downloaded / total) * 100;
+            progressFill.style.width = `${pct}%`;
+            progressText.textContent = `${downloaded}/${total}`;
           }
-        } catch (e) {
-          console.warn('下载失败', file.path, e);
-        } finally {
-          downloaded++;
-          const pct = (downloaded / total) * 100;
-          progressFill.style.width = `${pct}%`;
-          progressText.textContent = `${downloaded}/${total}`;
-        }
-      }));
+        }));
+      }
 
       showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
     } catch (e) {
