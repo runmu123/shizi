@@ -5,14 +5,10 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
       - 'index.html'         # Main HTML file
       - 'js/**'              # JavaScript files
       - 'yaml/**'            # YAML data files
-      - 'css/**'             # CSS files
-      - 'assets/**'          # Static assets
-      - 'package.json'       # Dependency changes (if exists)
 
   # Manual trigger option
   workflow_dispatch:
@@ -40,13 +36,5 @@ jobs:
           # Set up PinMe authentication
           pinme set-appkey "$PINME_APPKEY"
           
-          # Deploy with custom or default domain
-          if [ -n "${{ github.event.inputs.domain }}" ]; then
-            DOMAIN="${{ github.event.inputs.domain }}"
-          else
-            # Auto-generate domain from repository name
-            DOMAIN=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
-          fi
-          
-          # Upload entire project directory
-          pinme upload "." --domain "$DOMAIN"
+          # Upload entire project directory without domain binding
+          pinme upload "."
