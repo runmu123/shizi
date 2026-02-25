@@ -583,6 +583,15 @@ export function setupMenuAndModals() {
               ? `${baseUrl}${baseUrl.includes('?') ? '&' : ''}${cacheSuffix.replace('?', '')}`
               : baseUrl;
 
+            // 尝试获取或创建缓存
+            if (!cache && 'caches' in window) {
+              try {
+                cache = await caches.open(AUDIO_CACHE_NAME);
+              } catch (e) {
+                console.warn('打开缓存失败:', e);
+              }
+            }
+
             if (cache) {
               // 如果是强制刷新，先删除旧缓存
               if (cacheSuffix) {
@@ -595,8 +604,8 @@ export function setupMenuAndModals() {
               const res = await fetch(url, fetchOpts);
               if (res.ok) await cache.put(baseUrl, res.clone());
             } else {
-              const fetchOpts = cacheSuffix ? { cache: 'reload' } : {};
-              const res = await fetch(url, fetchOpts);
+              // 浏览器不支持缓存 API，仍然下载但不缓存
+              const res = await fetch(url);
               if (res.ok) await res.blob();
             }
           } catch (e) {
