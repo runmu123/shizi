@@ -22,22 +22,23 @@
       // 1. 注入 config.js (带有时间戳)
       const configScript = document.createElement('script');
       configScript.src = `js/config.js${suffix}`;
-      configScript.async = false; // 保证按顺序执行
+      configScript.async = false;
       document.head.appendChild(configScript);
 
-      // 2. 注入 audio-manager.js (带有时间戳)
+      // 2. 注入 audio-manager.js (带有时间戳)，等待加载完成
       const audioScript = document.createElement('script');
       audioScript.src = `js/audio-manager.js${suffix}`;
-      audioScript.async = false; // 保证在 config.js 之后
+      audioScript.async = false;
+      audioScript.onload = () => {
+        // audio-manager.js 加载完成后，再加载 main.js
+        const mainScript = document.createElement('script');
+        mainScript.type = 'module';
+        mainScript.src = `js/main.js${suffix}`;
+        document.head.appendChild(mainScript);
+      };
       document.head.appendChild(audioScript);
 
-      // 3. 注入 main.js (带有时间戳)
-      const mainScript = document.createElement('script');
-      mainScript.type = 'module';
-      mainScript.src = `js/main.js${suffix}`;
-      document.head.appendChild(mainScript);
-
-      // 4. 预加载核心模块
+      // 3. 预加载核心模块
       const modules = [
         'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
         'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js', 'js/batch-record.js'
