@@ -110,10 +110,15 @@ function renderLeftPanel() {
       textSpan.textContent = item.text;
       itemDiv.appendChild(textSpan);
 
+      // 创建状态容器
+      const statusContainer = document.createElement('div');
+      statusContainer.style.display = 'flex';
+      statusContainer.style.alignItems = 'center';
+      
       const typeSpan = document.createElement('span');
-      typeSpan.className = 'batch-record-item-type';
+      typeSpan.className = 'item-type';
       typeSpan.textContent = item.typeLabel;
-      itemDiv.appendChild(typeSpan);
+      statusContainer.appendChild(typeSpan);
 
       const statusSpan = document.createElement('span');
       statusSpan.className = 'item-status';
@@ -123,7 +128,9 @@ function renderLeftPanel() {
       } else {
         statusSpan.textContent = '待录音';
       }
-      itemDiv.appendChild(statusSpan);
+      statusContainer.appendChild(statusSpan);
+      
+      itemDiv.appendChild(statusContainer);
 
       itemDiv.addEventListener('click', () => {
         selectItem(item.index);

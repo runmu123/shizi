@@ -10,7 +10,7 @@ class AudioManager {
 
   init() {
     if (this.supabase) return;
-    
+
     if (typeof supabase === 'undefined') {
       console.error('Supabase 库未加载');
       return;
@@ -30,11 +30,11 @@ class AudioManager {
 
     const match = unit.match(/第(.+)单元/);
     if (!match) return unit;
-    
+
     const s = match[1];
     const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
     const units = { '十': 10, '百': 100, '千': 1000 };
-    
+
     let result = 0;
     let temp = 0;
     let hasNum = false;
@@ -52,7 +52,7 @@ class AudioManager {
       }
     }
     result += temp;
-    
+
     // 如果无法解析且不含数字字符，返回原始字符串
     if (!hasNum) return s;
 
@@ -62,11 +62,11 @@ class AudioManager {
   // 获取拼音（如 "口" -> "kou"）
   getPinyin(char) {
     if (typeof pinyinPro !== 'undefined') {
-       return pinyinPro.pinyin(char, { 
-         toneType: 'none', 
-         separator: '',
-         nonZh: 'consecutive' 
-       }).replace(/\s+/g, '').replace(/ü/g, 'v');
+      return pinyinPro.pinyin(char, {
+        toneType: 'none',
+        separator: '',
+        nonZh: 'consecutive'
+      }).replace(/\s+/g, '').replace(/ü/g, 'v');
     }
     return char;
   }
@@ -75,28 +75,28 @@ class AudioManager {
   getFilePath(level, unit, char, text, type, index) {
     const unitCode = this.getUnitCode(unit);
     const charPy = this.getPinyin(char);
-    
+
     const safeLevel = encodeURIComponent(level);
     const safeUnit = encodeURIComponent(`Unit_${unitCode}`);
     const safeChar = encodeURIComponent(charPy);
-    
+
     let filename = '';
     if (type === 'char') {
       filename = 'char.mp3';
     } else if (type === 'sentence') {
       filename = 'sentence.mp3';
     } else if (type === 'word') {
-       if (index !== undefined && index !== null) {
-         filename = `word_${index + 1}.mp3`;
-       } else {
-         const hash = md5(text.trim());
-         filename = `word_${hash}.mp3`; 
-       }
+      if (index !== undefined && index !== null) {
+        filename = `word_${index + 1}.mp3`;
+      } else {
+        const hash = md5(text.trim());
+        filename = `word_${hash}.mp3`;
+      }
     } else {
-       const hash = md5(text.trim());
-       filename = `${hash}.mp3`;
+      const hash = md5(text.trim());
+      filename = `${hash}.mp3`;
     }
-    
+
     return `${safeLevel}/${safeUnit}/${safeChar}/${filename}`;
   }
 
@@ -156,12 +156,12 @@ class AudioManager {
 
   async uploadAudio(blob, level, unit, char, text, type, index) {
     this.init();
-    
+
     if (!type) {
-        console.warn('上传缺少类型，正在推断');
-        if (text === char) type = 'char';
-        else if (text.length > 1 && !text.includes(' ')) type = 'word';
-        else type = 'sentence';
+      console.warn('上传缺少类型，正在推断');
+      if (text === char) type = 'char';
+      else if (text.length > 1 && !text.includes(' ')) type = 'word';
+      else type = 'sentence';
     }
 
     const filePath = this.getFilePath(level, unit, char, text, type, index);
@@ -184,7 +184,7 @@ class AudioManager {
         console.error('Supabase 上传错误:', error);
         throw error;
       }
-      
+
       console.log('上传成功:', data);
 
       // 写入 audio_records 表
@@ -229,9 +229,9 @@ class AudioManager {
       .select('*', { count: 'exact', head: false })
       .eq('type', 'char')
       .limit(1);
-    
+
     if (error) {
-        console.error('统计音频数量失败:', error);
+      console.error('统计音频数量失败:', error);
     }
 
     const { data: latest, error: latestError } = await this.supabase
@@ -241,9 +241,9 @@ class AudioManager {
       .limit(1)
       .maybeSingle();
 
-    return { 
-      charCount: count || 0, 
-      latest: latest 
+    return {
+      charCount: count || 0,
+      latest: latest
     };
   }
 
@@ -276,79 +276,79 @@ class AudioManager {
       .storage
       .from(SUPABASE_CONFIG.bucket)
       .getPublicUrl(filePath);
-    
+
     const baseUrl = data.publicUrl;
     // 添加时间戳绕过 CDN 缓存
     const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     let playUrl = url;
-    
+
     // 停止当前播放并触发回调
     this.stopCurrentAudio();
 
     // 从缓存读取或从服务器获取
     if ('caches' in window) {
-       try {
-          const cache = await caches.open('shizi-audio-cache');
-          const cached = await cache.match(baseUrl);
-          if (cached) {
-             const blob = await cached.blob();
-             playUrl = URL.createObjectURL(blob);
-             console.log('从缓存播放:', baseUrl);
-          } else {
-             try {
-                // 使用 no-store 避免重复存储到 HTTP Cache
-                const fetched = await fetch(url, { cache: 'no-store' });
-                if (fetched.ok) {
-                   await cache.put(baseUrl, fetched.clone());
-                   const blob = await fetched.blob();
-                   playUrl = URL.createObjectURL(blob);
-                }
-             } catch (fetchErr) {
-                console.warn('播放时缓存音频失败:', fetchErr);
-             }
+      try {
+        const cache = await caches.open('shizi-audio-cache');
+        const cached = await cache.match(baseUrl);
+        if (cached) {
+          const blob = await cached.blob();
+          playUrl = URL.createObjectURL(blob);
+          console.log('从缓存播放:', baseUrl);
+        } else {
+          try {
+            // 使用 no-store 避免重复存储到 HTTP Cache
+            const fetched = await fetch(url, { cache: 'no-store' });
+            if (fetched.ok) {
+              await cache.put(baseUrl, fetched.clone());
+              const blob = await fetched.blob();
+              playUrl = URL.createObjectURL(blob);
+            }
+          } catch (fetchErr) {
+            console.warn('播放时缓存音频失败:', fetchErr);
           }
-       } catch (e) {
-          console.warn('缓存操作失败:', e);
-       }
+        }
+      } catch (e) {
+        console.warn('缓存操作失败:', e);
+      }
     }
 
     // 播放
     try {
-        // 释放之前的 blob URL 避免内存泄漏
-        if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
-           URL.revokeObjectURL(this.currentAudioUrl);
-        }
-        this.currentAudioUrl = playUrl;
+      // 释放之前的 blob URL 避免内存泄漏
+      if (this.currentAudioUrl && this.currentAudioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(this.currentAudioUrl);
+      }
+      this.currentAudioUrl = playUrl;
 
-        this.currentAudio = new Audio(playUrl);
-        this.onStopCallback = onStopCallback;
+      this.currentAudio = new Audio(playUrl);
+      this.onStopCallback = onStopCallback;
 
-        this.currentAudio.onended = () => {
-          if (this.onStopCallback) {
-            this.onStopCallback();
-            this.onStopCallback = null;
-          }
-          this.currentAudio = null;
-        };
-
-        this.currentAudio.onerror = (e) => {
-          console.warn('音频播放错误', e);
-          if (this.onStopCallback) {
-            this.onStopCallback();
-            this.onStopCallback = null;
-          }
-          this.currentAudio = null;
-        };
-        
-        await this.currentAudio.play();
-        return true;
-    } catch (e) {
-        console.warn('音频播放失败（可能不存在）:', e);
+      this.currentAudio.onended = () => {
         if (this.onStopCallback) {
-             this.onStopCallback();
-             this.onStopCallback = null;
+          this.onStopCallback();
+          this.onStopCallback = null;
         }
-        return false;
+        this.currentAudio = null;
+      };
+
+      this.currentAudio.onerror = (e) => {
+        console.warn('音频播放错误', e);
+        if (this.onStopCallback) {
+          this.onStopCallback();
+          this.onStopCallback = null;
+        }
+        this.currentAudio = null;
+      };
+
+      await this.currentAudio.play();
+      return true;
+    } catch (e) {
+      console.warn('音频播放失败（可能不存在）:', e);
+      if (this.onStopCallback) {
+        this.onStopCallback();
+        this.onStopCallback = null;
+      }
+      return false;
     }
   }
 }

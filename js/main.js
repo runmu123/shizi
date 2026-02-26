@@ -5,6 +5,7 @@ import { initLevels, loadLevel, setupEventListeners, switchTeachingMode } from '
 import { setupMenuAndModals } from './menu.js';
 import { setupLearningEvents } from './learning.js';
 import { setupBatchRecordEvents, enterBatchRecord } from './batch-record.js';
+import { setupBatchPlayEvents, enterBatchPlay } from './batch-play.js';
 
 // 初始化全局音频管理器缓存后缀
 if (window.audioManager) {
@@ -15,6 +16,7 @@ if (window.audioManager) {
 setupMenuAndModals();
 setupLearningEvents();
 setupBatchRecordEvents();
+setupBatchPlayEvents();
 
 (async () => {
   const savedPos = loadSavedPosition();

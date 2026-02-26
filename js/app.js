@@ -6,6 +6,7 @@ import { saveCurrentPosition } from './position.js';
 import { renderUnit, renderSearchResult, escapeHtml } from './ui.js';
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
 import { enterBatchRecord } from './batch-record.js';
+import { enterBatchPlay } from './batch-play.js';
 
 // ===== 级别初始化 =====
 export async function initLevels() {
@@ -184,22 +185,23 @@ export function switchTeachingMode(enable) {
   const modeOptions = document.querySelectorAll('.mode-option');
   const unitNavigator = document.querySelector('.unit-navigator');
   const searchInput = document.getElementById('searchInput');
+  const batchPlayBtn = document.getElementById('batchPlayBtnMain');
+  const batchRecordBtn = document.getElementById('batchRecordBtnMain');
 
   currentModeBtn.textContent = state.isTeachingMode ? '教学模式' : '学习模式';
   const activeMode = state.isTeachingMode ? 'teach' : 'learn';
   modeOptions.forEach(o => o.classList.toggle('active', o.dataset.mode === activeMode));
 
-  // 重新渲染
-  if (unitNavigator.style.visibility === 'hidden') {
-    const val = searchInput.value.trim();
-    if (val && val.length === 1) {
-      searchChar(val);
-    } else {
-      renderUnit();
-    }
-  } else {
-    renderUnit();
+  // 控制批量按钮的显示/隐藏
+  if (batchPlayBtn) {
+    batchPlayBtn.style.display = state.isTeachingMode ? 'block' : 'none';
   }
+  if (batchRecordBtn) {
+    batchRecordBtn.style.display = state.isTeachingMode ? 'block' : 'none';
+  }
+
+  // 重新渲染
+  renderUnit();
 
   // 更新学习视图按钮
   if (document.getElementById('learningView').classList.contains('active')) {
@@ -297,33 +299,33 @@ export function setupEventListeners() {
 
   modeOptions.forEach(opt => {
     opt.addEventListener('click', () => {
-        const mode = opt.dataset.mode;
-        const newModeIsTeaching = (mode === 'teach');
+      const mode = opt.dataset.mode;
+      const newModeIsTeaching = (mode === 'teach');
 
-        if (state.isTeachingMode !== newModeIsTeaching) {
-          if (newModeIsTeaching) {
-            modeDropdown.classList.remove('show');
-            currentModeBtn.classList.remove('active');
-            const currentUser = localStorage.getItem(USER_KEY);
-            if (currentUser === 'admin') {
-              switchTeachingMode(true);
-            } else {
-              passwordModal.classList.add('active');
-              lockScroll();
-              passwordInput.value = '';
-              passwordError.style.display = 'none';
-              passwordInput.focus();
-            }
+      if (state.isTeachingMode !== newModeIsTeaching) {
+        if (newModeIsTeaching) {
+          modeDropdown.classList.remove('show');
+          currentModeBtn.classList.remove('active');
+          const currentUser = localStorage.getItem(USER_KEY);
+          if (currentUser === 'admin') {
+            switchTeachingMode(true);
           } else {
-            switchTeachingMode(false);
-            modeDropdown.classList.remove('show');
-            currentModeBtn.classList.remove('active');
+            passwordModal.classList.add('active');
+            lockScroll();
+            passwordInput.value = '';
+            passwordError.style.display = 'none';
+            passwordInput.focus();
           }
         } else {
+          switchTeachingMode(false);
           modeDropdown.classList.remove('show');
           currentModeBtn.classList.remove('active');
         }
-      });
+      } else {
+        modeDropdown.classList.remove('show');
+        currentModeBtn.classList.remove('active');
+      }
+    });
   });
 
   // ===== 密码弹窗 =====
@@ -547,6 +549,15 @@ export function setupEventListeners() {
     if (btn) {
       e.stopPropagation();
       enterBatchRecord();
+    }
+  });
+
+  // ===== 批量播放按钮事件 =====
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#batchPlayBtnMain');
+    if (btn) {
+      e.stopPropagation();
+      enterBatchPlay();
     }
   });
 

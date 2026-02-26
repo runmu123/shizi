@@ -61,6 +61,11 @@ export function renderUnit() {
           <use href="#icon-mic"></use>
         </svg>
       </button>
+      <button class="play-btn" title="批量播放" id="batchPlayBtnMain" style="float: right; margin-right: 10px;">
+        <svg style="width:20px;height:20px;">
+          <use href="#icon-play"></use>
+        </svg>
+      </button>
     `;
   }
   
