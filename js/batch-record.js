@@ -1,6 +1,9 @@
 // 批量录音功能模块
 import { state } from './state.js';
 import { showToast } from './toast.js';
+import { showQuizToast } from './toast.js';
+import { USER_KEY } from './constants.js';
+import { escapeHtml, renderUnit } from './ui.js';
 
 // 批量录音状态
 const batchState = {
@@ -332,29 +335,49 @@ async function uploadCachedAudio() {
 
   showUploadingModal(0, cacheKeys.length);
 
-  for (let i = 0; i < cacheKeys.length; i++) {
-    const index = parseInt(cacheKeys[i]);
+  // 按 rootChar 分组
+  const groups = {};
+  for (const key of cacheKeys) {
+    const index = parseInt(key);
     const blob = batchState.audioCache[index];
     if (!blob) continue;
 
     const item = batchState.items[index];
-    try {
-      await audioManager.uploadAudio(
-        blob,
-        level,
-        unit,
-        item.rootChar,
-        item.text,
-        item.type,
-        item.index
-      );
-      uploadedCount++;
-      showUploadingModal(uploadedCount, cacheKeys.length);
-    } catch (err) {
-      console.error('上传失败:', err);
-      failedCount++;
+    const rootChar = item.rootChar;
+
+    if (!groups[rootChar]) {
+      groups[rootChar] = [];
     }
+    groups[rootChar].push({ index, blob, item });
   }
+
+  // 并行处理每个分组
+  const groupPromises = Object.values(groups).map(async (groupItems) => {
+    // 组内串行处理
+    // 为了保证字、词、句的顺序，可以先按 index 排序（可选，但通常 item.index 是线性的）
+    groupItems.sort((a, b) => a.index - b.index);
+
+    for (const { item, blob } of groupItems) {
+      try {
+        await audioManager.uploadAudio(
+          blob,
+          level,
+          unit,
+          item.rootChar,
+          item.text,
+          item.type,
+          item.index
+        );
+        uploadedCount++;
+        showUploadingModal(uploadedCount, cacheKeys.length);
+      } catch (err) {
+        console.error('上传失败:', err);
+        failedCount++;
+      }
+    }
+  });
+
+  await Promise.all(groupPromises);
 
   hideUploadingModal();
 
@@ -435,6 +458,13 @@ function loadBatchUnit() {
   updateCurrentInfo();
   updateRecordButton();
 
+  // 更新单元标题
+  const unitTitle = document.getElementById('batchRecordUnitTitle');
+  if (unitTitle) {
+    const unitName = state.unitKeys[state.currentUnitIndex];
+    unitTitle.textContent = `(${unitName})`;
+  }
+
   // 滚动到顶部
   const leftPanel = document.getElementById('batchRecordLeft');
   if (leftPanel) {
@@ -478,6 +508,9 @@ export function exitBatchRecord() {
   navbar.style.display = 'flex';
   toolbar.style.display = 'flex';
   app.style.display = 'flex';
+
+  // 确保返回后显示的是当前单元
+  renderUnit();
 }
 
 // 设置批量录音事件监听
