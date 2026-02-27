@@ -488,6 +488,20 @@ export function setupEventListeners() {
 
   // ===== 点击汉字进入学习模式 =====
   appEl.addEventListener('click', (e) => {
+    const unitCharLink = e.target.closest('.unit-char-link');
+    if (unitCharLink) {
+      const targetChar = unitCharLink.dataset.char;
+      const targetCard = targetChar ? appEl.querySelector(`.card[data-char="${targetChar}"]`) : null;
+      if (targetCard) {
+        const navbarHeight = document.querySelector('.navbar')?.offsetHeight || 0;
+        const toolbarHeight = document.querySelector('.toolbar')?.offsetHeight || 0;
+        const topOffset = navbarHeight + toolbarHeight + 12;
+        const targetTop = targetCard.getBoundingClientRect().top + window.scrollY - topOffset;
+        window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      }
+      return;
+    }
+
     const charBox = e.target.closest('.char-box');
     if (charBox) {
       const charText = charBox.querySelector('.char-text');

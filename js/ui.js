@@ -84,7 +84,7 @@ export function renderUnit() {
           font-size: 1.5rem;
           font-family: 'KaiTi', 'STKaiti', serif;
         ">
-          ${allChars.map(escapeHtml).join('，')}
+          ${allChars.map(c => `<span class="unit-char-link" data-char="${escapeHtml(c)}" style="cursor:pointer; user-select:none; margin: 0 2px;">${escapeHtml(c)}</span>`).join('，')}
         </div>
       `;
     }
@@ -102,7 +102,7 @@ export function renderUnit() {
       const sentenceHtml = highlightChar(sentence, char);
 
       html += `
-        <div class="card">
+        <div class="card" data-char="${escapeHtml(char)}">
           <div class="char-header-container">
             <div class="char-with-btn">
               <div class="char-box">
