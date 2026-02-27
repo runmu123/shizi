@@ -18,6 +18,26 @@
     (() => {
       const shouldForceRefresh = sessionStorage.getItem('shizi_force_refresh') === 'true';
       const suffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
+      const modules = [
+        'js/main.js', 'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
+        'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js',
+        'js/batch-record.js', 'js/batch-play.js'
+      ];
+
+      // 强制刷新时，为 ES Module 依赖链注入统一时间戳映射
+      // 这样 main.js 的静态 import 也会命中带后缀的新 URL
+      if (shouldForceRefresh) {
+        const imports = {};
+        modules.forEach((path) => {
+          const specifier = `./${path.replace('js/', '')}`;
+          imports[specifier] = `./${path}${suffix}`;
+        });
+
+        const importMapScript = document.createElement('script');
+        importMapScript.type = 'importmap';
+        importMapScript.textContent = JSON.stringify({ imports });
+        document.head.appendChild(importMapScript);
+      }
 
       // 1. 注入 config.js (带有时间戳)
       const configScript = document.createElement('script');
@@ -39,10 +59,6 @@
       document.head.appendChild(audioScript);
 
       // 3. 预加载核心模块
-      const modules = [
-        'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
-        'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js', 'js/batch-record.js'
-      ];
       modules.forEach(path => {
         const link = document.createElement('link');
         link.rel = 'modulepreload';
