@@ -197,7 +197,7 @@ function startAudioLoop(char, level, unit) {
         onStop();
       }
     } catch (e) {
-      console.error(e);
+      showToast('播放失败: ' + (e?.message || e), 'error');
       state.isLoopingAudio = false;
       onStop();
     }

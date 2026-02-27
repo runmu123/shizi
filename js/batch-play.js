@@ -267,7 +267,6 @@ async function playCurrent() {
       onStop();
     }
   } catch (err) {
-    console.error('播放失败:', err);
     showToast('播放失败: ' + err.message, 'error');
     batchState.isPlaying = false;
     updatePlayButton();
@@ -362,7 +361,6 @@ async function playQueueItem() {
       setTimeout(playQueueItem, 100);
     }
   } catch (err) {
-    console.error('队列播放失败:', err);
     showToast(`项目 ${item.text} 播放失败，跳过`, 'error');
     batchState.queueIndex++;
     setTimeout(playQueueItem, 100);
@@ -453,7 +451,7 @@ export function exitBatchPlay() {
 
   // 如果正在播放，先停止
   if (batchState.isPlaying) {
-    audioManager.stopCurrentAudio().catch(err => console.error(err));
+    audioManager.stopCurrentAudio().catch(err => showToast('停止播放失败: ' + (err?.message || err), 'error'));
     batchState.isPlaying = false;
   }
 

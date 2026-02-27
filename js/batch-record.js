@@ -407,7 +407,7 @@ async function uploadCachedAudio() {
         uploadedCount++;
         showUploadingModal(uploadedCount, cacheKeys.length);
       } catch (err) {
-        console.error('上传失败:', err);
+        showToast('上传失败: ' + (err?.message || err), 'error');
         failedCount++;
       }
     }
@@ -536,7 +536,7 @@ export function exitBatchRecord() {
 
   // 如果正在录音，先停止
   if (batchState.isRecording) {
-    audioManager.stopRecording().catch(err => console.error(err));
+    audioManager.stopRecording().catch(err => showToast('停止录音失败: ' + (err?.message || err), 'error'));
     batchState.isRecording = false;
   }
 

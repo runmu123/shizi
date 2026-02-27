@@ -550,7 +550,6 @@ export function setupEventListeners() {
             showToast('录音失败：未获取到音频数据', 'error');
           }
         } catch (err) {
-          console.error(err);
           showToast('上传失败: ' + err.message, 'error');
         } finally {
           btn.classList.remove('recording-processing');
@@ -598,7 +597,6 @@ export function setupEventListeners() {
           onStop();
         }
       } catch (err) {
-        console.error(err);
         showToast('播放失败: ' + err.message, 'error');
         onStop();
       }
