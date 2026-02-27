@@ -239,6 +239,9 @@ async function stopRecording() {
 
     if (blob) {
       // 缓存到本地（覆盖旧的）
+      playRecordedBlob(blob).catch(err => {
+        showToast('录音预览播放失败: ' + err.message, 'error');
+      });
       batchState.audioCache[batchState.currentIndex] = blob;
       // 标记为已完成
       batchState.completed.add(batchState.currentIndex);
@@ -255,6 +258,32 @@ async function stopRecording() {
 }
 
 // 切换录音状态
+function playRecordedBlob(blob) {
+  return new Promise((resolve, reject) => {
+    if (!blob || blob.size === 0) {
+      resolve(false);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(blob);
+    const previewAudio = new Audio(previewUrl);
+    const cleanup = () => URL.revokeObjectURL(previewUrl);
+
+    previewAudio.onended = () => {
+      cleanup();
+      resolve(true);
+    };
+    previewAudio.onerror = (err) => {
+      cleanup();
+      reject(err);
+    };
+    previewAudio.play().catch((err) => {
+      cleanup();
+      reject(err);
+    });
+  });
+}
+
 function toggleRecording() {
   if (batchState.isRecording) {
     stopRecording();

@@ -251,6 +251,34 @@ function updateBtnIcon(btn, isTeaching) {
   btn.title = isTeaching ? '录音' : '播放';
 }
 
+// 播放刚录制完成的本地音频，便于老师即时检查
+function playRecordedBlob(blob) {
+  return new Promise((resolve, reject) => {
+    if (!blob || blob.size === 0) {
+      resolve(false);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(blob);
+    const previewAudio = new Audio(previewUrl);
+
+    const cleanup = () => URL.revokeObjectURL(previewUrl);
+
+    previewAudio.onended = () => {
+      cleanup();
+      resolve(true);
+    };
+    previewAudio.onerror = (err) => {
+      cleanup();
+      reject(err);
+    };
+    previewAudio.play().catch((err) => {
+      cleanup();
+      reject(err);
+    });
+  });
+}
+
 // ===== 事件绑定 =====
 export function setupEventListeners() {
   let scrollPosition = 0;
@@ -403,21 +431,24 @@ export function setupEventListeners() {
   });
 
   // ===== 导航按钮 =====
-  prevBtn.addEventListener('click', () => {
+  const goPrevUnit = () => {
     if (state.currentUnitIndex > 0) {
       state.currentUnitIndex--;
       renderUnit();
       saveCurrentPosition();
     }
-  });
+  };
 
-  nextBtn.addEventListener('click', () => {
+  const goNextUnit = () => {
     if (state.currentUnitIndex < state.unitKeys.length - 1) {
       state.currentUnitIndex++;
       renderUnit();
       saveCurrentPosition();
     }
-  });
+  };
+
+  prevBtn.addEventListener('click', goPrevUnit);
+  nextBtn.addEventListener('click', goNextUnit);
 
   unitSelect.addEventListener('change', (e) => {
     const idx = parseInt(e.target.value, 10);
@@ -425,6 +456,33 @@ export function setupEventListeners() {
       state.currentUnitIndex = idx;
       renderUnit();
       saveCurrentPosition();
+    }
+  });
+
+  // ===== 主页面键盘导航 =====
+  document.addEventListener('keydown', (e) => {
+    // 仅在主页面可见时生效，避免与学习/批量页面冲突
+    if (document.getElementById('learningView').classList.contains('active')) return;
+    if (document.getElementById('batchRecordView').classList.contains('active')) return;
+    if (document.getElementById('batchPlayView').classList.contains('active')) return;
+    if (document.getElementById('passwordModal').classList.contains('active')) return;
+
+    // 输入场景不拦截按键
+    if (
+      e.target.tagName === 'INPUT' ||
+      e.target.tagName === 'TEXTAREA' ||
+      e.target.tagName === 'SELECT' ||
+      e.target.isContentEditable
+    ) {
+      return;
+    }
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      goPrevUnit();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      goNextUnit();
     }
   });
 
@@ -482,6 +540,10 @@ export function setupEventListeners() {
         try {
           const blob = await audioManager.stopRecording();
           if (blob) {
+            // 并行执行：本地回放 + 上传
+            playRecordedBlob(blob).catch(err => {
+              showToast('录音预览播放失败: ' + err.message, 'error');
+            });
             await audioManager.uploadAudio(blob, level, unit, rootChar, text, type, index);
             showToast('上传成功！', 'success');
           } else {

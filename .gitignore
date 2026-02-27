@@ -6,3 +6,6 @@ CLAUDE.md
 .catpaw/
 .claude/
 .trae/
+audio/
+download_audio_optimized.py
+download_audio_fast.js

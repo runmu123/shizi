@@ -88,6 +88,7 @@ function renderLeftPanel() {
     groupItems.forEach(item => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'batch-record-item';
+      itemDiv.dataset.index = item.index;
       if (item.index === batchState.currentIndex) {
         itemDiv.classList.add('active');
       }
@@ -195,9 +196,22 @@ function updateQueuePlayButton() {
 
 // 选择项目
 function selectItem(index) {
+  if (index < 0 || index >= batchState.items.length) return;
+
   batchState.currentIndex = index;
   renderLeftPanel();
   updateCurrentInfo();
+
+  // 滚动到可视区域中间
+  setTimeout(() => {
+    const itemElement = document.querySelector(`.batch-record-item[data-index="${index}"]`);
+    if (itemElement) {
+      itemElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, 50);
 }
 
 // 更新当前内容信息
@@ -272,9 +286,7 @@ function stopCurrentAudio() {
 // 上一个项目
 function prevItem() {
   if (batchState.currentIndex > 0) {
-    batchState.currentIndex--;
-    renderLeftPanel();
-    updateCurrentInfo();
+    selectItem(batchState.currentIndex - 1);
   } else {
     showToast('已经是第一个项目', 'info');
   }
@@ -283,9 +295,7 @@ function prevItem() {
 // 下一个项目
 function nextItem() {
   if (batchState.currentIndex < batchState.items.length - 1) {
-    batchState.currentIndex++;
-    renderLeftPanel();
-    updateCurrentInfo();
+    selectItem(batchState.currentIndex + 1);
   } else {
     showToast('已经是最后一个项目', 'info');
   }
@@ -321,9 +331,7 @@ async function playQueueItem() {
   }
 
   // 选择当前队列项目
-  batchState.currentIndex = batchState.queueIndex;
-  renderLeftPanel();
-  updateCurrentInfo();
+  selectItem(batchState.queueIndex);
 
   // 播放当前项目
   const item = batchState.items[batchState.queueIndex];
