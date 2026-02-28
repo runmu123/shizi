@@ -8,4 +8,8 @@ CLAUDE.md
 .trae/
 audio/
 download_audio_optimized.py
-download_audio_fast.js
+js_download_script.js
+android_build/*
+args.yaml
+build.py
+shizi-app-debug.apk
