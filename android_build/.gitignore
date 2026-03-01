@@ -1,0 +1,31 @@
+# Android build files
+android/
+
+# Node.js dependencies
+node_modules/
+
+# Gradle files
+.gradle/
+build/
+
+# IDE files
+.idea/
+*.iml
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+js/
+www/
+yaml/
+icon.png
+index.html
+

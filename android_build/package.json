@@ -1,0 +1,18 @@
+{
+  "name": "shizi-android",
+  "version": "3.0",
+  "description": "识字 Android 应用",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Build completed'",
+    "sync": "npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/android": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@capacitor/cli": "^5.0.0"
+  }
+}

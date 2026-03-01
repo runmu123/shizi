@@ -9,8 +9,8 @@ CLAUDE.md
 audio/
 download_audio_optimized.py
 js_download_script.js
-android_build/
-android_build/*
+# android_build/
+# android_build/*
 args.yaml
-build.py
+# build.py
 shizi-app-debug.apk
