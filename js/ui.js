@@ -1,4 +1,4 @@
-// UI 渲染：卡片、搜索结果、HTML 工具函数
+﻿// UI 渲染：卡片、搜索结果、HTML 工具函数
 import { state } from './state.js';
 
 export function escapeHtml(str) {
@@ -51,25 +51,11 @@ export function renderUnit() {
   nextBtn.disabled = state.currentUnitIndex === state.unitKeys.length - 1;
 
   // 渲染卡片
-  let html = `<div class="unit-title">${escapeHtml(unitName)}`;
-  
-  // 教学模式下显示批量录音按钮
-  if (state.isTeachingMode) {
-    html += `
-      <button class="play-btn" title="批量录音" id="batchRecordBtnMain" style="float: right; margin-right: 10px;">
-        <svg style="width:20px;height:20px;">
-          <use href="#icon-mic"></use>
-        </svg>
-      </button>
-      <button class="play-btn" title="批量播放" id="batchPlayBtnMain" style="float: right; margin-right: 10px;">
-        <svg style="width:20px;height:20px;">
-          <use href="#icon-play"></use>
-        </svg>
-      </button>
-    `;
-  }
-  
-  html += `</div>`;
+  let html = `
+    <div class="unit-title">
+      <span class="unit-title-text">${escapeHtml(unitName)}</span>
+    </div>
+  `;
 
   if (unitChars) {
     // 生成单元摘要

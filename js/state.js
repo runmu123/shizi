@@ -1,12 +1,14 @@
 // 共享可变状态
-const forceRefreshKey = 'shizi_force_refresh';
-const shouldForceRefresh = sessionStorage.getItem(forceRefreshKey) === 'true';
+const forceRefreshTokenKey = 'shizi_force_refresh_token';
+const urlToken = new URLSearchParams(window.location.search).get('t');
+const sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
+const refreshToken = urlToken || sessionToken || '';
 
-if (shouldForceRefresh) {
-  sessionStorage.removeItem(forceRefreshKey);
+if (sessionToken) {
+  sessionStorage.removeItem(forceRefreshTokenKey);
 }
 
-export const cacheSuffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
+export const cacheSuffix = refreshToken ? `?t=${encodeURIComponent(refreshToken)}` : '';
 
 export const state = {
   LEVELS: [],

@@ -16,8 +16,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
   <script>
     (() => {
-      const shouldForceRefresh = sessionStorage.getItem('shizi_force_refresh') === 'true';
-      const suffix = shouldForceRefresh ? `?t=${Date.now()}` : '';
+      const forceRefreshTokenKey = 'shizi_force_refresh_token';
+      const urlToken = new URLSearchParams(window.location.search).get('t');
+      const sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
+      const refreshToken = urlToken || sessionToken || '';
+      const shouldForceRefresh = !!refreshToken;
+      const suffix = shouldForceRefresh ? `?t=${encodeURIComponent(refreshToken)}` : '';
       const modules = [
         'js/main.js', 'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
         'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js',
@@ -500,11 +504,31 @@
     }
 
     .unit-title {
+      position: relative;
       text-align: center;
       font-size: 1.5rem;
       color: #78350f;
       margin-bottom: 10px;
       font-weight: 700;
+    }
+
+    .unit-title-text {
+      display: inline-block;
+      padding-right: 0;
+    }
+
+    .unit-title-actions {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .unit-title-actions .play-btn {
+      margin-left: 0;
     }
 
     /* 卡片样式 */
@@ -661,6 +685,11 @@
     .highlight {
       color: var(--highlight-color);
       font-weight: 600;
+    }
+
+    .unit-reading-active {
+      color: var(--highlight-color) !important;
+      font-weight: 700;
     }
 
     .loading {
@@ -990,6 +1019,39 @@
 
     .menu-btn:hover {
       background-color: #f3f4f6;
+    }
+
+    .navbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+    }
+
+    .toolbar-mode-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-mode-actions .play-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #6b7280;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      margin-left: 0;
+    }
+
+    .toolbar-mode-actions .play-btn:hover,
+    .toolbar-mode-actions .play-btn.playing {
+      background-color: #f3f4f6;
+      color: var(--primary-color);
     }
 
     .menu-dropdown {
@@ -1450,23 +1512,25 @@
       <input type="text" id="searchInput" class="search-input" placeholder="搜索汉字" maxlength="1">
     </div>
 
-
-
-    <!-- 菜单按钮 -->
-    <button class="menu-btn" id="menuBtn">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="1"></circle>
-        <circle cx="12" cy="5" r="1"></circle>
-        <circle cx="12" cy="19" r="1"></circle>
-      </svg>
-    </button>
+    <div class="navbar-actions">
+      <!-- 菜单按钮 -->
+      <button class="menu-btn" id="menuBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="1"></circle>
+          <circle cx="12" cy="5" r="1"></circle>
+          <circle cx="12" cy="19" r="1"></circle>
+        </svg>
+      </button>
+    </div>
 
     <!-- 菜单下拉 -->
     <div class="menu-dropdown" id="menuDropdown">
       <button class="menu-item" id="menuDownload">下载语音数据</button>
       <button class="menu-item" id="menuClearCache">清理语音缓存</button>
-      <button class="menu-item" id="menuStats">显示录音进度</button>
+      <button class="menu-item" id="menuSwitchLearn" style="display:none;">切换学习模式</button>
+      <button class="menu-item" id="menuSwitchTeach">切换教学模式</button>
+      <button class="menu-item" id="menuStats" style="display:none;">显示录音进度</button>
       <button class="menu-item" id="menuProgress">学习进度</button>
       <button class="menu-item" id="menuRefresh">刷新页面</button>
       <button class="menu-item" id="menuLogin">登录</button>
@@ -1475,13 +1539,23 @@
 
   <div class="toolbar">
     <div class="toolbar-content">
-      <!-- 模式选择器 -->
-      <div class="level-selector-wrapper" id="modeSelector">
-        <button class="level-selector-btn" id="currentModeBtn">学习模式</button>
-        <div class="level-dropdown" id="modeDropdown">
-          <button class="mode-option active" data-mode="learn">学习模式</button>
-          <button class="mode-option" data-mode="teach">教学模式</button>
-        </div>
+      <!-- 模式动作区 -->
+      <div class="toolbar-mode-actions" id="modeActionSlot">
+        <button class="play-btn" title="整单元朗读" id="learnBatchPlayBtnMain">
+          <svg style="width:20px;height:20px;">
+            <use href="#icon-play"></use>
+          </svg>
+        </button>
+        <button class="play-btn" title="批量播放" id="batchPlayBtnMain" style="display:none;">
+          <svg style="width:20px;height:20px;">
+            <use href="#icon-play"></use>
+          </svg>
+        </button>
+        <button class="play-btn" title="批量录音" id="batchRecordBtnMain" style="display:none;">
+          <svg style="width:20px;height:20px;">
+            <use href="#icon-mic"></use>
+          </svg>
+        </button>
       </div>
 
       <!-- 级别选择器 -->

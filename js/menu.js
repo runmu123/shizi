@@ -705,7 +705,7 @@ export function setupMenuAndModals() {
   });
 
   // ===== 刷新页面 =====
-  document.getElementById('menuRefresh').addEventListener('click', async () => {
+  const handleHardRefresh = async () => {
     const progressDiv = document.getElementById('downloadProgress');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
@@ -723,12 +723,24 @@ export function setupMenuAndModals() {
 
       await new Promise(r => setTimeout(r, 200));
 
-      sessionStorage.setItem('shizi_force_refresh', 'true');
-      window.location.reload(true);
+      const token = Date.now().toString();
+      sessionStorage.setItem('shizi_force_refresh_token', token);
+      const nextUrl = `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
+      window.location.replace(nextUrl);
     } catch (e) {
       console.error('刷新出错:', e);
-      sessionStorage.setItem('shizi_force_refresh', 'true');
-      window.location.reload(true);
+      const token = Date.now().toString();
+      sessionStorage.setItem('shizi_force_refresh_token', token);
+      const nextUrl = `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
+      window.location.replace(nextUrl);
+    }
+  };
+
+  const refreshEntryIds = ['menuRefresh'];
+  refreshEntryIds.forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', handleHardRefresh);
     }
   });
 }

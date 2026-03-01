@@ -8,6 +8,15 @@ import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.j
 import { enterBatchRecord } from './batch-record.js';
 import { enterBatchPlay } from './batch-play.js';
 
+const learnBatchPlayback = {
+  running: false,
+  paused: false,
+  sequence: [],
+  index: 0,
+  token: 0,
+  button: null,
+};
+
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -179,25 +188,34 @@ async function searchChar(char) {
 
 // ===== 模式切换 =====
 export function switchTeachingMode(enable) {
+  stopLearnBatchPlayback(true);
   state.isTeachingMode = enable;
 
-  const currentModeBtn = document.getElementById('currentModeBtn');
-  const modeOptions = document.querySelectorAll('.mode-option');
-  const unitNavigator = document.querySelector('.unit-navigator');
-  const searchInput = document.getElementById('searchInput');
   const batchPlayBtn = document.getElementById('batchPlayBtnMain');
   const batchRecordBtn = document.getElementById('batchRecordBtnMain');
-
-  currentModeBtn.textContent = state.isTeachingMode ? '教学模式' : '学习模式';
-  const activeMode = state.isTeachingMode ? 'teach' : 'learn';
-  modeOptions.forEach(o => o.classList.toggle('active', o.dataset.mode === activeMode));
+  const learnBatchBtn = document.getElementById('learnBatchPlayBtnMain');
+  const menuSwitchTeach = document.getElementById('menuSwitchTeach');
+  const menuSwitchLearn = document.getElementById('menuSwitchLearn');
+  const menuStats = document.getElementById('menuStats');
 
   // 控制批量按钮的显示/隐藏
   if (batchPlayBtn) {
-    batchPlayBtn.style.display = state.isTeachingMode ? 'block' : 'none';
+    batchPlayBtn.style.display = state.isTeachingMode ? 'inline-flex' : 'none';
   }
   if (batchRecordBtn) {
-    batchRecordBtn.style.display = state.isTeachingMode ? 'block' : 'none';
+    batchRecordBtn.style.display = state.isTeachingMode ? 'inline-flex' : 'none';
+  }
+  if (learnBatchBtn) {
+    learnBatchBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
+  }
+  if (menuSwitchTeach) {
+    menuSwitchTeach.style.display = state.isTeachingMode ? 'none' : 'block';
+  }
+  if (menuSwitchLearn) {
+    menuSwitchLearn.style.display = state.isTeachingMode ? 'block' : 'none';
+  }
+  if (menuStats) {
+    menuStats.style.display = state.isTeachingMode ? 'block' : 'none';
   }
 
   // 重新渲染
@@ -279,6 +297,207 @@ function playRecordedBlob(blob) {
   });
 }
 
+function getPauseIconHtml() {
+  return `<svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>`;
+}
+
+function getPlayIconHtml() {
+  return `<svg style="width:20px;height:20px"><use href="#icon-play"></use></svg>`;
+}
+
+function setLearnBatchBtnState(btn, isPlaying) {
+  if (!btn) return;
+  btn.classList.toggle('playing', isPlaying);
+  btn.title = isPlaying ? '暂停整单元朗读' : '整单元朗读';
+  btn.innerHTML = isPlaying ? getPauseIconHtml() : getPlayIconHtml();
+}
+
+function clearLearnBatchHighlight() {
+  document.querySelectorAll('.unit-reading-active').forEach(el => {
+    el.classList.remove('unit-reading-active');
+  });
+}
+
+function applyLearnBatchHighlight(item) {
+  clearLearnBatchHighlight();
+  if (!item) return;
+
+  const cards = Array.from(document.querySelectorAll('#app .card'));
+  const card = cards.find(c => c.dataset.char === item.rootChar);
+  if (!card) return;
+
+  let target = null;
+  if (item.type === 'char') {
+    target = card.querySelector('.char-text');
+  } else if (item.type === 'word') {
+    const words = card.querySelectorAll('.word-item');
+    target = words[item.index] || null;
+  } else if (item.type === 'sentence') {
+    target = card.querySelector('.text-content.sentence');
+  }
+
+  if (target) {
+    target.classList.add('unit-reading-active');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function buildLearnBatchSequence() {
+  const unitName = state.unitKeys?.[state.currentUnitIndex];
+  const unitData = unitName ? state.currentData?.[unitName] : null;
+  if (!unitData) return [];
+
+  const queue = [];
+  for (const [rootChar, info] of Object.entries(unitData)) {
+    queue.push({
+      rootChar,
+      text: rootChar,
+      type: 'char',
+      index: null,
+      level: state.currentLevel,
+      unit: unitName,
+    });
+
+    const words = (info && Array.isArray(info.词)) ? info.词 : [];
+    words.forEach((word, idx) => {
+      queue.push({
+        rootChar,
+        text: word,
+        type: 'word',
+        index: idx,
+        level: state.currentLevel,
+        unit: unitName,
+      });
+    });
+
+    const sentence = (info && typeof info.句 === 'string') ? info.句.trim() : '';
+    if (sentence) {
+      queue.push({
+        rootChar,
+        text: sentence,
+        type: 'sentence',
+        index: null,
+        level: state.currentLevel,
+        unit: unitName,
+      });
+    }
+  }
+
+  return queue;
+}
+
+function stopLearnBatchPlayback(resetQueue = true) {
+  learnBatchPlayback.token += 1;
+  learnBatchPlayback.running = false;
+  learnBatchPlayback.paused = false;
+  audioManager.stopCurrentAudio();
+  clearLearnBatchHighlight();
+
+  if (learnBatchPlayback.button) {
+    setLearnBatchBtnState(learnBatchPlayback.button, false);
+  }
+
+  if (resetQueue) {
+    learnBatchPlayback.sequence = [];
+    learnBatchPlayback.index = 0;
+    learnBatchPlayback.button = null;
+  }
+}
+
+async function runLearnBatchPlaybackLoop(token) {
+  while (
+    token === learnBatchPlayback.token &&
+    learnBatchPlayback.running &&
+    !learnBatchPlayback.paused &&
+    learnBatchPlayback.index < learnBatchPlayback.sequence.length
+  ) {
+    const item = learnBatchPlayback.sequence[learnBatchPlayback.index];
+    applyLearnBatchHighlight(item);
+
+    await new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+
+      audioManager.playAudio(
+        item.level,
+        item.unit,
+        item.rootChar,
+        item.text,
+        item.type,
+        item.index,
+        finish,
+      ).then((success) => {
+        if (!success) finish();
+      }).catch(() => {
+        finish();
+      });
+    });
+
+    if (
+      token !== learnBatchPlayback.token ||
+      !learnBatchPlayback.running ||
+      learnBatchPlayback.paused
+    ) {
+      break;
+    }
+
+    learnBatchPlayback.index += 1;
+  }
+
+  if (
+    token === learnBatchPlayback.token &&
+    learnBatchPlayback.running &&
+    !learnBatchPlayback.paused &&
+    learnBatchPlayback.index >= learnBatchPlayback.sequence.length
+  ) {
+    showToast('单元朗读完成', 'success');
+    stopLearnBatchPlayback(true);
+  }
+}
+
+function toggleLearnBatchPlayback(btn) {
+  if (state.isTeachingMode) return;
+
+  if (learnBatchPlayback.running) {
+    learnBatchPlayback.paused = true;
+    learnBatchPlayback.running = false;
+    audioManager.stopCurrentAudio();
+    setLearnBatchBtnState(btn, false);
+    showToast('已暂停', 'info');
+    return;
+  }
+
+  if (learnBatchPlayback.paused && learnBatchPlayback.sequence.length > 0) {
+    learnBatchPlayback.running = true;
+    learnBatchPlayback.paused = false;
+    learnBatchPlayback.button = btn;
+    setLearnBatchBtnState(btn, true);
+    runLearnBatchPlaybackLoop(learnBatchPlayback.token);
+    showToast('继续朗读', 'info');
+    return;
+  }
+
+  const queue = buildLearnBatchSequence();
+  if (queue.length === 0) {
+    showToast('当前单元无可播放内容', 'error');
+    return;
+  }
+
+  learnBatchPlayback.sequence = queue;
+  learnBatchPlayback.index = 0;
+  learnBatchPlayback.token += 1;
+  learnBatchPlayback.running = true;
+  learnBatchPlayback.paused = false;
+  learnBatchPlayback.button = btn;
+  setLearnBatchBtnState(btn, true);
+  runLearnBatchPlaybackLoop(learnBatchPlayback.token);
+  showToast('开始整单元朗读', 'info');
+}
+
 // ===== 事件绑定 =====
 export function setupEventListeners() {
   let scrollPosition = 0;
@@ -299,9 +518,9 @@ export function setupEventListeners() {
     window.scrollTo(0, scrollPosition);
   }
 
-  const currentModeBtn = document.getElementById('currentModeBtn');
-  const modeDropdown = document.getElementById('modeDropdown');
-  const modeOptions = document.querySelectorAll('.mode-option');
+  const menuDropdown = document.getElementById('menuDropdown');
+  const menuSwitchTeach = document.getElementById('menuSwitchTeach');
+  const menuSwitchLearn = document.getElementById('menuSwitchLearn');
   const currentLevelBtn = document.getElementById('currentLevelBtn');
   const levelDropdown = document.getElementById('levelDropdown');
   const searchInput = document.getElementById('searchInput');
@@ -316,45 +535,38 @@ export function setupEventListeners() {
   const passwordInput = document.getElementById('passwordInput');
   const passwordError = document.getElementById('passwordError');
 
-  // ===== 模式下拉菜单 =====
-  currentModeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    modeDropdown.classList.toggle('show');
-    currentModeBtn.classList.toggle('active');
-    levelDropdown.classList.remove('show');
-    currentLevelBtn.classList.remove('active');
-  });
+  const tryEnterTeachingMode = () => {
+    const currentUser = localStorage.getItem(USER_KEY);
+    if (currentUser === 'admin') {
+      switchTeachingMode(true);
+    } else {
+      passwordModal.classList.add('active');
+      lockScroll();
+      passwordInput.value = '';
+      passwordError.style.display = 'none';
+      passwordInput.focus();
+    }
+  };
 
-  modeOptions.forEach(opt => {
-    opt.addEventListener('click', () => {
-      const mode = opt.dataset.mode;
-      const newModeIsTeaching = (mode === 'teach');
-
-      if (state.isTeachingMode !== newModeIsTeaching) {
-        if (newModeIsTeaching) {
-          modeDropdown.classList.remove('show');
-          currentModeBtn.classList.remove('active');
-          const currentUser = localStorage.getItem(USER_KEY);
-          if (currentUser === 'admin') {
-            switchTeachingMode(true);
-          } else {
-            passwordModal.classList.add('active');
-            lockScroll();
-            passwordInput.value = '';
-            passwordError.style.display = 'none';
-            passwordInput.focus();
-          }
-        } else {
-          switchTeachingMode(false);
-          modeDropdown.classList.remove('show');
-          currentModeBtn.classList.remove('active');
-        }
-      } else {
-        modeDropdown.classList.remove('show');
-        currentModeBtn.classList.remove('active');
+  if (menuSwitchTeach) {
+    menuSwitchTeach.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (menuDropdown) menuDropdown.classList.remove('show');
+      if (!state.isTeachingMode) {
+        tryEnterTeachingMode();
       }
     });
-  });
+  }
+
+  if (menuSwitchLearn) {
+    menuSwitchLearn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (menuDropdown) menuDropdown.classList.remove('show');
+      if (state.isTeachingMode) {
+        switchTeachingMode(false);
+      }
+    });
+  }
 
   // ===== 密码弹窗 =====
   const handlePasswordSubmit = () => {
@@ -393,8 +605,6 @@ export function setupEventListeners() {
     e.stopPropagation();
     levelDropdown.classList.toggle('show');
     currentLevelBtn.classList.toggle('active');
-    modeDropdown.classList.remove('show');
-    currentModeBtn.classList.remove('active');
   });
 
   levelDropdown.addEventListener('click', (e) => {
@@ -411,6 +621,7 @@ export function setupEventListeners() {
       currentLevelBtn.classList.remove('active');
 
       state.currentLevel = level;
+      stopLearnBatchPlayback(true);
       loadLevel(level);
       saveCurrentPosition();
     } else {
@@ -422,6 +633,7 @@ export function setupEventListeners() {
   // ===== 搜索 =====
   searchInput.addEventListener('input', (e) => {
     const val = e.target.value.trim();
+    stopLearnBatchPlayback(true);
     if (val && val.length === 1) {
       searchChar(val);
     } else if (val.length === 0) {
@@ -433,6 +645,7 @@ export function setupEventListeners() {
   // ===== 导航按钮 =====
   const goPrevUnit = () => {
     if (state.currentUnitIndex > 0) {
+      stopLearnBatchPlayback(true);
       state.currentUnitIndex--;
       renderUnit();
       saveCurrentPosition();
@@ -441,6 +654,7 @@ export function setupEventListeners() {
 
   const goNextUnit = () => {
     if (state.currentUnitIndex < state.unitKeys.length - 1) {
+      stopLearnBatchPlayback(true);
       state.currentUnitIndex++;
       renderUnit();
       saveCurrentPosition();
@@ -453,6 +667,7 @@ export function setupEventListeners() {
   unitSelect.addEventListener('change', (e) => {
     const idx = parseInt(e.target.value, 10);
     if (!isNaN(idx) && idx >= 0 && idx < state.unitKeys.length) {
+      stopLearnBatchPlayback(true);
       state.currentUnitIndex = idx;
       renderUnit();
       saveCurrentPosition();
@@ -525,6 +740,7 @@ export function setupEventListeners() {
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.play-btn');
     if (!btn) return;
+    if (btn.id === 'learnBatchPlayBtnMain') return;
 
     if (btn.classList.contains('processing') || btn.disabled) return;
 
@@ -617,6 +833,14 @@ export function setupEventListeners() {
     }
   });
 
+  // ===== 学习模式整单元朗读按钮 =====
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#learnBatchPlayBtnMain');
+    if (!btn) return;
+    e.stopPropagation();
+    toggleLearnBatchPlayback(btn);
+  });
+
   // ===== 批量录音按钮事件 =====
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('#batchRecordBtnMain');
@@ -639,9 +863,7 @@ export function setupEventListeners() {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.level-selector-wrapper')) {
       levelDropdown.classList.remove('show');
-      modeDropdown.classList.remove('show');
       currentLevelBtn.classList.remove('active');
-      currentModeBtn.classList.remove('active');
     }
   });
 }
