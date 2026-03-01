@@ -74,6 +74,15 @@ export function setupMenuAndModals() {
     return hasNum ? result : 0;
   };
 
+  // 格式化单元数字为3字符宽度
+  const formatUnitNumber = (unit) => {
+    const num = getCnNum(unit);
+    if (num === 0) return unit;
+
+    // 一位数前后各加空格，两位数后加空格
+    return num < 10 ? ` ${num} ` : `${num} `;
+  };
+
   // 排序辅助函数
   const sortLevels = (levels) => {
     return levels.sort((a, b) => {
@@ -168,12 +177,19 @@ export function setupMenuAndModals() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </button>` : '';
 
+        // 格式化单元名称
+        const formattedUnit = unit.replace(/第(.+)单元/, (match, p1) => {
+          const num = getCnNum(unit);
+          const formattedNum = formatUnitNumber(unit);
+          return `第${formattedNum}单元`;
+        });
+
         html += `
           <div class="progress-unit-row">
             <div class="progress-unit-info">
-              <span class="progress-unit-name">${escapeHtml(unit)}: </span>
+              <span class="progress-unit-name">${escapeHtml(formattedUnit)}:</span>
               <span class="progress-char-list">
-                ${displayChars.map(c => `<span class="progress-char learned">${escapeHtml(c)}</span>`).join(', ')}
+                ${displayChars.map(c => `<span class="progress-char learned">${escapeHtml(c)}</span>`).join(',')}
               </span>
             </div>
             ${navBtnHtml}
@@ -578,9 +594,9 @@ export function setupMenuAndModals() {
             const { data } = audioManager.supabase.storage
               .from(SUPABASE_CONFIG.bucket)
               .getPublicUrl(file.path);
-            
+
             const baseUrl = data.publicUrl;
-            
+
             // 构造实际请求 URL（处理强制刷新后缀）
             const suffix = cacheSuffix ? cacheSuffix.replace('?', '') : '';
             const url = suffix
@@ -601,7 +617,7 @@ export function setupMenuAndModals() {
               // 如果设置了强制刷新后缀，则视为无效，需要重新下载
               const matchReq = new Request(baseUrl);
               const cachedRes = await cache.match(matchReq);
-              
+
               if (cachedRes && !cacheSuffix) {
                 // 有缓存且非强制刷新，跳过下载
                 return;
@@ -616,7 +632,7 @@ export function setupMenuAndModals() {
               // cache: 'reload' 确保从网络获取，不读取 HTTP 缓存
               const fetchOpts = { cache: 'reload' };
               const res = await fetch(url, fetchOpts);
-              
+
               if (res.ok) {
                 // 4. 存入 Cache API
                 // 注意：这里使用 baseUrl (不带后缀) 作为 key，确保后续播放时能命中
