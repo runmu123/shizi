@@ -10,7 +10,7 @@ import PlatformDetector from './platform-detector.js';
 
 // 初始化全局音频管理器缓存后缀
 if (window.audioManager) {
-  audioManager.cacheSuffix = cacheSuffix;
+  window.audioManager.cacheSuffix = cacheSuffix;
 }
 
 // ES 模块在 DOM 解析完成后执行（等同 defer），可直接操作 DOM
@@ -20,6 +20,13 @@ setupBatchRecordEvents();
 setupBatchPlayEvents();
 
 (async () => {
+  // 启动时后台预热内置音频到 shizi-audio-cache，不阻塞页面初始化
+  if (window.audioManager && typeof window.audioManager.warmBuiltInAudioCache === 'function') {
+    window.audioManager.warmBuiltInAudioCache().catch((err) => {
+      console.warn('内置音频预热失败:', err);
+    });
+  }
+
   const savedPos = loadSavedPosition();
   if (savedPos) {
     if (savedPos.level) state.currentLevel = savedPos.level;

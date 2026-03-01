@@ -18,6 +18,7 @@ import shutil
 import json
 import yaml
 import re
+import hashlib
 from xml.sax.saxutils import escape as xml_escape
 from pathlib import Path
 
@@ -25,6 +26,9 @@ from pathlib import Path
 ANDROID_BUILD_DIR = "android_build"
 ANDROID_DIR = os.path.join(ANDROID_BUILD_DIR, "android")
 GRADLE_WRAPPER = os.path.join(ANDROID_DIR, "gradlew.bat")
+BUILTIN_AUDIO_SRC_DIR = "shizi-audio-cache"
+BUILTIN_AUDIO_WWW_DIR = os.path.join(ANDROID_BUILD_DIR, "www", "audio")
+BUILTIN_AUDIO_MANIFEST = os.path.join(ANDROID_BUILD_DIR, "www", "audio-manifest.json")
 
 # 颜色输出
 class Colors:
@@ -240,8 +244,18 @@ def detect_navbar_background_color():
     return default_color
 
 
-def write_main_activity_java(path, app_id):
+def write_main_activity_java(path, app_id, enable_zoom):
     """写入兼容录音权限请求的 MainActivity.java"""
+    zoom_settings = ""
+    if enable_zoom:
+        zoom_settings = """
+        bridge.getWebView().getSettings().setSupportZoom(true);
+        bridge.getWebView().getSettings().setBuiltInZoomControls(true);
+        bridge.getWebView().getSettings().setDisplayZoomControls(false);
+        bridge.getWebView().getSettings().setUseWideViewPort(true);
+        bridge.getWebView().getSettings().setLoadWithOverviewMode(true);
+"""
+
     content = f"""package {app_id};
 
 import android.Manifest;
@@ -265,6 +279,7 @@ public class MainActivity extends BridgeActivity {{
         super.onCreate(savedInstanceState);
 
         if (bridge != null && bridge.getWebView() != null) {{
+{zoom_settings}
             bridge.getWebView().setWebChromeClient(new WebChromeClient() {{
                 @Override
                 public void onPermissionRequest(final PermissionRequest request) {{
@@ -273,22 +288,6 @@ public class MainActivity extends BridgeActivity {{
                     }});
                 }}
             }});
-        }}
-
-        ensureRecordAudioPermission();
-    }}
-
-    private void ensureRecordAudioPermission() {{
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {{
-            return;
-        }}
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {{
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{{Manifest.permission.RECORD_AUDIO}},
-                    REQ_RECORD_AUDIO
-            );
         }}
     }}
 
@@ -357,6 +356,7 @@ def apply_android_app_metadata(config):
     app_id = config["pkg"]
     version_name = config["version"].lstrip('v')
     icon_path = config.get("icon", "./icon.png")
+    enable_zoom = bool(config.get("enable_zoom", True))
     status_bar_color = detect_navbar_background_color()
     status_bar_color_argb = status_bar_color
     if re.fullmatch(r"#[0-9a-fA-F]{6}", status_bar_color):
@@ -419,7 +419,7 @@ export default config;
     )
     for activity_path in main_activity_paths:
         if str(activity_path).lower().endswith(".java"):
-            write_main_activity_java(str(activity_path), app_id)
+            write_main_activity_java(str(activity_path), app_id, enable_zoom)
             log_success(f"已更新 MainActivity（含录音权限处理）: {activity_path}")
         else:
             if update_file_by_regex(
@@ -465,7 +465,7 @@ export default config;
         write_file(styles_xml_path, styles_xml)
         log_success(f"已同步状态栏颜色: {status_bar_color}")
 
-    # 6) 同步启动图标到 Android 资源（保留 1:1 比例，避免被前景层放大裁剪）
+    # 6) 同步启动图标到 Android 资源（强制使用普通 mipmap 图标，避免 adaptive 前景放大）
     source_icon = Path(icon_path)
     if not source_icon.is_absolute():
         source_icon = Path(os.getcwd()) / source_icon
@@ -477,37 +477,14 @@ export default config;
                 if target_icon.exists():
                     shutil.copy2(str(source_icon), str(target_icon))
 
-        drawable_nodpi = Path(ANDROID_DIR) / "app" / "src" / "main" / "res" / "drawable-nodpi"
-        drawable_nodpi.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(str(source_icon), str(drawable_nodpi / "app_icon.png"))
-
-        drawable_dir = Path(ANDROID_DIR) / "app" / "src" / "main" / "res" / "drawable"
-        drawable_dir.mkdir(parents=True, exist_ok=True)
-        foreground_inset = """<?xml version="1.0" encoding="utf-8"?>
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:insetLeft="16dp"
-    android:insetTop="16dp"
-    android:insetRight="16dp"
-    android:insetBottom="16dp">
-    <bitmap
-        android:gravity="center"
-        android:src="@drawable/app_icon" />
-</inset>
-"""
-        write_file(str(drawable_dir / "ic_launcher_foreground_inset.xml"), foreground_inset)
-
-        adaptive_icon_xml = """<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@android:color/transparent"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground_inset"/>
-</adaptive-icon>
-"""
+        # 移除 adaptive 图标定义，强制回退到普通 mipmap 图标，确保视觉比例与源图一致
         anydpi_v26 = Path(ANDROID_DIR) / "app" / "src" / "main" / "res" / "mipmap-anydpi-v26"
-        anydpi_v26.mkdir(parents=True, exist_ok=True)
-        write_file(str(anydpi_v26 / "ic_launcher.xml"), adaptive_icon_xml)
-        write_file(str(anydpi_v26 / "ic_launcher_round.xml"), adaptive_icon_xml)
+        for xml_name in ("ic_launcher.xml", "ic_launcher_round.xml"):
+            xml_path = anydpi_v26 / xml_name
+            if xml_path.exists():
+                xml_path.unlink()
 
-        log_success(f"已同步应用图标（1:1 比例）到 launcher 资源: {source_icon}")
+        log_success(f"已同步应用图标（普通 mipmap，保持原比例）: {source_icon}")
     else:
         log_warning(f"图标文件不存在，跳过 launcher 图标同步: {source_icon}")
 
@@ -528,6 +505,62 @@ def cleanup_legacy_root_assets():
         if os.path.isfile(path):
             os.remove(path)
             log_info(f"已清理历史重复文件: {path}")
+
+
+def build_audio_manifest(audio_root_dir):
+    """为内置音频生成清单，供启动时预热到 CacheStorage"""
+    audio_root = Path(audio_root_dir)
+    files = []
+    digest = hashlib.sha256()
+
+    if not audio_root.exists():
+        return {
+            "version": "empty",
+            "count": 0,
+            "files": []
+        }
+
+    for file_path in sorted(audio_root.rglob("*")):
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(audio_root).as_posix()
+        size = file_path.stat().st_size
+        files.append({"path": rel, "size": size})
+        digest.update(rel.encode("utf-8"))
+        digest.update(str(size).encode("utf-8"))
+
+    return {
+        "version": digest.hexdigest()[:16],
+        "count": len(files),
+        "files": files
+    }
+
+
+def cleanup_post_build_artifacts():
+    """构建成功后清理 android_build 下可再生的构建产物（非依赖项）"""
+    targets = [
+        os.path.join(ANDROID_BUILD_DIR, "www"),
+        os.path.join(ANDROID_DIR, "app", "build"),
+        os.path.join(ANDROID_DIR, "build"),
+        os.path.join(ANDROID_DIR, ".gradle"),
+        os.path.join(ANDROID_DIR, "app", "src", "main", "assets", "public"),
+    ]
+
+    cleaned = 0
+    for target in targets:
+        try:
+            if os.path.isdir(target):
+                shutil.rmtree(target)
+                log_info(f"已清理构建产物目录: {target}")
+                cleaned += 1
+            elif os.path.isfile(target):
+                os.remove(target)
+                log_info(f"已清理构建产物文件: {target}")
+                cleaned += 1
+        except Exception as e:
+            log_warning(f"清理构建产物失败（可忽略，不影响 APK）: {target}, {e}")
+
+    log_success(f"构建产物清理完成，共清理 {cleaned} 项")
 
 # 初始化功能
 def init():
@@ -732,6 +765,20 @@ def sync():
     else:
         log_error("yaml 目录不存在")
         return False
+
+    # 复制内置音频到 www/audio，并生成音频清单
+    if os.path.exists(BUILTIN_AUDIO_SRC_DIR):
+        if os.path.exists(BUILTIN_AUDIO_WWW_DIR):
+            shutil.rmtree(BUILTIN_AUDIO_WWW_DIR)
+        shutil.copytree(BUILTIN_AUDIO_SRC_DIR, BUILTIN_AUDIO_WWW_DIR)
+        log_success(f"复制内置音频目录成功: {BUILTIN_AUDIO_SRC_DIR} -> {BUILTIN_AUDIO_WWW_DIR}")
+
+        audio_manifest = build_audio_manifest(BUILTIN_AUDIO_WWW_DIR)
+        with open(BUILTIN_AUDIO_MANIFEST, "w", encoding="utf-8") as f:
+            json.dump(audio_manifest, f, ensure_ascii=False, indent=2)
+        log_success(f"生成内置音频清单成功: {BUILTIN_AUDIO_MANIFEST} (共 {audio_manifest['count']} 个文件)")
+    else:
+        log_warning(f"内置音频目录不存在，跳过打包: {BUILTIN_AUDIO_SRC_DIR}")
     
     # 复制 args.yaml 指定图标到 www 目录
     config = read_args_yaml()
@@ -837,12 +884,17 @@ def build():
     apk_path = str(apk_files[0])
     log_success(f"找到 APK 文件: {apk_path}")
     
-    # 复制到项目根目录
+    # 复制到输出目录（按版本命名）
     out_dir = config.get("out_dir", ".")
     os.makedirs(out_dir, exist_ok=True)
-    dest_apk = os.path.join(out_dir, "shizi-app-debug.apk")
+    version_label = str(config.get("version", "v0.0")).strip() or "v0.0"
+    safe_version_label = re.sub(r'[\\/:*?"<>|]', "_", version_label)
+    dest_apk = os.path.join(out_dir, f"shizi_{safe_version_label}.apk")
     shutil.copy2(apk_path, dest_apk)
     log_success(f"APK 文件已复制到: {dest_apk}")
+
+    # 构建完成后清理 android_build 下可再生产物，避免目录膨胀
+    cleanup_post_build_artifacts()
     
     log_success("构建完成")
     return True
@@ -853,11 +905,22 @@ def clean():
     log_step("清理构建文件")
     config = read_args_yaml()
     
-    # 清理 APK 文件
-    apk_files = ["shizi-app-debug.apk", os.path.join(config.get("out_dir", "."), "shizi-app-debug.apk")]
-    for apk_file in apk_files:
+    # 清理 APK 文件（兼容旧命名和新命名）
+    out_dir = config.get("out_dir", ".")
+    apk_candidates = [
+        "shizi-app-debug.apk",
+        os.path.join(out_dir, "shizi-app-debug.apk"),
+    ]
+    apk_candidates.extend(str(p) for p in Path(".").glob("shizi_*.apk"))
+    apk_candidates.extend(str(p) for p in Path(out_dir).glob("shizi_*.apk"))
+
+    removed = set()
+    for apk_file in apk_candidates:
+        if apk_file in removed:
+            continue
         if os.path.exists(apk_file):
             os.remove(apk_file)
+            removed.add(apk_file)
             log_success(f"清理 APK 文件: {apk_file}")
     
     # 清理 Android 构建目录

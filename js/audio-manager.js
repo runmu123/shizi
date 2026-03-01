@@ -6,6 +6,7 @@ class AudioManager {
     this.audioChunks = [];
     this.isRecording = false;
     this.currentAudio = null;
+    this.builtInAudioMap = new Map();
   }
 
   init() {
@@ -257,6 +258,45 @@ class AudioManager {
     return data.publicUrl;
   }
 
+  async warmBuiltInAudioCache() {
+    this.init();
+    if (!this.supabase) return;
+    this.builtInAudioMap.clear();
+
+    const manifestUrl = `audio-manifest.json${this.cacheSuffix || ''}`;
+    let manifest = null;
+    try {
+      const res = await fetch(manifestUrl, { cache: 'no-store' });
+      if (!res.ok) return;
+      manifest = await res.json();
+    } catch (e) {
+      console.warn('读取内置音频清单失败:', e);
+      return;
+    }
+
+    if (!manifest || !Array.isArray(manifest.files) || manifest.files.length === 0) {
+      return;
+    }
+
+    let mappedCount = 0;
+    for (const item of manifest.files) {
+      const relativePath = item.path;
+      const { data } = this.supabase
+        .storage
+        .from(SUPABASE_CONFIG.bucket)
+        .getPublicUrl(relativePath);
+      const remoteUrl = data.publicUrl;
+
+      const localUrl = `audio/${relativePath}${this.cacheSuffix || ''}`;
+      this.builtInAudioMap.set(remoteUrl, localUrl);
+      mappedCount++;
+    }
+
+    const version = manifest.version || 'v0';
+    localStorage.setItem('shizi_builtin_audio_manifest_version', version);
+    console.log(`内置音频映射预热完成: ${mappedCount}/${manifest.files.length}`);
+  }
+
   // 停止当前音频播放并触发回调
   stopCurrentAudio() {
     if (this.currentAudio) {
@@ -295,20 +335,34 @@ class AudioManager {
           playUrl = URL.createObjectURL(blob);
           console.log('从缓存播放:', baseUrl);
         } else {
-          try {
-            // 使用 no-store 避免重复存储到 HTTP Cache
-            const fetched = await fetch(url, { cache: 'no-store' });
-            if (fetched.ok) {
-              await cache.put(baseUrl, fetched.clone());
-              const blob = await fetched.blob();
-              playUrl = URL.createObjectURL(blob);
+          const builtInLocalUrl = this.builtInAudioMap.get(baseUrl);
+          if (builtInLocalUrl) {
+            playUrl = builtInLocalUrl;
+            console.log('从内置音频播放:', builtInLocalUrl);
+          } else {
+            try {
+              // 使用 no-store 避免重复存储到 HTTP Cache
+              const fetched = await fetch(url, { cache: 'no-store' });
+              if (fetched.ok) {
+                await cache.put(baseUrl, fetched.clone());
+                const blob = await fetched.blob();
+                playUrl = URL.createObjectURL(blob);
+              }
+            } catch (fetchErr) {
+              console.warn('播放时缓存音频失败:', fetchErr);
             }
-          } catch (fetchErr) {
-            console.warn('播放时缓存音频失败:', fetchErr);
           }
         }
       } catch (e) {
         console.warn('缓存操作失败:', e);
+      }
+    }
+
+    if (playUrl === url) {
+      const builtInLocalUrl = this.builtInAudioMap.get(baseUrl);
+      if (builtInLocalUrl) {
+        playUrl = builtInLocalUrl;
+        console.log('从内置音频播放(缓存不可用或未命中):', builtInLocalUrl);
       }
     }
 
@@ -354,3 +408,6 @@ class AudioManager {
 }
 
 const audioManager = new AudioManager();
+if (typeof window !== 'undefined') {
+  window.audioManager = audioManager;
+}
