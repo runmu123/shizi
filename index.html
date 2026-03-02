@@ -1687,6 +1687,23 @@
     </div>
   </div>
 
+  <!-- 等级选择弹窗 -->
+  <div class="modal-overlay" id="levelSelectModal">
+    <div class="modal-box">
+      <div class="modal-title">选择下载等级</div>
+      <div style="margin-bottom: 16px; color: #6b7280; font-size: 0.9rem;">
+        可以选择多个等级进行下载
+      </div>
+      <div id="levelCheckboxes" style="text-align: left; margin-bottom: 16px;">
+        <!-- 等级复选框将动态生成 -->
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelLevelSelect">取消</button>
+        <button class="modal-btn confirm" id="confirmLevelSelect">确认</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 统计弹窗 -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal-box" style="max-width: 600px; width: 90%;">
@@ -1746,7 +1763,7 @@
         <span style="color: #6b7280;">已学习字数：</span>
         <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="progressTotalCount">0</span>
       </div>
-      <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto;">
+      <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto; text-align: left;">
         <!-- 等级内容将在此注入 -->
       </div>
     </div>

@@ -9,7 +9,7 @@ export function setupMenuAndModals() {
   audioManager.init();
 
   let scrollPosition = 0;
-  let batchSize = 20; // 默认批次大小
+  let batchSize = 100; // 默认批次大小
 
   function lockScroll() {
     scrollPosition = window.scrollY;
@@ -515,15 +515,58 @@ export function setupMenuAndModals() {
 
   // ===== 下载语音数据 =====
   document.getElementById('menuDownload').addEventListener('click', () => {
-    // 显示批次大小输入弹窗
-    const modal = document.getElementById('batchSizeModal');
-    const input = document.getElementById('batchSizeInput');
-    if (modal && input) {
-      input.value = batchSize;
+    // 显示等级选择弹窗
+    const modal = document.getElementById('levelSelectModal');
+    const levelCheckboxes = document.getElementById('levelCheckboxes');
+    if (modal && levelCheckboxes) {
+      // 动态生成等级复选框
+      levelCheckboxes.innerHTML = '';
+      state.LEVELS.forEach(level => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '8px';
+        div.innerHTML = `
+          <input type="checkbox" id="level-${level}" name="level" value="${level}" style="margin-right: 8px;">
+          <label for="level-${level}">${level}</label>
+        `;
+        levelCheckboxes.appendChild(div);
+      });
       modal.classList.add('active');
       lockScroll();
-      input.focus();
     }
+  });
+
+  // ===== 等级选择弹窗事件 =====
+  document.getElementById('confirmLevelSelect').addEventListener('click', () => {
+    const modal = document.getElementById('levelSelectModal');
+    const checkboxes = document.querySelectorAll('input[name="level"]:checked');
+    const selectedLevels = Array.from(checkboxes).map(checkbox => checkbox.value);
+
+    if (selectedLevels.length === 0) {
+      showToast('请至少选择一个等级', 'error');
+      return;
+    }
+
+    modal.classList.remove('active');
+    unlockScroll();
+
+    // 显示批次大小输入弹窗
+    const batchModal = document.getElementById('batchSizeModal');
+    const input = document.getElementById('batchSizeInput');
+    if (batchModal && input) {
+      input.value = batchSize;
+      batchModal.classList.add('active');
+      lockScroll();
+      input.focus();
+
+      // 保存选择的等级
+      window.selectedDownloadLevels = selectedLevels;
+    }
+  });
+
+  document.getElementById('cancelLevelSelect').addEventListener('click', () => {
+    const modal = document.getElementById('levelSelectModal');
+    modal.classList.remove('active');
+    unlockScroll();
   });
 
   // ===== 批次大小弹窗事件 =====
@@ -536,7 +579,7 @@ export function setupMenuAndModals() {
       batchSize = value;
       modal.classList.remove('active');
       unlockScroll();
-      startDownload();
+      startDownload(window.selectedDownloadLevels);
     } else {
       showToast('请输入1-100之间的数字', 'error');
     }
@@ -546,10 +589,13 @@ export function setupMenuAndModals() {
     const modal = document.getElementById('batchSizeModal');
     modal.classList.remove('active');
     unlockScroll();
+
+    // 清除选择的等级
+    window.selectedDownloadLevels = null;
   });
 
   // 开始下载
-  async function startDownload() {
+  async function startDownload(selectedLevels = null) {
     if (!audioManager.supabase) {
       showToast('数据库未连接', 'error');
       return;
@@ -564,7 +610,13 @@ export function setupMenuAndModals() {
     progressText.textContent = '准备中...';
 
     try {
-      const files = await audioManager.getAllAudioRecords();
+      let files = await audioManager.getAllAudioRecords();
+
+      // 如果选择了等级，则过滤文件
+      if (selectedLevels && selectedLevels.length > 0) {
+        files = files.filter(file => selectedLevels.includes(file.level));
+      }
+
       if (!files || files.length === 0) {
         showToast('没有可下载的语音文件', 'info');
         progressDiv.style.display = 'none';
