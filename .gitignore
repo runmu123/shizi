@@ -15,3 +15,10 @@ js_download_script.js
 args.yaml
 # build.py
 *.apk
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
