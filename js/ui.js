@@ -17,9 +17,8 @@ export function highlightChar(text, char) {
 }
 
 export function getBtnHtml(text, type, rootChar, level, unit, isSmall = false, index = null) {
-  const svgAttr = isSmall ? ' style="width:16px;height:16px"' : '';
   const iconId = state.isTeachingMode ? '#icon-mic' : '#icon-play';
-  const icon = `<svg${svgAttr}><use href="${iconId}"></use></svg>`;
+  const icon = `<svg><use href="${iconId}"></use></svg>`;
 
   const title = state.isTeachingMode ? '录音' : '播放';
   const btnStyle = isSmall ? 'padding: 2px; margin-left: 2px;' : '';
@@ -124,7 +123,7 @@ export function renderUnit() {
           margin: -10px 0 20px 0;
           padding: 0 16px;
           color: #666;
-          font-size: 1.5rem;
+          font-size: 1.9rem;
           font-family: 'KaiTi', 'STKaiti', serif;
         ">
           ${allChars.map(c => `<span class="unit-char-link" data-char="${escapeHtml(c)}" style="cursor:pointer; user-select:none; margin: 0 2px;">${escapeHtml(c)}</span>`).join('，')}

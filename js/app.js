@@ -277,11 +277,10 @@ export async function navigateToUnit(level, unitName) {
 
 // ===== 按钮图标更新（录音/播放模式切换后） =====
 function updateBtnIcon(btn, isTeaching) {
-  const isSmall = btn.dataset.isSmall === 'true';
-  const style = isSmall ? ' style="width: 16px; height: 16px;"' : '';
   const iconId = isTeaching ? '#icon-mic' : '#icon-play';
 
-  btn.innerHTML = `<svg${style}><use href="${iconId}"></use></svg>`;
+  btn.classList.remove('playing');
+  btn.innerHTML = `<svg><use href="${iconId}"></use></svg>`;
   btn.title = isTeaching ? '录音' : '播放';
 }
 
@@ -314,11 +313,22 @@ function playRecordedBlob(blob) {
 }
 
 function getPauseIconHtml() {
-  return `<svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M520-200v-560h240v560H520Zm-320 0v-560h240v560H200Zm400-80h80v-400h-80v400Zm-320 0h80v-400h-80v400Zm0-400v400-400Zm320 0v400-400Z"/></svg>`;
 }
 
 function getPlayIconHtml() {
   return `<svg style="width:20px;height:20px"><use href="#icon-play"></use></svg>`;
+}
+
+function getSpeakerIconHtml() {
+  return `<svg><use href="#icon-play"></use></svg>`;
+}
+
+function setSpeakerButtonPlaying(btn, isPlaying) {
+  if (!btn) return;
+  btn.classList.toggle('playing', isPlaying);
+  btn.innerHTML = isPlaying ? getPauseIconHtml() : getSpeakerIconHtml();
+  btn.title = isPlaying ? '暂停' : '播放';
 }
 
 function getEarIconHtml() {
@@ -439,13 +449,13 @@ function playListenModeAudio() {
   if (!currentChar || !unitName || !window.audioManager) return;
 
   if (btn) {
-    btn.classList.add('playing');
+    setSpeakerButtonPlaying(btn, true);
     btn.disabled = true;
   }
 
   const cleanup = () => {
     if (!btn) return;
-    btn.classList.remove('playing');
+    setSpeakerButtonPlaying(btn, false);
     btn.disabled = false;
   };
 
@@ -1200,13 +1210,18 @@ export function setupEventListeners() {
 
       if (btn.classList.contains('playing')) {
         audioManager.stopCurrentAudio();
+        if (btn.id === 'listenReplayBtn') {
+          setSpeakerButtonPlaying(btn, false);
+        } else {
+          updateBtnIcon(btn, false);
+        }
         return;
       }
 
-      btn.classList.add('playing');
+      setSpeakerButtonPlaying(btn, true);
 
       const onStop = () => {
-        btn.classList.remove('playing');
+        updateBtnIcon(btn, false);
         btn.disabled = false;
       };
 

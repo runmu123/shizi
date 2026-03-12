@@ -9,14 +9,28 @@ const AUDIO_LOOP_DELAY = 800;
 
 let savedScrollPosition = 0;
 
+function getPauseIconHtml() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M520-200v-560h240v560H520Zm-320 0v-560h240v560H200Zm400-80h80v-400h-80v400Zm-320 0h80v-400h-80v400Zm0-400v400-400Zm320 0v400-400Z"/></svg>`;
+}
+
+function setLearningPlayButtonPlaying(isPlaying) {
+  const btn = document.getElementById('learnPlayBtn');
+  if (!btn || state.isTeachingMode) return;
+  btn.classList.toggle('playing', isPlaying);
+  btn.innerHTML = isPlaying ? getPauseIconHtml() : `<svg><use href="#icon-play"></use></svg>`;
+  btn.title = isPlaying ? '暂停' : '播放';
+}
+
 export function updateLearningViewBtn() {
   const btn = document.getElementById('learnPlayBtn');
   if (!btn) return;
 
   if (state.isTeachingMode) {
+    btn.classList.remove('playing');
     btn.title = '录音';
     btn.innerHTML = `<svg><use href="#icon-mic"></use></svg>`;
   } else {
+    btn.classList.remove('playing');
     btn.title = '播放';
     btn.innerHTML = `<svg><use href="#icon-play"></use></svg>`;
   }
@@ -173,14 +187,14 @@ function startAudioLoop(char, level, unit) {
   const playNext = async () => {
     if (!state.isLoopingAudio) return;
 
-    btn.classList.add('playing');
+    setLearningPlayButtonPlaying(true);
     btn.disabled = false;
 
     const onStop = () => {
       if (state.isLoopingAudio) {
         setTimeout(playNext, AUDIO_LOOP_DELAY);
       } else {
-        btn.classList.remove('playing');
+        setLearningPlayButtonPlaying(false);
         btn.disabled = false;
         updateLearningViewBtn();
       }
@@ -244,6 +258,7 @@ export function enterLearning(char, level, unit) {
   initWriter(char);
 
   if (!state.isTeachingMode) {
+    setLearningPlayButtonPlaying(true);
     startAudioLoop(char, level, unit);
   }
 
@@ -259,6 +274,7 @@ export function exitLearning() {
     audioManager.currentAudio = null;
   }
   audioManager.onStopCallback = null;
+  updateLearningViewBtn();
 
   document.getElementById('learningView').classList.remove('active');
   document.getElementById('app').style.display = 'flex';

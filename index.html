@@ -606,6 +606,13 @@
       gap: 4px;
     }
 
+    .word-item .play-btn svg,
+    .text-btn-row>.play-btn svg,
+    .char-with-btn>.play-btn svg {
+      width: 1.9rem;
+      height: 1.9rem;
+    }
+
 
     /* 格子线 */
     .char-box::before,
@@ -673,7 +680,7 @@
     }
 
     .text-content {
-      font-size: 1.2rem;
+      font-size: 1.9rem;
       line-height: 1.5;
       color: #44403c;
       font-family: 'Noto Serif SC', serif;
@@ -747,7 +754,6 @@
       /* 与内容的间距 */
     }
 
-    .play-btn:hover,
     .play-btn.playing {
       background-color: #f3f4f6;
       color: var(--primary-color);
@@ -777,6 +783,11 @@
       position: absolute;
       left: 50%;
       margin-left: 2rem;
+    }
+
+    #learnPlayBtn svg {
+      width: 1.9rem;
+      height: 1.9rem;
     }
 
     /* 工具栏样式 */
@@ -1044,6 +1055,7 @@
       border: none;
       cursor: pointer;
       padding: 8px;
+      font-size: 1.9rem;
       color: #6b7280;
       border-radius: 50%;
       display: flex;
@@ -1053,10 +1065,14 @@
       margin-left: 0;
     }
 
-    .toolbar-mode-actions .play-btn:hover,
     .toolbar-mode-actions .play-btn.playing {
       background-color: #f3f4f6;
       color: var(--primary-color);
+    }
+
+    .toolbar-mode-actions .play-btn svg {
+      width: 1.9rem;
+      height: 1.9rem;
     }
 
     .menu-dropdown {
@@ -1759,7 +1775,7 @@
       <!-- 模式动作区 -->
       <div class="toolbar-mode-actions" id="modeActionSlot">
         <button class="play-btn" title="整单元朗读" id="learnBatchPlayBtnMain">
-          <svg style="width:20px;height:20px;">
+          <svg>
             <use href="#icon-play"></use>
           </svg>
         </button>
@@ -1769,12 +1785,12 @@
           </svg>
         </button>
         <button class="play-btn" title="批量播放" id="batchPlayBtnMain" style="display:none;">
-          <svg style="width:20px;height:20px;">
+          <svg>
             <use href="#icon-play"></use>
           </svg>
         </button>
         <button class="play-btn" title="批量录音" id="batchRecordBtnMain" style="display:none;">
-          <svg style="width:20px;height:20px;">
+          <svg>
             <use href="#icon-mic"></use>
           </svg>
         </button>
