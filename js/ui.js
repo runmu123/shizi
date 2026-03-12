@@ -47,8 +47,9 @@ function renderListenMode(appEl, unitName) {
     return;
   }
 
-  const currentChar = session.sequence[session.currentIndex] || '';
-  const options = Array.isArray(session.options) ? session.options : [];
+  const question = session.questions[session.currentIndex] || null;
+  const currentChar = question?.char || session.sequence[session.currentIndex] || '';
+  const options = Array.isArray(question?.options) ? question.options : [];
   const completedCount = Math.min(session.answeredChars.length, total);
   const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
   const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);

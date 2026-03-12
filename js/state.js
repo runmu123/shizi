@@ -27,6 +27,7 @@ export const state = {
   listenMode: {
     unitName: '',
     sequence: [],
+    questions: [],
     currentIndex: 0,
     options: [],
     mistakeChars: [],

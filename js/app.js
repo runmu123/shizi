@@ -353,6 +353,7 @@ function createEmptyListenState(unitName = '') {
   return {
     unitName,
     sequence: [],
+    questions: [],
     currentIndex: 0,
     options: [],
     mistakeChars: [],
@@ -379,6 +380,22 @@ function buildListenOptions(correctChar) {
   return shuffleArray([correctChar, ...distractors]);
 }
 
+function getListenQuestion(index = state.listenMode.currentIndex) {
+  return state.listenMode.questions[index] || null;
+}
+
+function findCharUnitInCurrentLevel(char) {
+  if (!state.currentData || !char) return getCurrentUnitName();
+
+  for (const [unitName, unitData] of Object.entries(state.currentData)) {
+    if (unitData && Object.prototype.hasOwnProperty.call(unitData, char)) {
+      return unitName;
+    }
+  }
+
+  return getCurrentUnitName();
+}
+
 function ensureListenSession(forceReset = false) {
   const unitName = getCurrentUnitName();
   const unitData = unitName ? state.currentData?.[unitName] : null;
@@ -391,10 +408,20 @@ function ensureListenSession(forceReset = false) {
   if (shouldReset) {
     state.listenMode = createEmptyListenState(unitName);
     state.listenMode.sequence = shuffleArray(unitChars);
+    state.listenMode.questions = state.listenMode.sequence.map((char) => ({
+      char,
+      options: buildListenOptions(char),
+      selectedChar: '',
+      answered: false,
+      hadMistake: false,
+      countedCorrect: null,
+      wrongSelections: [],
+    }));
   }
 
-  const currentChar = state.listenMode.sequence[state.listenMode.currentIndex];
-  state.listenMode.options = currentChar ? buildListenOptions(currentChar) : [];
+  const question = getListenQuestion();
+  const currentChar = question?.char || '';
+  state.listenMode.options = question ? [...question.options] : [];
   return currentChar;
 }
 
@@ -406,7 +433,7 @@ function playListenModeAudio() {
   if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
 
   const currentChar = getCurrentListenChar();
-  const unitName = getCurrentUnitName();
+  const unitName = findCharUnitInCurrentLevel(currentChar);
   const btn = document.getElementById('listenReplayBtn');
 
   if (!currentChar || !unitName || !window.audioManager) return;
@@ -438,6 +465,23 @@ function playListenModeAudio() {
     }
   }).catch((err) => {
     cleanup();
+    showToast('播放失败: ' + err.message, 'error');
+  });
+}
+
+function playSpecificListenCharAudio(char) {
+  if (!char || state.isTeachingMode || !window.audioManager) return;
+
+  const unitName = findCharUnitInCurrentLevel(char);
+  audioManager.stopCurrentAudio();
+  audioManager.playAudio(
+    state.currentLevel,
+    unitName,
+    char,
+    char,
+    'char',
+    null,
+  ).catch((err) => {
     showToast('播放失败: ' + err.message, 'error');
   });
 }
@@ -491,19 +535,22 @@ function showListenCompletionModal() {
   const summary = document.getElementById('listenCompletionSummary');
   if (!modal || !correctList || !wrongList || !summary) return;
 
-  const correctChars = state.listenMode.firstTryCorrectChars;
-  const wrongChars = state.listenMode.mistakeChars;
+  const correctQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === true);
+  const wrongQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === false);
 
-  summary.textContent = wrongChars.length === 0
+  summary.textContent = wrongQuestions.length === 0
     ? '全部正确！'
-    : `本单元共 ${state.listenMode.sequence.length} 个字，首次答对 ${correctChars.length} 个，答错过 ${wrongChars.length} 个。`;
+    : `本单元共 ${state.listenMode.sequence.length} 个字，选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。`;
 
-  correctList.innerHTML = correctChars.length > 0
-    ? correctChars.map((char) => `<span class="listen-result-char success">${escapeHtml(char)}</span>`).join('')
+  correctList.innerHTML = correctQuestions.length > 0
+    ? correctQuestions.map((question) => `<span class="listen-result-char success">${escapeHtml(question.char)}</span>`).join('')
     : '<span class="listen-result-empty">暂无</span>';
 
-  wrongList.innerHTML = wrongChars.length > 0
-    ? wrongChars.map((char) => `<span class="listen-result-char error">${escapeHtml(char)}</span>`).join('')
+  wrongList.innerHTML = wrongQuestions.length > 0
+    ? wrongQuestions.map((question) => {
+        const wrongChars = question.wrongSelections.join(',');
+        return `<div class="listen-result-row error">${escapeHtml(question.char)}(误认为：${escapeHtml(wrongChars)})</div>`;
+      }).join('')
     : '<span class="listen-result-empty">无，表现很棒</span>';
 
   modal.classList.add('active');
@@ -511,6 +558,7 @@ function showListenCompletionModal() {
 
 function goToNextListenItem() {
   if (state.listenMode.currentIndex >= state.listenMode.sequence.length - 1) {
+    renderUnit();
     showListenCompletionModal();
     return;
   }
@@ -518,6 +566,7 @@ function goToNextListenItem() {
   state.listenMode.currentIndex += 1;
   state.listenMode.currentMistaken = false;
   ensureListenSession(false);
+  state.listenMode.options = getListenQuestion()?.options ? [...getListenQuestion().options] : [];
   renderUnit();
   saveCurrentPosition();
   scheduleListenModeAutoPlay();
@@ -526,29 +575,77 @@ function goToNextListenItem() {
 function handleListenModeAnswer(selectedChar) {
   if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
 
-  const currentChar = getCurrentListenChar();
-  if (!currentChar) return;
+  const question = getListenQuestion();
+  const currentChar = question?.char || '';
+  if (!currentChar || !question) return;
 
   if (selectedChar === currentChar) {
-    if (!state.listenMode.currentMistaken && !state.listenMode.firstTryCorrectChars.includes(currentChar)) {
-      state.listenMode.firstTryCorrectChars.push(currentChar);
-    }
-    if (!state.listenMode.answeredChars.includes(currentChar)) {
-      state.listenMode.answeredChars.push(currentChar);
-    }
+    question.selectedChar = selectedChar;
+    if (!question.answered) {
+      question.answered = true;
+      question.countedCorrect = question.hadMistake ? false : true;
 
-    showToast('选择正确', 'success');
-    setTimeout(() => {
-      goToNextListenItem();
-    }, 280);
+      if (!question.hadMistake && !state.listenMode.firstTryCorrectChars.includes(currentChar)) {
+        state.listenMode.firstTryCorrectChars.push(currentChar);
+      }
+      if (!state.listenMode.answeredChars.includes(currentChar)) {
+        state.listenMode.answeredChars.push(currentChar);
+      }
+
+      showToast('选择正确', 'success');
+      setTimeout(() => {
+        goToNextListenItem();
+      }, 280);
+    } else {
+      showToast('已切回正确答案', 'success');
+      setTimeout(() => {
+        navigateListenHistory('next');
+      }, 280);
+    }
     return;
   }
 
   state.listenMode.currentMistaken = true;
+  question.selectedChar = selectedChar;
+  question.hadMistake = true;
+  if (!question.wrongSelections.includes(selectedChar)) {
+    question.wrongSelections.push(selectedChar);
+  }
+
+  if (question.countedCorrect === true || question.countedCorrect === null) {
+    question.countedCorrect = false;
+  }
+
   if (!state.listenMode.mistakeChars.includes(currentChar)) {
     state.listenMode.mistakeChars.push(currentChar);
   }
   showToast('错误！请重新选择', 'error');
+  playSpecificListenCharAudio(selectedChar);
+}
+
+function navigateListenHistory(direction) {
+  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+
+  const maxNavigableIndex = Math.min(
+    state.listenMode.answeredChars.length,
+    Math.max(0, state.listenMode.sequence.length - 1),
+  );
+  if (maxNavigableIndex < 0) return;
+
+  if (direction === 'prev') {
+    if (state.listenMode.currentIndex <= 0) return;
+    state.listenMode.currentIndex -= 1;
+  } else if (direction === 'next') {
+    if (state.listenMode.currentIndex >= maxNavigableIndex) return;
+    state.listenMode.currentIndex += 1;
+  } else {
+    return;
+  }
+
+  state.listenMode.currentMistaken = !!getListenQuestion()?.hadMistake;
+  state.listenMode.options = getListenQuestion()?.options ? [...getListenQuestion().options] : [];
+  renderUnit();
+  playListenModeAudio();
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
@@ -785,6 +882,8 @@ export function setupEventListeners() {
   const closeListenCompletion = document.getElementById('closeListenCompletion');
   const closeListenCompletionFooter = document.getElementById('closeListenCompletionFooter');
   const nextListenUnitBtn = document.getElementById('nextListenUnitBtn');
+  let listenTouchStartX = 0;
+  let listenTouchStartY = 0;
 
   updateEarStudyButtonForMode();
 
@@ -951,6 +1050,7 @@ export function setupEventListeners() {
     if (document.getElementById('batchRecordView').classList.contains('active')) return;
     if (document.getElementById('batchPlayView').classList.contains('active')) return;
     if (document.getElementById('passwordModal').classList.contains('active')) return;
+    if (document.getElementById('listenCompletionModal')?.classList.contains('active')) return;
 
     // 输入场景不拦截按键
     if (
@@ -960,6 +1060,19 @@ export function setupEventListeners() {
       e.target.isContentEditable
     ) {
       return;
+    }
+
+    if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateListenHistory('prev');
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateListenHistory('next');
+        return;
+      }
     }
 
     if (e.key === 'ArrowLeft') {
@@ -1117,6 +1230,31 @@ export function setupEventListeners() {
     e.stopPropagation();
     toggleLearnBatchPlayback(btn);
   });
+
+  appEl.addEventListener('touchstart', (e) => {
+    if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+    const panel = e.target.closest('.listen-mode-panel');
+    if (!panel || e.touches.length !== 1) return;
+    listenTouchStartX = e.touches[0].clientX;
+    listenTouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  appEl.addEventListener('touchend', (e) => {
+    if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+    const panel = e.target.closest('.listen-mode-panel');
+    if (!panel || e.changedTouches.length !== 1) return;
+
+    const deltaX = e.changedTouches[0].clientX - listenTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - listenTouchStartY;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    if (deltaX > 0) {
+      navigateListenHistory('prev');
+    } else {
+      navigateListenHistory('next');
+    }
+  }, { passive: true });
 
   // ===== 学习模式 ear/study 按钮 =====
   document.addEventListener('click', (e) => {

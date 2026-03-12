@@ -17,8 +17,13 @@
   <script>
     (() => {
       const forceRefreshTokenKey = 'shizi_force_refresh_token';
+      const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
       const urlToken = new URLSearchParams(window.location.search).get('t');
-      const sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
+      let sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
+      if (!urlToken && !sessionToken && isLocalDev) {
+        sessionToken = `${Date.now()}`;
+        sessionStorage.setItem(forceRefreshTokenKey, sessionToken);
+      }
       const refreshToken = urlToken || sessionToken || '';
       const shouldForceRefresh = !!refreshToken;
       const suffix = shouldForceRefresh ? `?t=${encodeURIComponent(refreshToken)}` : '';
@@ -1254,6 +1259,13 @@
       min-height: 34px;
     }
 
+    .listen-result-list.column {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
     .listen-result-char {
       display: inline-flex;
       align-items: center;
@@ -1279,6 +1291,22 @@
     .listen-result-empty {
       color: #a8a29e;
       font-size: 0.95rem;
+    }
+
+    .listen-result-row {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-family: 'KaiTi', 'STKaiti', serif;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+
+    .listen-result-row.error {
+      background: #fff1f2;
+      color: #b91c1c;
+      border: 1px solid #fecdd3;
     }
 
     @media (max-width: 720px) {
@@ -1981,8 +2009,8 @@
         <div class="listen-result-list" id="listenCorrectList"></div>
       </div>
       <div class="listen-result-group">
-        <div class="listen-result-label">选错的字</div>
-        <div class="listen-result-list" id="listenWrongList"></div>
+        <div class="listen-result-label">未选对的字</div>
+        <div class="listen-result-list column" id="listenWrongList"></div>
       </div>
       <div class="modal-actions" style="margin-top: 22px;">
         <button class="modal-btn cancel" id="closeListenCompletionFooter">返回</button>
