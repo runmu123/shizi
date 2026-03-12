@@ -3,7 +3,7 @@ import { state, cacheSuffix } from './state.js';
 import { TEACH_PASSWORD, USER_KEY } from './constants.js';
 import { showToast } from './toast.js';
 import { saveCurrentPosition } from './position.js';
-import { renderUnit, renderSearchResult, escapeHtml } from './ui.js';
+import { renderUnit, renderSearchResult, escapeHtml, applyResponsiveLayout } from './ui.js';
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
 import { enterBatchRecord } from './batch-record.js';
 import { enterBatchPlay } from './batch-play.js';
@@ -317,7 +317,7 @@ function getPauseIconHtml() {
 }
 
 function getPlayIconHtml() {
-  return `<svg style="width:20px;height:20px"><use href="#icon-play"></use></svg>`;
+  return `<svg><use href="#icon-play"></use></svg>`;
 }
 
 function getSpeakerIconHtml() {
@@ -853,6 +853,7 @@ function toggleLearnBatchPlayback(btn) {
 
 // ===== 事件绑定 =====
 export function setupEventListeners() {
+  let resizeFrame = 0;
   let scrollPosition = 0;
 
   function lockScroll() {
@@ -896,6 +897,16 @@ export function setupEventListeners() {
   let listenTouchStartY = 0;
 
   updateEarStudyButtonForMode();
+
+  window.addEventListener('resize', () => {
+    if (resizeFrame) {
+      cancelAnimationFrame(resizeFrame);
+    }
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      applyResponsiveLayout();
+    });
+  });
 
   const tryEnterTeachingMode = () => {
     const currentUser = localStorage.getItem(USER_KEY);

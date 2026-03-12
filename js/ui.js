@@ -1,6 +1,16 @@
 ﻿// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
 import { state } from './state.js';
 
+const UNIT_CHAR_BASE_REM = 1.9;
+const UNIT_CHAR_MIN_REM = 0.75;
+const LISTEN_DESKTOP_OPTION_HEIGHT = 132;
+const LISTEN_MOBILE_OPTION_HEIGHT = 108;
+const LISTEN_DESKTOP_OPTION_MIN_HEIGHT = 84;
+const LISTEN_MOBILE_OPTION_MIN_HEIGHT = 74;
+const LISTEN_DESKTOP_OPTION_GAP = 18;
+const LISTEN_MOBILE_OPTION_GAP = 14;
+const LISTEN_OPTION_MIN_GAP = 8;
+
 export function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -30,11 +40,77 @@ function getListenSpeakerIconHtml() {
   return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
 }
 
+function fitUnitCharStrip() {
+  const strip = document.querySelector('.unit-char-strip');
+  if (!strip) return;
+
+  const rootFontSize = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+  const basePx = rootFontSize * UNIT_CHAR_BASE_REM;
+  const minPx = rootFontSize * UNIT_CHAR_MIN_REM;
+
+  let nextPx = basePx;
+  strip.style.fontSize = `${UNIT_CHAR_BASE_REM}rem`;
+
+  const availableWidth = strip.clientWidth;
+  if (!availableWidth) return;
+
+  let contentWidth = strip.scrollWidth;
+  if (contentWidth <= availableWidth) return;
+
+  nextPx = Math.max(minPx, Math.floor((basePx * availableWidth / contentWidth) * 100) / 100);
+  strip.style.fontSize = `${nextPx / rootFontSize}rem`;
+
+  contentWidth = strip.scrollWidth;
+  while (contentWidth > availableWidth && nextPx > minPx) {
+    nextPx = Math.max(minPx, nextPx - 0.5);
+    strip.style.fontSize = `${nextPx / rootFontSize}rem`;
+    contentWidth = strip.scrollWidth;
+  }
+}
+
+function fitListenLayout(appEl = document.getElementById('app')) {
+  if (!appEl || !appEl.classList.contains('listen-layout')) return;
+
+  const optionButtons = Array.from(document.querySelectorAll('.listen-option-btn'));
+  if (!optionButtons.length) return;
+
+  const isMobile = window.innerWidth <= 720;
+  const baseHeight = isMobile ? LISTEN_MOBILE_OPTION_HEIGHT : LISTEN_DESKTOP_OPTION_HEIGHT;
+  const minHeight = isMobile ? LISTEN_MOBILE_OPTION_MIN_HEIGHT : LISTEN_DESKTOP_OPTION_MIN_HEIGHT;
+  const baseGap = isMobile ? LISTEN_MOBILE_OPTION_GAP : LISTEN_DESKTOP_OPTION_GAP;
+  const rows = isMobile ? 2 : 1;
+
+  appEl.style.setProperty('--listen-option-height', `${baseHeight}px`);
+  appEl.style.setProperty('--listen-option-gap', `${baseGap}px`);
+
+  const appTop = appEl.getBoundingClientRect().top;
+  const viewportBudget = Math.max(window.innerHeight - appTop - 12, 0);
+  const currentHeight = appEl.scrollHeight;
+  const overflow = Math.max(0, Math.ceil(currentHeight - viewportBudget));
+
+  if (!overflow) return;
+
+  const maxHeightReduction = baseHeight - minHeight;
+  const heightReduction = Math.min(maxHeightReduction, Math.ceil(overflow / rows));
+  const nextHeight = Math.max(minHeight, baseHeight - heightReduction);
+  const leftoverOverflow = Math.max(0, overflow - ((baseHeight - nextHeight) * rows));
+  const nextGap = Math.max(LISTEN_OPTION_MIN_GAP, baseGap - Math.ceil(leftoverOverflow / Math.max(rows, 1)));
+
+  appEl.style.setProperty('--listen-option-height', `${nextHeight}px`);
+  appEl.style.setProperty('--listen-option-gap', `${nextGap}px`);
+}
+
+export function applyResponsiveLayout() {
+  fitUnitCharStrip();
+  fitListenLayout();
+}
+
 function renderListenMode(appEl, unitName) {
   const session = state.listenMode;
   const total = session.sequence.length;
 
   if (!total) {
+    appEl.classList.add('listen-layout');
     appEl.innerHTML = `
       <div class="unit-title">
         <span class="unit-title-text">${escapeHtml(unitName)}</span>
@@ -78,6 +154,7 @@ function renderListenMode(appEl, unitName) {
       </div>
     </div>
   `;
+  requestAnimationFrame(() => applyResponsiveLayout());
 }
 
 export function renderUnit() {
@@ -88,6 +165,9 @@ export function renderUnit() {
   const nextBtn = document.getElementById('nextUnit');
 
   if (!state.currentData || state.unitKeys.length === 0) {
+    appEl.classList.remove('listen-layout');
+    appEl.style.removeProperty('--listen-option-height');
+    appEl.style.removeProperty('--listen-option-gap');
     appEl.innerHTML = '<div class="loading">暂无数据</div>';
     indicatorText.textContent = '0/0';
     return;
@@ -102,10 +182,15 @@ export function renderUnit() {
   nextBtn.disabled = state.currentUnitIndex === state.unitKeys.length - 1;
 
   if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
+    appEl.classList.add('listen-layout');
     renderListenMode(appEl, unitName);
     window.scrollTo(0, 0);
     return;
   }
+
+  appEl.classList.remove('listen-layout');
+  appEl.style.removeProperty('--listen-option-height');
+  appEl.style.removeProperty('--listen-option-gap');
 
   let html = `
     <div class="unit-title">
@@ -117,15 +202,8 @@ export function renderUnit() {
     const allChars = Object.keys(unitChars);
     if (allChars.length > 0) {
       html += `
-        <div style="
-          text-align: center;
-          margin: -10px 0 20px 0;
-          padding: 0 16px;
-          color: #666;
-          font-size: 1.9rem;
-          font-family: 'KaiTi', 'STKaiti', serif;
-        ">
-          ${allChars.map(c => `<span class="unit-char-link" data-char="${escapeHtml(c)}" style="cursor:pointer; user-select:none; margin: 0 2px;">${escapeHtml(c)}</span>`).join('，')}
+        <div class="unit-char-strip">
+          ${allChars.map(c => `<span class="unit-char-link" data-char="${escapeHtml(c)}">${escapeHtml(c)}</span>`).join('，')}
         </div>
       `;
     }
@@ -175,11 +253,15 @@ export function renderUnit() {
   }
 
   appEl.innerHTML = html;
+  requestAnimationFrame(() => applyResponsiveLayout());
   window.scrollTo(0, 0);
 }
 
 export function renderSearchResult(char, info, level, unit) {
   const appEl = document.getElementById('app');
+  appEl.classList.remove('listen-layout');
+  appEl.style.removeProperty('--listen-option-height');
+  appEl.style.removeProperty('--listen-option-gap');
   const words = (info.词) ? info.词 : [];
   const sentence = (info.句) ? info.句 : '';
 
