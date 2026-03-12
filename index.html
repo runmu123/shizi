@@ -1177,8 +1177,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 24px 8px 12px;
+      justify-content: flex-start;
+      padding: 8px 8px 12px;
     }
 
     .listen-audio-btn {
@@ -1194,12 +1194,13 @@
       box-shadow: 0 14px 28px rgba(249, 115, 22, 0.22);
       cursor: pointer;
       transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-      margin-top: 8px;
+      margin-top: 0;
+      transform: translateY(-6px);
     }
 
     .listen-audio-btn:hover,
     .listen-audio-btn.playing {
-      transform: translateY(-2px) scale(1.02);
+      transform: translateY(-8px) scale(1.02);
       box-shadow: 0 18px 32px rgba(249, 115, 22, 0.3);
       background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
     }
@@ -1215,21 +1216,12 @@
       stroke-width: 1.8;
     }
 
-    .listen-mode-caption {
-      margin-top: 20px;
-      color: #57534e;
-      font-size: 1.9rem;
-      font-family: 'Noto Serif SC', serif;
-      text-align: center;
-      letter-spacing: 0.04em;
-    }
-
     .listen-options-grid {
       width: 100%;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 18px;
-      margin-top: 48px;
+      margin-top: 18px;
     }
 
     .listen-option-btn {
@@ -1328,7 +1320,7 @@
     @media (max-width: 720px) {
       .listen-mode-panel {
         min-height: calc(100vh - 240px);
-        padding-top: 12px;
+        padding-top: 0;
       }
 
       .listen-audio-btn {
@@ -1336,14 +1328,10 @@
         height: 116px;
       }
 
-      .listen-mode-caption {
-        font-size: 1.55rem;
-      }
-
       .listen-options-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
-        margin-top: 36px;
+        margin-top: 14px;
       }
 
       .listen-option-btn {

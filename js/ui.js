@@ -71,7 +71,6 @@ function renderListenMode(appEl, unitName) {
       <button class="listen-audio-btn" id="listenReplayBtn" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
         ${getListenSpeakerIconHtml()}
       </button>
-      <div class="listen-mode-caption">点击听读音</div>
       <div class="listen-options-grid">
         ${options.map(option => `
           <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
