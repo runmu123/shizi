@@ -15,3 +15,4 @@ js_download_script.js
 args.yaml
 # build.py
 *.apk
+utils/

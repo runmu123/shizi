@@ -17,6 +17,10 @@ const learnBatchPlayback = {
   button: null,
 };
 
+const toolbarIconState = {
+  isStudyMode: false,
+};
+
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -194,6 +198,7 @@ export function switchTeachingMode(enable) {
   const batchPlayBtn = document.getElementById('batchPlayBtnMain');
   const batchRecordBtn = document.getElementById('batchRecordBtnMain');
   const learnBatchBtn = document.getElementById('learnBatchPlayBtnMain');
+  const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
   const menuSwitchTeach = document.getElementById('menuSwitchTeach');
   const menuSwitchLearn = document.getElementById('menuSwitchLearn');
   const menuStats = document.getElementById('menuStats');
@@ -207,6 +212,12 @@ export function switchTeachingMode(enable) {
   }
   if (learnBatchBtn) {
     learnBatchBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
+  }
+  if (earStudyBtn) {
+    earStudyBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
+    if (!state.isTeachingMode) {
+      setEarStudyBtnState(earStudyBtn, toolbarIconState.isStudyMode);
+    }
   }
   if (menuSwitchTeach) {
     menuSwitchTeach.style.display = state.isTeachingMode ? 'none' : 'block';
@@ -303,6 +314,22 @@ function getPauseIconHtml() {
 
 function getPlayIconHtml() {
   return `<svg style="width:20px;height:20px"><use href="#icon-play"></use></svg>`;
+}
+
+function getEarIconHtml() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-80q62 0 101.5-31t60.5-91q17-50 32.5-70t71.5-64q62-50 98-113t36-151q0-119-80.5-199.5T400-880q-119 0-199.5 80.5T120-600h80q0-85 57.5-142.5T400-800q85 0 142.5 57.5T600-600q0 68-27 116t-77 86q-52 38-81 74t-43 78q-14 44-33.5 65T280-160q-33 0-56.5-23.5T200-240h-80q0 66 47 113t113 47Zm432-210q59-60 93.5-139.5T840-600q0-92-34.5-172T712-912l-58 56q50 50 78 115.5T760-600q0 74-28 139t-78 115l58 56ZM471-529.5q29-29.5 29-70.5 0-42-29-71t-71-29q-42 0-71 29t-29 71q0 41 29 70.5t71 29.5q42 0 71-29.5Z"/></svg>`;
+}
+
+function getStudyIconHtml() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h440l200 200v440q0 33-23.5 56.5T760-120H200Zm0-80h560v-400H600v-160H200v560Zm80-80h400v-80H280v80Zm0-320h200v-80H280v80Zm0 160h400v-80H280v80Zm-80-320v160-160 560-560Z"/></svg>`;
+}
+
+function setEarStudyBtnState(btn, isStudyMode) {
+  if (!btn) return;
+  toolbarIconState.isStudyMode = isStudyMode;
+  btn.innerHTML = isStudyMode ? getStudyIconHtml() : getEarIconHtml();
+  btn.title = isStudyMode ? 'study' : 'ear';
+  btn.setAttribute('aria-pressed', isStudyMode ? 'true' : 'false');
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
@@ -529,11 +556,14 @@ export function setupEventListeners() {
   const nextBtn = document.getElementById('nextUnit');
   const unitSelect = document.getElementById('unitSelect');
   const appEl = document.getElementById('app');
+  const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
 
   // 密码弹窗元素
   const passwordModal = document.getElementById('passwordModal');
   const passwordInput = document.getElementById('passwordInput');
   const passwordError = document.getElementById('passwordError');
+
+  setEarStudyBtnState(earStudyBtn, toolbarIconState.isStudyMode);
 
   const tryEnterTeachingMode = () => {
     const currentUser = localStorage.getItem(USER_KEY);
@@ -839,6 +869,14 @@ export function setupEventListeners() {
     if (!btn) return;
     e.stopPropagation();
     toggleLearnBatchPlayback(btn);
+  });
+
+  // ===== 学习模式 ear/study 按钮 =====
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#earStudyToggleBtnMain');
+    if (!btn || state.isTeachingMode) return;
+    e.stopPropagation();
+    setEarStudyBtnState(btn, !toolbarIconState.isStudyMode);
   });
 
   // ===== 批量录音按钮事件 =====
