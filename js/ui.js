@@ -1,4 +1,4 @@
-﻿// UI 渲染：卡片、搜索结果、HTML 工具函数
+﻿// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
 import { state } from './state.js';
 
 export function escapeHtml(str) {
@@ -13,7 +13,6 @@ export function highlightChar(text, char) {
   if (!text || !char) return escapeHtml(text || '');
   const safeText = escapeHtml(text);
   const safeChar = escapeHtml(char);
-  // 使用 split/join 替代 regex，避免 regex 注入
   return safeText.split(safeChar).join(`<span class="highlight">${safeChar}</span>`);
 }
 
@@ -21,11 +20,65 @@ export function getBtnHtml(text, type, rootChar, level, unit, isSmall = false, i
   const svgAttr = isSmall ? ' style="width:16px;height:16px"' : '';
   const iconId = state.isTeachingMode ? '#icon-mic' : '#icon-play';
   const icon = `<svg${svgAttr}><use href="${iconId}"></use></svg>`;
-  
+
   const title = state.isTeachingMode ? '录音' : '播放';
   const btnStyle = isSmall ? 'padding: 2px; margin-left: 2px;' : '';
 
   return `<button class="play-btn" title="${title}" style="${btnStyle}" data-text="${escapeHtml(text || '')}" data-type="${type}" data-root-char="${escapeHtml(rootChar || '')}" data-level="${escapeHtml(level || '')}" data-unit="${escapeHtml(unit || '')}" data-is-small="${isSmall}" data-index="${index !== null ? index : ''}">${icon}</button>`;
+}
+
+function getListenSpeakerIconHtml() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
+}
+
+function renderListenMode(appEl, unitName) {
+  const session = state.listenMode;
+  const total = session.sequence.length;
+
+  if (!total) {
+    appEl.innerHTML = `
+      <div class="unit-title">
+        <span class="unit-title-text">${escapeHtml(unitName)}</span>
+      </div>
+      <div class="card">
+        <div class="loading">当前单元暂无可练习汉字</div>
+      </div>
+    `;
+    return;
+  }
+
+  const currentChar = session.sequence[session.currentIndex] || '';
+  const options = Array.isArray(session.options) ? session.options : [];
+  const completedCount = Math.min(session.answeredChars.length, total);
+  const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
+  const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+
+  appEl.innerHTML = `
+    <div class="unit-title listen-unit-title">
+      <span class="unit-title-text">${escapeHtml(unitName)}</span>
+    </div>
+    <div class="listen-progress-card">
+      <div class="listen-progress-header">
+        <span>听音识字进度</span>
+        <span>${currentStep}/${total}</span>
+      </div>
+      <div class="progress-track listen-progress-track">
+        <div class="progress-fill" style="width:${progressPercent}%"></div>
+      </div>
+      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
+    </div>
+    <div class="listen-mode-panel" data-char="${escapeHtml(currentChar)}">
+      <button class="listen-audio-btn" id="listenReplayBtn" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
+        ${getListenSpeakerIconHtml()}
+      </button>
+      <div class="listen-mode-caption">点击听读音</div>
+      <div class="listen-options-grid">
+        ${options.map(option => `
+          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 export function renderUnit() {
@@ -44,13 +97,17 @@ export function renderUnit() {
   const unitName = state.unitKeys[state.currentUnitIndex];
   const unitChars = state.currentData[unitName];
 
-  // 更新导航 UI
   indicatorText.textContent = `${state.currentUnitIndex + 1}/${state.unitKeys.length}`;
   unitSelect.value = state.currentUnitIndex;
   prevBtn.disabled = state.currentUnitIndex === 0;
   nextBtn.disabled = state.currentUnitIndex === state.unitKeys.length - 1;
 
-  // 渲染卡片
+  if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
+    renderListenMode(appEl, unitName);
+    window.scrollTo(0, 0);
+    return;
+  }
+
   let html = `
     <div class="unit-title">
       <span class="unit-title-text">${escapeHtml(unitName)}</span>
@@ -58,7 +115,6 @@ export function renderUnit() {
   `;
 
   if (unitChars) {
-    // 生成单元摘要
     const allChars = Object.keys(unitChars);
     if (allChars.length > 0) {
       html += `

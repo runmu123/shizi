@@ -17,10 +17,6 @@ const learnBatchPlayback = {
   button: null,
 };
 
-const toolbarIconState = {
-  isStudyMode: false,
-};
-
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -124,7 +120,10 @@ export async function loadLevel(level, savedPos = null) {
       unitSelect.appendChild(option);
     });
 
-    renderUnit();
+    refreshCurrentUnitView({
+      resetListen: state.mainViewMode === 'listen',
+      autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
+    });
   } catch (err) {
     console.error('加载数据失败:', err);
     appEl.innerHTML = `
@@ -194,6 +193,9 @@ async function searchChar(char) {
 export function switchTeachingMode(enable) {
   stopLearnBatchPlayback(true);
   state.isTeachingMode = enable;
+  if (enable) {
+    state.mainViewMode = 'study';
+  }
 
   const batchPlayBtn = document.getElementById('batchPlayBtnMain');
   const batchRecordBtn = document.getElementById('batchRecordBtnMain');
@@ -216,7 +218,7 @@ export function switchTeachingMode(enable) {
   if (earStudyBtn) {
     earStudyBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
     if (!state.isTeachingMode) {
-      setEarStudyBtnState(earStudyBtn, toolbarIconState.isStudyMode);
+      updateEarStudyButtonForMode();
     }
   }
   if (menuSwitchTeach) {
@@ -262,7 +264,10 @@ export async function navigateToUnit(level, unitName) {
   const index = state.unitKeys.indexOf(unitName);
   if (index !== -1) {
     state.currentUnitIndex = index;
-    renderUnit();
+    refreshCurrentUnitView({
+      resetListen: state.mainViewMode === 'listen',
+      autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
+    });
     saveCurrentPosition();
     showToast(`已跳转到 ${level} ${unitName}`, 'success');
   } else {
@@ -326,10 +331,224 @@ function getStudyIconHtml() {
 
 function setEarStudyBtnState(btn, isStudyMode) {
   if (!btn) return;
-  toolbarIconState.isStudyMode = isStudyMode;
   btn.innerHTML = isStudyMode ? getStudyIconHtml() : getEarIconHtml();
   btn.title = isStudyMode ? 'study' : 'ear';
   btn.setAttribute('aria-pressed', isStudyMode ? 'true' : 'false');
+}
+
+function shuffleArray(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function getCurrentUnitName() {
+  return state.unitKeys?.[state.currentUnitIndex] || '';
+}
+
+function createEmptyListenState(unitName = '') {
+  return {
+    unitName,
+    sequence: [],
+    currentIndex: 0,
+    options: [],
+    mistakeChars: [],
+    firstTryCorrectChars: [],
+    answeredChars: [],
+    currentMistaken: false,
+  };
+}
+
+function getLevelCharPool() {
+  if (!state.currentData) return [];
+  const pool = new Set();
+  Object.values(state.currentData).forEach((unitData) => {
+    Object.keys(unitData || {}).forEach((char) => pool.add(char));
+  });
+  return Array.from(pool);
+}
+
+function buildListenOptions(correctChar) {
+  const distractors = shuffleArray(
+    getLevelCharPool().filter((char) => char && char !== correctChar)
+  ).slice(0, 3);
+
+  return shuffleArray([correctChar, ...distractors]);
+}
+
+function ensureListenSession(forceReset = false) {
+  const unitName = getCurrentUnitName();
+  const unitData = unitName ? state.currentData?.[unitName] : null;
+  const unitChars = Object.keys(unitData || {});
+  const shouldReset =
+    forceReset ||
+    state.listenMode.unitName !== unitName ||
+    state.listenMode.sequence.length === 0;
+
+  if (shouldReset) {
+    state.listenMode = createEmptyListenState(unitName);
+    state.listenMode.sequence = shuffleArray(unitChars);
+  }
+
+  const currentChar = state.listenMode.sequence[state.listenMode.currentIndex];
+  state.listenMode.options = currentChar ? buildListenOptions(currentChar) : [];
+  return currentChar;
+}
+
+function getCurrentListenChar() {
+  return state.listenMode.sequence[state.listenMode.currentIndex] || '';
+}
+
+function playListenModeAudio() {
+  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+
+  const currentChar = getCurrentListenChar();
+  const unitName = getCurrentUnitName();
+  const btn = document.getElementById('listenReplayBtn');
+
+  if (!currentChar || !unitName || !window.audioManager) return;
+
+  if (btn) {
+    btn.classList.add('playing');
+    btn.disabled = true;
+  }
+
+  const cleanup = () => {
+    if (!btn) return;
+    btn.classList.remove('playing');
+    btn.disabled = false;
+  };
+
+  audioManager.stopCurrentAudio();
+  audioManager.playAudio(
+    state.currentLevel,
+    unitName,
+    currentChar,
+    currentChar,
+    'char',
+    null,
+    cleanup,
+  ).then((success) => {
+    if (!success) {
+      cleanup();
+      showToast('暂无录音', 'info');
+    }
+  }).catch((err) => {
+    cleanup();
+    showToast('播放失败: ' + err.message, 'error');
+  });
+}
+
+function scheduleListenModeAutoPlay() {
+  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+  setTimeout(() => {
+    playListenModeAudio();
+  }, 80);
+}
+
+function refreshCurrentUnitView({ resetListen = false, autoPlayListen = false } = {}) {
+  if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
+    audioManager.stopCurrentAudio();
+  }
+
+  if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
+    ensureListenSession(resetListen);
+  }
+
+  renderUnit();
+
+  if (autoPlayListen && state.mainViewMode === 'listen' && !state.isTeachingMode) {
+    scheduleListenModeAutoPlay();
+  }
+}
+
+function updateEarStudyButtonForMode() {
+  const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
+  setEarStudyBtnState(earStudyBtn, state.mainViewMode === 'listen');
+}
+
+function setMainViewMode(mode, { resetListen = true, autoPlay = true } = {}) {
+  if (mode !== 'study' && mode !== 'listen') return;
+  if (state.isTeachingMode && mode === 'listen') return;
+
+  state.mainViewMode = mode;
+  updateEarStudyButtonForMode();
+
+  refreshCurrentUnitView({
+    resetListen: mode === 'listen' ? resetListen : false,
+    autoPlayListen: mode === 'listen' ? autoPlay : false,
+  });
+  saveCurrentPosition();
+}
+
+function showListenCompletionModal() {
+  const modal = document.getElementById('listenCompletionModal');
+  const correctList = document.getElementById('listenCorrectList');
+  const wrongList = document.getElementById('listenWrongList');
+  const summary = document.getElementById('listenCompletionSummary');
+  if (!modal || !correctList || !wrongList || !summary) return;
+
+  const correctChars = state.listenMode.firstTryCorrectChars;
+  const wrongChars = state.listenMode.mistakeChars;
+
+  summary.textContent = wrongChars.length === 0
+    ? '全部正确！'
+    : `本单元共 ${state.listenMode.sequence.length} 个字，首次答对 ${correctChars.length} 个，答错过 ${wrongChars.length} 个。`;
+
+  correctList.innerHTML = correctChars.length > 0
+    ? correctChars.map((char) => `<span class="listen-result-char success">${escapeHtml(char)}</span>`).join('')
+    : '<span class="listen-result-empty">暂无</span>';
+
+  wrongList.innerHTML = wrongChars.length > 0
+    ? wrongChars.map((char) => `<span class="listen-result-char error">${escapeHtml(char)}</span>`).join('')
+    : '<span class="listen-result-empty">无，表现很棒</span>';
+
+  modal.classList.add('active');
+}
+
+function goToNextListenItem() {
+  if (state.listenMode.currentIndex >= state.listenMode.sequence.length - 1) {
+    showListenCompletionModal();
+    return;
+  }
+
+  state.listenMode.currentIndex += 1;
+  state.listenMode.currentMistaken = false;
+  ensureListenSession(false);
+  renderUnit();
+  saveCurrentPosition();
+  scheduleListenModeAutoPlay();
+}
+
+function handleListenModeAnswer(selectedChar) {
+  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+
+  const currentChar = getCurrentListenChar();
+  if (!currentChar) return;
+
+  if (selectedChar === currentChar) {
+    if (!state.listenMode.currentMistaken && !state.listenMode.firstTryCorrectChars.includes(currentChar)) {
+      state.listenMode.firstTryCorrectChars.push(currentChar);
+    }
+    if (!state.listenMode.answeredChars.includes(currentChar)) {
+      state.listenMode.answeredChars.push(currentChar);
+    }
+
+    showToast('选择正确', 'success');
+    setTimeout(() => {
+      goToNextListenItem();
+    }, 280);
+    return;
+  }
+
+  state.listenMode.currentMistaken = true;
+  if (!state.listenMode.mistakeChars.includes(currentChar)) {
+    state.listenMode.mistakeChars.push(currentChar);
+  }
+  showToast('错误！请重新选择', 'error');
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
@@ -562,8 +781,12 @@ export function setupEventListeners() {
   const passwordModal = document.getElementById('passwordModal');
   const passwordInput = document.getElementById('passwordInput');
   const passwordError = document.getElementById('passwordError');
+  const listenCompletionModal = document.getElementById('listenCompletionModal');
+  const closeListenCompletion = document.getElementById('closeListenCompletion');
+  const closeListenCompletionFooter = document.getElementById('closeListenCompletionFooter');
+  const nextListenUnitBtn = document.getElementById('nextListenUnitBtn');
 
-  setEarStudyBtnState(earStudyBtn, toolbarIconState.isStudyMode);
+  updateEarStudyButtonForMode();
 
   const tryEnterTeachingMode = () => {
     const currentUser = localStorage.getItem(USER_KEY);
@@ -637,7 +860,7 @@ export function setupEventListeners() {
     currentLevelBtn.classList.toggle('active');
   });
 
-  levelDropdown.addEventListener('click', (e) => {
+  levelDropdown.addEventListener('click', async (e) => {
     const opt = e.target.closest('.level-option');
     if (!opt) return;
 
@@ -652,7 +875,7 @@ export function setupEventListeners() {
 
       state.currentLevel = level;
       stopLearnBatchPlayback(true);
-      loadLevel(level);
+      await loadLevel(level);
       saveCurrentPosition();
     } else {
       levelDropdown.classList.remove('show');
@@ -665,10 +888,18 @@ export function setupEventListeners() {
     const val = e.target.value.trim();
     stopLearnBatchPlayback(true);
     if (val && val.length === 1) {
+      if (state.mainViewMode === 'listen') {
+        state.mainViewMode = 'study';
+        updateEarStudyButtonForMode();
+        saveCurrentPosition();
+      }
       searchChar(val);
     } else if (val.length === 0) {
       unitNavigator.style.visibility = 'visible';
-      renderUnit();
+      refreshCurrentUnitView({
+        resetListen: state.mainViewMode === 'listen',
+        autoPlayListen: false,
+      });
     }
   });
 
@@ -677,7 +908,10 @@ export function setupEventListeners() {
     if (state.currentUnitIndex > 0) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex--;
-      renderUnit();
+      refreshCurrentUnitView({
+        resetListen: state.mainViewMode === 'listen',
+        autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
+      });
       saveCurrentPosition();
     }
   };
@@ -686,7 +920,10 @@ export function setupEventListeners() {
     if (state.currentUnitIndex < state.unitKeys.length - 1) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex++;
-      renderUnit();
+      refreshCurrentUnitView({
+        resetListen: state.mainViewMode === 'listen',
+        autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
+      });
       saveCurrentPosition();
     }
   };
@@ -699,7 +936,10 @@ export function setupEventListeners() {
     if (!isNaN(idx) && idx >= 0 && idx < state.unitKeys.length) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex = idx;
-      renderUnit();
+      refreshCurrentUnitView({
+        resetListen: state.mainViewMode === 'listen',
+        autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
+      });
       saveCurrentPosition();
     }
   });
@@ -733,6 +973,13 @@ export function setupEventListeners() {
 
   // ===== 点击汉字进入学习模式 =====
   appEl.addEventListener('click', (e) => {
+    const listenOptionBtn = e.target.closest('.listen-option-btn');
+    if (listenOptionBtn) {
+      e.stopPropagation();
+      handleListenModeAnswer(listenOptionBtn.dataset.char || '');
+      return;
+    }
+
     const unitCharLink = e.target.closest('.unit-char-link');
     if (unitCharLink) {
       const targetChar = unitCharLink.dataset.char;
@@ -770,7 +1017,7 @@ export function setupEventListeners() {
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.play-btn');
     if (!btn) return;
-    if (btn.id === 'learnBatchPlayBtnMain') return;
+    if (['learnBatchPlayBtnMain', 'earStudyToggleBtnMain', 'batchRecordBtnMain', 'batchPlayBtnMain'].includes(btn.id)) return;
 
     if (btn.classList.contains('processing') || btn.disabled) return;
 
@@ -876,7 +1123,22 @@ export function setupEventListeners() {
     const btn = e.target.closest('#earStudyToggleBtnMain');
     if (!btn || state.isTeachingMode) return;
     e.stopPropagation();
-    setEarStudyBtnState(btn, !toolbarIconState.isStudyMode);
+    if (searchInput.value) {
+      searchInput.value = '';
+      unitNavigator.style.visibility = 'visible';
+    }
+    setMainViewMode(state.mainViewMode === 'listen' ? 'study' : 'listen', {
+      resetListen: true,
+      autoPlay: true,
+    });
+  });
+
+  // ===== 听音识字播放按钮 =====
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#listenReplayBtn');
+    if (!btn) return;
+    e.stopPropagation();
+    playListenModeAudio();
   });
 
   // ===== 批量录音按钮事件 =====
@@ -904,4 +1166,46 @@ export function setupEventListeners() {
       currentLevelBtn.classList.remove('active');
     }
   });
+
+  if (closeListenCompletion) {
+    closeListenCompletion.addEventListener('click', () => {
+      if (listenCompletionModal) {
+        listenCompletionModal.classList.remove('active');
+      }
+    });
+  }
+
+  if (closeListenCompletionFooter) {
+    closeListenCompletionFooter.addEventListener('click', () => {
+      if (listenCompletionModal) {
+        listenCompletionModal.classList.remove('active');
+      }
+    });
+  }
+
+  if (listenCompletionModal) {
+    listenCompletionModal.addEventListener('click', (e) => {
+      if (e.target === listenCompletionModal) {
+        listenCompletionModal.classList.remove('active');
+      }
+    });
+  }
+
+  if (nextListenUnitBtn) {
+    nextListenUnitBtn.addEventListener('click', () => {
+      if (listenCompletionModal) {
+        listenCompletionModal.classList.remove('active');
+      }
+
+      if (state.currentUnitIndex >= state.unitKeys.length - 1) {
+        showToast('已经是最后一个单元', 'info');
+        return;
+      }
+
+      state.currentUnitIndex += 1;
+      state.listenMode = createEmptyListenState(getCurrentUnitName());
+      refreshCurrentUnitView({ resetListen: true, autoPlayListen: true });
+      saveCurrentPosition();
+    });
+  }
 }

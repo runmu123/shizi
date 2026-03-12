@@ -1119,6 +1119,195 @@
       transition: width 0.3s;
     }
 
+    .listen-progress-card {
+      background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+      border: 1px solid #fed7aa;
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin-bottom: 8px;
+      box-shadow: 0 6px 16px rgba(217, 119, 6, 0.08);
+    }
+
+    .listen-progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #9a3412;
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-family: system-ui, sans-serif;
+    }
+
+    .listen-progress-track {
+      width: 100%;
+      height: 10px;
+    }
+
+    .listen-progress-caption {
+      margin-top: 8px;
+      text-align: right;
+      color: #78716c;
+      font-size: 0.9rem;
+      font-family: system-ui, sans-serif;
+    }
+
+    .listen-mode-panel {
+      min-height: calc(100vh - 260px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 8px 12px;
+    }
+
+    .listen-audio-btn {
+      width: 136px;
+      height: 136px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+      color: #fff7ed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 14px 28px rgba(249, 115, 22, 0.22);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      margin-top: 8px;
+    }
+
+    .listen-audio-btn:hover,
+    .listen-audio-btn.playing {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 18px 32px rgba(249, 115, 22, 0.3);
+      background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+    }
+
+    .listen-audio-btn:disabled {
+      cursor: wait;
+      opacity: 0.92;
+    }
+
+    .listen-audio-btn svg {
+      width: 56px;
+      height: 56px;
+      stroke-width: 1.8;
+    }
+
+    .listen-mode-caption {
+      margin-top: 20px;
+      color: #57534e;
+      font-size: 1.9rem;
+      font-family: 'Noto Serif SC', serif;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+
+    .listen-options-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 48px;
+    }
+
+    .listen-option-btn {
+      min-height: 132px;
+      border-radius: 18px;
+      border: 1px solid #fdba74;
+      background: #fff7f4;
+      color: #292524;
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-family: 'KaiTi', 'STKaiti', serif;
+      box-shadow: 0 8px 20px rgba(217, 119, 6, 0.08);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .listen-option-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(217, 119, 6, 0.12);
+      border-color: #f97316;
+    }
+
+    .listen-result-summary {
+      color: #57534e;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .listen-result-group {
+      text-align: left;
+      margin-top: 14px;
+    }
+
+    .listen-result-label {
+      font-weight: 700;
+      color: #44403c;
+      margin-bottom: 10px;
+    }
+
+    .listen-result-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+    }
+
+    .listen-result-char {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-family: 'KaiTi', 'STKaiti', serif;
+      font-size: 1.25rem;
+    }
+
+    .listen-result-char.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .listen-result-char.error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .listen-result-empty {
+      color: #a8a29e;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 720px) {
+      .listen-mode-panel {
+        min-height: calc(100vh - 240px);
+        padding-top: 12px;
+      }
+
+      .listen-audio-btn {
+        width: 116px;
+        height: 116px;
+      }
+
+      .listen-mode-caption {
+        font-size: 1.55rem;
+      }
+
+      .listen-options-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 36px;
+      }
+
+      .listen-option-btn {
+        min-height: 108px;
+        font-size: clamp(2rem, 9vw, 3rem);
+      }
+    }
+
     /* 统计弹窗内容 */
     .stats-row {
       display: flex;
@@ -1770,6 +1959,34 @@
       </div>
       <div id="progressLevelsContainer" style="max-height: 60vh; overflow-y: auto; text-align: left;">
         <!-- 等级内容将在此注入 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 听音识字结果弹窗 -->
+  <div class="modal-overlay" id="listenCompletionModal">
+    <div class="modal-box" style="max-width: 560px; width: 92%;">
+      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>本单元完成</span>
+        <button class="menu-btn" id="closeListenCompletion" style="padding:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="listen-result-summary" id="listenCompletionSummary">全部正确！</div>
+      <div class="listen-result-group">
+        <div class="listen-result-label">选对的字</div>
+        <div class="listen-result-list" id="listenCorrectList"></div>
+      </div>
+      <div class="listen-result-group">
+        <div class="listen-result-label">选错的字</div>
+        <div class="listen-result-list" id="listenWrongList"></div>
+      </div>
+      <div class="modal-actions" style="margin-top: 22px;">
+        <button class="modal-btn cancel" id="closeListenCompletionFooter">返回</button>
+        <button class="modal-btn confirm" id="nextListenUnitBtn">下一单元</button>
       </div>
     </div>
   </div>
