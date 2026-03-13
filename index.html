@@ -940,6 +940,11 @@
       color: #fff;
     }
 
+    .modal-btn.retry {
+      background: #2563eb;
+      color: #fff;
+    }
+
     .modal-btn:hover {
       opacity: 0.9;
     }
@@ -1200,7 +1205,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 0 8px 8px;
+      padding: 8px 8px 8px;
     }
 
     .listen-audio-btn {
@@ -1354,7 +1359,7 @@
       }
 
       .listen-mode-panel {
-        padding-top: 0;
+        padding-top: 10px;
       }
 
       .listen-audio-btn {
@@ -2052,7 +2057,7 @@
         <div class="listen-result-list column" id="listenWrongList"></div>
       </div>
       <div class="modal-actions" style="margin-top: 22px;">
-        <button class="modal-btn cancel" id="closeListenCompletionFooter">返回</button>
+        <button class="modal-btn retry" id="retryListenBtn" style="display:none;">重新听</button>
         <button class="modal-btn confirm" id="nextListenUnitBtn">下一单元</button>
       </div>
     </div>

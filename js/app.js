@@ -390,6 +390,22 @@ function buildListenOptions(correctChar) {
   return shuffleArray([correctChar, ...distractors]);
 }
 
+function initializeListenSession(chars, unitName = getCurrentUnitName()) {
+  const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
+  state.listenMode = createEmptyListenState(unitName);
+  state.listenMode.sequence = shuffleArray(normalizedChars);
+  state.listenMode.questions = state.listenMode.sequence.map((char) => ({
+    char,
+    options: buildListenOptions(char),
+    selectedChar: '',
+    answered: false,
+    hadMistake: false,
+    countedCorrect: null,
+    wrongSelections: [],
+  }));
+  state.listenMode.options = state.listenMode.questions[0]?.options ? [...state.listenMode.questions[0].options] : [];
+}
+
 function getListenQuestion(index = state.listenMode.currentIndex) {
   return state.listenMode.questions[index] || null;
 }
@@ -416,17 +432,7 @@ function ensureListenSession(forceReset = false) {
     state.listenMode.sequence.length === 0;
 
   if (shouldReset) {
-    state.listenMode = createEmptyListenState(unitName);
-    state.listenMode.sequence = shuffleArray(unitChars);
-    state.listenMode.questions = state.listenMode.sequence.map((char) => ({
-      char,
-      options: buildListenOptions(char),
-      selectedChar: '',
-      answered: false,
-      hadMistake: false,
-      countedCorrect: null,
-      wrongSelections: [],
-    }));
+    initializeListenSession(unitChars, unitName);
   }
 
   const question = getListenQuestion();
@@ -543,7 +549,17 @@ function showListenCompletionModal() {
   const correctList = document.getElementById('listenCorrectList');
   const wrongList = document.getElementById('listenWrongList');
   const summary = document.getElementById('listenCompletionSummary');
+  const retryBtn = document.getElementById('retryListenBtn');
+  const replayBtn = document.getElementById('listenReplayBtn');
   if (!modal || !correctList || !wrongList || !summary) return;
+
+  if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
+    audioManager.stopCurrentAudio();
+  }
+  if (replayBtn) {
+    setSpeakerButtonPlaying(replayBtn, false);
+    replayBtn.disabled = false;
+  }
 
   const correctQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === true);
   const wrongQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === false);
@@ -563,7 +579,32 @@ function showListenCompletionModal() {
       }).join('')
     : '<span class="listen-result-empty">无，表现很棒</span>';
 
+  if (retryBtn) {
+    retryBtn.style.display = wrongQuestions.length > 0 ? 'inline-flex' : 'none';
+  }
+
   modal.classList.add('active');
+}
+
+function retryWrongListenItems() {
+  const wrongChars = Array.from(
+    new Set(
+      state.listenMode.questions
+        .filter((question) => question.countedCorrect === false)
+        .flatMap((question) => [question.char, ...(question.wrongSelections || [])])
+        .filter(Boolean)
+    )
+  );
+
+  if (!wrongChars.length) {
+    showToast('当前没有需要重新听的字', 'info');
+    return;
+  }
+
+  initializeListenSession(wrongChars, getCurrentUnitName());
+  renderUnit();
+  saveCurrentPosition();
+  scheduleListenModeAutoPlay();
 }
 
 function goToNextListenItem() {
@@ -891,7 +932,7 @@ export function setupEventListeners() {
   const passwordError = document.getElementById('passwordError');
   const listenCompletionModal = document.getElementById('listenCompletionModal');
   const closeListenCompletion = document.getElementById('closeListenCompletion');
-  const closeListenCompletionFooter = document.getElementById('closeListenCompletionFooter');
+  const retryListenBtn = document.getElementById('retryListenBtn');
   const nextListenUnitBtn = document.getElementById('nextListenUnitBtn');
   let listenTouchStartX = 0;
   let listenTouchStartY = 0;
@@ -1339,14 +1380,6 @@ export function setupEventListeners() {
     });
   }
 
-  if (closeListenCompletionFooter) {
-    closeListenCompletionFooter.addEventListener('click', () => {
-      if (listenCompletionModal) {
-        listenCompletionModal.classList.remove('active');
-      }
-    });
-  }
-
   if (listenCompletionModal) {
     listenCompletionModal.addEventListener('click', (e) => {
       if (e.target === listenCompletionModal) {
@@ -1370,6 +1403,15 @@ export function setupEventListeners() {
       state.listenMode = createEmptyListenState(getCurrentUnitName());
       refreshCurrentUnitView({ resetListen: true, autoPlayListen: true });
       saveCurrentPosition();
+    });
+  }
+
+  if (retryListenBtn) {
+    retryListenBtn.addEventListener('click', () => {
+      if (listenCompletionModal) {
+        listenCompletionModal.classList.remove('active');
+      }
+      retryWrongListenItems();
     });
   }
 }
