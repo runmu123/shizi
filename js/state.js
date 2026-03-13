@@ -35,4 +35,15 @@ export const state = {
     answeredChars: [],
     currentMistaken: false,
   },
+  seeMode: {
+    unitName: '',
+    sequence: [],
+    questions: [],
+    currentIndex: 0,
+    options: [],
+    mistakeChars: [],
+    firstTryCorrectChars: [],
+    answeredChars: [],
+    currentMistaken: false,
+  },
 };

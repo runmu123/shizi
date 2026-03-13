@@ -71,7 +71,7 @@ function fitUnitCharStrip() {
 function fitListenLayout(appEl = document.getElementById('app')) {
   if (!appEl || !appEl.classList.contains('listen-layout')) return;
 
-  const optionButtons = Array.from(document.querySelectorAll('.listen-option-btn'));
+  const optionButtons = Array.from(document.querySelectorAll('.listen-option-btn, .see-audio-option'));
   if (!optionButtons.length) return;
 
   const isMobile = window.innerWidth <= 720;
@@ -157,6 +157,64 @@ function renderListenMode(appEl, unitName) {
   requestAnimationFrame(() => applyResponsiveLayout());
 }
 
+function renderSeeMode(appEl, unitName) {
+  const session = state.seeMode;
+  const total = session.sequence.length;
+
+  if (!total) {
+    appEl.classList.add('listen-layout');
+    appEl.innerHTML = `
+      <div class="unit-title">
+        <span class="unit-title-text">${escapeHtml(unitName)}</span>
+      </div>
+      <div class="card">
+        <div class="loading">当前单元暂无可练习汉字</div>
+      </div>
+    `;
+    return;
+  }
+
+  const question = session.questions[session.currentIndex] || null;
+  const currentChar = question?.char || session.sequence[session.currentIndex] || '';
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
+  const completedCount = Math.min(session.answeredChars.length, total);
+  const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
+  const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+
+  appEl.innerHTML = `
+    <div class="unit-title listen-unit-title">
+      <span class="unit-title-text">${escapeHtml(unitName)}</span>
+    </div>
+    <div class="listen-progress-card">
+      <div class="listen-progress-header">
+        <span>看字识音进度</span>
+        <span>${currentStep}/${total}</span>
+      </div>
+      <div class="progress-track listen-progress-track">
+        <div class="progress-fill" style="width:${progressPercent}%"></div>
+      </div>
+      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
+    </div>
+    <div class="listen-mode-panel see-mode-panel" data-char="${escapeHtml(currentChar)}">
+      <div class="see-char-card" id="seePromptCard" data-char="${escapeHtml(currentChar)}" tabindex="0" role="button" aria-label="拖动汉字到正确读音">
+        ${escapeHtml(currentChar)}
+      </div>
+      <div class="see-options-grid">
+        ${options.map((option) => {
+          const isRevealed = revealedOptions.includes(option);
+          return `
+            <button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">
+              ${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  requestAnimationFrame(() => applyResponsiveLayout());
+}
+
 export function renderUnit() {
   const appEl = document.getElementById('app');
   const indicatorText = document.getElementById('indicatorText');
@@ -184,6 +242,13 @@ export function renderUnit() {
   if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
     appEl.classList.add('listen-layout');
     renderListenMode(appEl, unitName);
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  if (state.mainViewMode === 'see' && !state.isTeachingMode) {
+    appEl.classList.add('listen-layout');
+    renderSeeMode(appEl, unitName);
     window.scrollTo(0, 0);
     return;
   }

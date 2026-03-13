@@ -1127,7 +1127,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.2s, color 0.2s, transform 0.2s, opacity 0.2s;
       margin-left: 0;
     }
 
@@ -1136,10 +1136,15 @@
       color: var(--primary-color);
     }
 
+    .toolbar-mode-actions .play-btn:hover {
+      transform: translateY(-1px);
+    }
+
     .toolbar-mode-actions .play-btn svg {
       width: 1.9rem;
       height: 1.9rem;
       flex: 0 0 1.9rem;
+      transition: transform 0.22s ease, opacity 0.22s ease;
     }
 
     .menu-dropdown {
@@ -1310,6 +1315,91 @@
       border-color: #f97316;
     }
 
+    .see-char-card {
+      min-width: min(240px, 72vw);
+      min-height: 132px;
+      border-radius: 18px;
+      border: 1px solid #fdba74;
+      background: #fff7f4;
+      color: #292524;
+      font-size: clamp(2.6rem, 7vw, 4.1rem);
+      font-family: 'KaiTi', 'STKaiti', serif;
+      box-shadow: 0 8px 20px rgba(217, 119, 6, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      touch-action: none;
+      cursor: grab;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    }
+
+    .see-char-card.dragging {
+      opacity: 0.9;
+      transform: scale(1.04);
+      box-shadow: 0 18px 30px rgba(217, 119, 6, 0.16);
+    }
+
+    .see-options-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--listen-option-gap, 18px);
+      margin-top: 12px;
+    }
+
+    .see-audio-option {
+      width: 136px;
+      max-width: 100%;
+      min-height: 136px;
+      height: 136px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+      color: #fff7ed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: center;
+      box-shadow: 0 14px 28px rgba(249, 115, 22, 0.22);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      position: relative;
+      overflow: hidden;
+      transform: translateY(-6px);
+    }
+
+    .see-audio-option:hover,
+    .see-audio-option.drag-over,
+    .see-audio-option.playing {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 18px 32px rgba(249, 115, 22, 0.3);
+      background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+    }
+
+    .see-audio-option svg {
+      width: 56px;
+      height: 56px;
+      stroke-width: 1.8;
+      flex: 0 0 56px;
+    }
+
+    .see-audio-option.revealed {
+      width: 100%;
+      background: #fff7f4;
+      color: #292524;
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-family: 'KaiTi', 'STKaiti', serif;
+      box-shadow: 0 8px 20px rgba(217, 119, 6, 0.08);
+      border: 1px solid #fdba74;
+      border-radius: 18px;
+      transform: none;
+    }
+
+    .see-audio-option.revealed svg {
+      display: none;
+    }
+
     .listen-result-summary {
       color: #57534e;
       line-height: 1.6;
@@ -1437,6 +1527,29 @@
         min-height: var(--listen-option-height, 108px);
         height: var(--listen-option-height, 108px);
         font-size: clamp(2rem, 9vw, 3rem);
+      }
+
+      .see-char-card {
+        min-width: min(220px, 78vw);
+        min-height: 108px;
+      }
+
+      .see-options-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--listen-option-gap, 14px);
+        margin-top: 10px;
+      }
+
+      .see-audio-option {
+        width: 108px;
+        min-height: 108px;
+        height: 108px;
+      }
+
+      .see-audio-option svg {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
       }
     }
 
@@ -1850,6 +1963,11 @@
           <button class="play-btn" title="批量录音" id="batchRecordBtnMain" style="display:none;">
             <svg>
               <use href="#icon-mic"></use>
+            </svg>
+          </button>
+          <button class="play-btn" title="eye" id="eyeStudyToggleBtnMain">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+              <path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/>
             </svg>
           </button>
         </div>

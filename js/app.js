@@ -17,6 +17,15 @@ const learnBatchPlayback = {
   button: null,
 };
 
+const seeDragState = {
+  active: false,
+  pointerId: null,
+  ghostEl: null,
+  sourceEl: null,
+  currentTarget: null,
+  suppressClickUntil: 0,
+};
+
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -121,7 +130,7 @@ export async function loadLevel(level, savedPos = null) {
     });
 
     refreshCurrentUnitView({
-      resetListen: state.mainViewMode === 'listen',
+      resetListen: isPracticeMode(),
       autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
     });
   } catch (err) {
@@ -201,6 +210,7 @@ export function switchTeachingMode(enable) {
   const batchRecordBtn = document.getElementById('batchRecordBtnMain');
   const learnBatchBtn = document.getElementById('learnBatchPlayBtnMain');
   const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
+  const eyeStudyBtn = document.getElementById('eyeStudyToggleBtnMain');
   const menuSwitchTeach = document.getElementById('menuSwitchTeach');
   const menuSwitchLearn = document.getElementById('menuSwitchLearn');
   const menuStats = document.getElementById('menuStats');
@@ -217,9 +227,12 @@ export function switchTeachingMode(enable) {
   }
   if (earStudyBtn) {
     earStudyBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
-    if (!state.isTeachingMode) {
-      updateEarStudyButtonForMode();
-    }
+  }
+  if (eyeStudyBtn) {
+    eyeStudyBtn.style.display = state.isTeachingMode ? 'none' : 'inline-flex';
+  }
+  if (!state.isTeachingMode) {
+    updateEarStudyButtonForMode();
   }
   if (menuSwitchTeach) {
     menuSwitchTeach.style.display = state.isTeachingMode ? 'none' : 'block';
@@ -265,7 +278,7 @@ export async function navigateToUnit(level, unitName) {
   if (index !== -1) {
     state.currentUnitIndex = index;
     refreshCurrentUnitView({
-      resetListen: state.mainViewMode === 'listen',
+      resetListen: isPracticeMode(),
       autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
     });
     saveCurrentPosition();
@@ -335,15 +348,24 @@ function getEarIconHtml() {
   return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-80q62 0 101.5-31t60.5-91q17-50 32.5-70t71.5-64q62-50 98-113t36-151q0-119-80.5-199.5T400-880q-119 0-199.5 80.5T120-600h80q0-85 57.5-142.5T400-800q85 0 142.5 57.5T600-600q0 68-27 116t-77 86q-52 38-81 74t-43 78q-14 44-33.5 65T280-160q-33 0-56.5-23.5T200-240h-80q0 66 47 113t113 47Zm432-210q59-60 93.5-139.5T840-600q0-92-34.5-172T712-912l-58 56q50 50 78 115.5T760-600q0 74-28 139t-78 115l58 56ZM471-529.5q29-29.5 29-70.5 0-42-29-71t-71-29q-42 0-71 29t-29 71q0 41 29 70.5t71 29.5q42 0 71-29.5Z"/></svg>`;
 }
 
+function getEyeIconHtml() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>`;
+}
+
 function getStudyIconHtml() {
   return `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h440l200 200v440q0 33-23.5 56.5T760-120H200Zm0-80h560v-400H600v-160H200v560Zm80-80h400v-80H280v80Zm0-320h200v-80H280v80Zm0 160h400v-80H280v80Zm-80-320v160-160 560-560Z"/></svg>`;
 }
 
-function setEarStudyBtnState(btn, isStudyMode) {
+function setModeToggleBtnState(btn, iconType) {
   if (!btn) return;
-  btn.innerHTML = isStudyMode ? getStudyIconHtml() : getEarIconHtml();
-  btn.title = isStudyMode ? 'study' : 'ear';
-  btn.setAttribute('aria-pressed', isStudyMode ? 'true' : 'false');
+  const iconMap = {
+    ear: getEarIconHtml,
+    eye: getEyeIconHtml,
+    study: getStudyIconHtml,
+  };
+  btn.innerHTML = (iconMap[iconType] || getStudyIconHtml)();
+  btn.title = iconType;
+  btn.setAttribute('aria-pressed', iconType === 'study' ? 'true' : 'false');
 }
 
 function shuffleArray(items) {
@@ -371,6 +393,30 @@ function createEmptyListenState(unitName = '') {
     answeredChars: [],
     currentMistaken: false,
   };
+}
+
+function createEmptySeeState(unitName = '') {
+  return {
+    unitName,
+    sequence: [],
+    questions: [],
+    currentIndex: 0,
+    options: [],
+    mistakeChars: [],
+    firstTryCorrectChars: [],
+    answeredChars: [],
+    currentMistaken: false,
+  };
+}
+
+function isPracticeMode(mode = state.mainViewMode) {
+  return mode === 'listen' || mode === 'see';
+}
+
+function getPracticeState(mode = state.mainViewMode) {
+  if (mode === 'listen') return state.listenMode;
+  if (mode === 'see') return state.seeMode;
+  return null;
 }
 
 function getLevelCharPool() {
@@ -406,8 +452,29 @@ function initializeListenSession(chars, unitName = getCurrentUnitName()) {
   state.listenMode.options = state.listenMode.questions[0]?.options ? [...state.listenMode.questions[0].options] : [];
 }
 
+function initializeSeeSession(chars, unitName = getCurrentUnitName()) {
+  const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
+  state.seeMode = createEmptySeeState(unitName);
+  state.seeMode.sequence = shuffleArray(normalizedChars);
+  state.seeMode.questions = state.seeMode.sequence.map((char) => ({
+    char,
+    options: buildListenOptions(char),
+    selectedChar: '',
+    answered: false,
+    hadMistake: false,
+    countedCorrect: null,
+    wrongSelections: [],
+    revealedOptions: [],
+  }));
+  state.seeMode.options = state.seeMode.questions[0]?.options ? [...state.seeMode.questions[0].options] : [];
+}
+
 function getListenQuestion(index = state.listenMode.currentIndex) {
   return state.listenMode.questions[index] || null;
+}
+
+function getSeeQuestion(index = state.seeMode.currentIndex) {
+  return state.seeMode.questions[index] || null;
 }
 
 function findCharUnitInCurrentLevel(char) {
@@ -441,8 +508,87 @@ function ensureListenSession(forceReset = false) {
   return currentChar;
 }
 
+function ensureSeeSession(forceReset = false) {
+  const unitName = getCurrentUnitName();
+  const unitData = unitName ? state.currentData?.[unitName] : null;
+  const unitChars = Object.keys(unitData || {});
+  const shouldReset =
+    forceReset ||
+    state.seeMode.unitName !== unitName ||
+    state.seeMode.sequence.length === 0;
+
+  if (shouldReset) {
+    initializeSeeSession(unitChars, unitName);
+  }
+
+  const question = getSeeQuestion();
+  const currentChar = question?.char || '';
+  state.seeMode.options = question ? [...question.options] : [];
+  return currentChar;
+}
+
 function getCurrentListenChar() {
   return state.listenMode.sequence[state.listenMode.currentIndex] || '';
+}
+
+function getCurrentSeeChar() {
+  return state.seeMode.sequence[state.seeMode.currentIndex] || '';
+}
+
+function stopActiveAudioPlayback() {
+  if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
+    audioManager.stopCurrentAudio();
+  }
+}
+
+function getActivePracticeMode() {
+  return state.mainViewMode === 'see' ? 'see' : 'listen';
+}
+
+function getPracticeQuestion(mode = state.mainViewMode, index = null) {
+  const session = getPracticeState(mode);
+  if (!session) return null;
+  const resolvedIndex = index === null ? session.currentIndex : index;
+  return session.questions[resolvedIndex] || null;
+}
+
+function playCharAudio(char, { button = null, setPauseIcon = false } = {}) {
+  if (!char || state.isTeachingMode || !window.audioManager) return;
+
+  const unitName = findCharUnitInCurrentLevel(char);
+  const cleanup = () => {
+    if (!button) return;
+    button.classList.remove('playing');
+    if (setPauseIcon) {
+      button.innerHTML = getSpeakerIconHtml();
+    }
+  };
+
+  if (button) {
+    button.classList.add('playing');
+    if (setPauseIcon) {
+      button.innerHTML = getPauseIconHtml();
+    }
+  }
+
+  audioManager.stopCurrentAudio();
+  audioManager.playAudio(
+    state.currentLevel,
+    unitName,
+    char,
+    char,
+    'char',
+    null,
+    cleanup,
+  ).then((success) => {
+    if (!success) {
+      cleanup();
+      showToast('暂无录音', 'info');
+    }
+  }).catch((err) => {
+    cleanup();
+    showToast('播放失败: ' + err.message, 'error');
+  });
 }
 
 function playListenModeAudio() {
@@ -486,20 +632,13 @@ function playListenModeAudio() {
 }
 
 function playSpecificListenCharAudio(char) {
-  if (!char || state.isTeachingMode || !window.audioManager) return;
+  playCharAudio(char);
+}
 
-  const unitName = findCharUnitInCurrentLevel(char);
-  audioManager.stopCurrentAudio();
-  audioManager.playAudio(
-    state.currentLevel,
-    unitName,
-    char,
-    char,
-    'char',
-    null,
-  ).catch((err) => {
-    showToast('播放失败: ' + err.message, 'error');
-  });
+function playSeeOptionAudio(char, btn = null) {
+  if (state.mainViewMode !== 'see' || state.isTeachingMode || !char) return;
+  if (btn?.classList.contains('revealed')) return;
+  playCharAudio(char, { button: btn, setPauseIcon: true });
 }
 
 function scheduleListenModeAutoPlay() {
@@ -510,12 +649,12 @@ function scheduleListenModeAutoPlay() {
 }
 
 function refreshCurrentUnitView({ resetListen = false, autoPlayListen = false } = {}) {
-  if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
-    audioManager.stopCurrentAudio();
-  }
+  stopActiveAudioPlayback();
 
   if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
     ensureListenSession(resetListen);
+  } else if (state.mainViewMode === 'see' && !state.isTeachingMode) {
+    ensureSeeSession(resetListen);
   }
 
   renderUnit();
@@ -527,46 +666,61 @@ function refreshCurrentUnitView({ resetListen = false, autoPlayListen = false } 
 
 function updateEarStudyButtonForMode() {
   const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
-  setEarStudyBtnState(earStudyBtn, state.mainViewMode === 'listen');
+  const eyeStudyBtn = document.getElementById('eyeStudyToggleBtnMain');
+
+  if (state.mainViewMode === 'listen') {
+    setModeToggleBtnState(earStudyBtn, 'study');
+    setModeToggleBtnState(eyeStudyBtn, 'eye');
+    return;
+  }
+
+  if (state.mainViewMode === 'see') {
+    setModeToggleBtnState(earStudyBtn, 'ear');
+    setModeToggleBtnState(eyeStudyBtn, 'study');
+    return;
+  }
+
+  setModeToggleBtnState(earStudyBtn, 'ear');
+  setModeToggleBtnState(eyeStudyBtn, 'eye');
 }
 
 function setMainViewMode(mode, { resetListen = true, autoPlay = true } = {}) {
-  if (mode !== 'study' && mode !== 'listen') return;
-  if (state.isTeachingMode && mode === 'listen') return;
+  if (!['study', 'listen', 'see'].includes(mode)) return;
+  if (state.isTeachingMode && mode !== 'study') return;
 
   state.mainViewMode = mode;
   updateEarStudyButtonForMode();
 
   refreshCurrentUnitView({
-    resetListen: mode === 'listen' ? resetListen : false,
+    resetListen: isPracticeMode(mode) ? resetListen : false,
     autoPlayListen: mode === 'listen' ? autoPlay : false,
   });
   saveCurrentPosition();
 }
 
-function showListenCompletionModal() {
+function showPracticeCompletionModal(mode = getActivePracticeMode()) {
+  const session = getPracticeState(mode);
   const modal = document.getElementById('listenCompletionModal');
   const correctList = document.getElementById('listenCorrectList');
   const wrongList = document.getElementById('listenWrongList');
   const summary = document.getElementById('listenCompletionSummary');
   const retryBtn = document.getElementById('retryListenBtn');
+  const nextBtn = document.getElementById('nextListenUnitBtn');
   const replayBtn = document.getElementById('listenReplayBtn');
-  if (!modal || !correctList || !wrongList || !summary) return;
+  if (!modal || !correctList || !wrongList || !summary || !session) return;
 
-  if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
-    audioManager.stopCurrentAudio();
-  }
+  stopActiveAudioPlayback();
   if (replayBtn) {
     setSpeakerButtonPlaying(replayBtn, false);
     replayBtn.disabled = false;
   }
 
-  const correctQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === true);
-  const wrongQuestions = state.listenMode.questions.filter((question) => question.countedCorrect === false);
+  const correctQuestions = session.questions.filter((question) => question.countedCorrect === true);
+  const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
 
   summary.textContent = wrongQuestions.length === 0
     ? '全部正确！'
-    : `本单元共 ${state.listenMode.sequence.length} 个字，选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。`;
+    : `本单元共 ${session.sequence.length} 个字，选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。`;
 
   correctList.innerHTML = correctQuestions.length > 0
     ? correctQuestions.map((question) => `<span class="listen-result-char success">${escapeHtml(question.char)}</span>`).join('')
@@ -581,15 +735,23 @@ function showListenCompletionModal() {
 
   if (retryBtn) {
     retryBtn.style.display = wrongQuestions.length > 0 ? 'inline-flex' : 'none';
+    retryBtn.textContent = mode === 'see' ? '重新练' : '重新听';
+  }
+
+  if (nextBtn) {
+    nextBtn.textContent = mode === 'see' ? '下一单元' : '下一单元';
   }
 
   modal.classList.add('active');
 }
 
-function retryWrongListenItems() {
+function retryWrongPracticeItems(mode = getActivePracticeMode()) {
+  const session = getPracticeState(mode);
+  if (!session) return;
+
   const wrongChars = Array.from(
     new Set(
-      state.listenMode.questions
+      session.questions
         .filter((question) => question.countedCorrect === false)
         .flatMap((question) => [question.char, ...(question.wrongSelections || [])])
         .filter(Boolean)
@@ -597,20 +759,27 @@ function retryWrongListenItems() {
   );
 
   if (!wrongChars.length) {
-    showToast('当前没有需要重新听的字', 'info');
+    showToast(mode === 'see' ? '当前没有需要重新练的字' : '当前没有需要重新听的字', 'info');
     return;
   }
 
-  initializeListenSession(wrongChars, getCurrentUnitName());
+  if (mode === 'see') {
+    initializeSeeSession(wrongChars, getCurrentUnitName());
+  } else {
+    initializeListenSession(wrongChars, getCurrentUnitName());
+  }
   renderUnit();
   saveCurrentPosition();
-  scheduleListenModeAutoPlay();
+  if (mode === 'listen') {
+    scheduleListenModeAutoPlay();
+  }
 }
 
 function goToNextListenItem() {
+  stopActiveAudioPlayback();
   if (state.listenMode.currentIndex >= state.listenMode.sequence.length - 1) {
     renderUnit();
-    showListenCompletionModal();
+    showPracticeCompletionModal('listen');
     return;
   }
 
@@ -621,6 +790,22 @@ function goToNextListenItem() {
   renderUnit();
   saveCurrentPosition();
   scheduleListenModeAutoPlay();
+}
+
+function goToNextSeeItem() {
+  stopActiveAudioPlayback();
+  if (state.seeMode.currentIndex >= state.seeMode.sequence.length - 1) {
+    renderUnit();
+    showPracticeCompletionModal('see');
+    return;
+  }
+
+  state.seeMode.currentIndex += 1;
+  state.seeMode.currentMistaken = false;
+  ensureSeeSession(false);
+  state.seeMode.options = getSeeQuestion()?.options ? [...getSeeQuestion().options] : [];
+  renderUnit();
+  saveCurrentPosition();
 }
 
 function handleListenModeAnswer(selectedChar) {
@@ -644,6 +829,7 @@ function handleListenModeAnswer(selectedChar) {
       }
 
       showToast('选择正确', 'success');
+      stopActiveAudioPlayback();
       setTimeout(() => {
         goToNextListenItem();
       }, 280);
@@ -697,6 +883,89 @@ function navigateListenHistory(direction) {
   state.listenMode.options = getListenQuestion()?.options ? [...getListenQuestion().options] : [];
   renderUnit();
   playListenModeAudio();
+}
+
+function navigateSeeHistory(direction) {
+  if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
+
+  const maxNavigableIndex = Math.min(
+    state.seeMode.answeredChars.length,
+    Math.max(0, state.seeMode.sequence.length - 1),
+  );
+  if (maxNavigableIndex < 0) return;
+
+  if (direction === 'prev') {
+    if (state.seeMode.currentIndex <= 0) return;
+    state.seeMode.currentIndex -= 1;
+  } else if (direction === 'next') {
+    if (state.seeMode.currentIndex >= maxNavigableIndex) return;
+    state.seeMode.currentIndex += 1;
+  } else {
+    return;
+  }
+
+  state.seeMode.currentMistaken = !!getSeeQuestion()?.hadMistake;
+  state.seeMode.options = getSeeQuestion()?.options ? [...getSeeQuestion().options] : [];
+  renderUnit();
+}
+
+function handleSeeModeAnswer(selectedChar) {
+  if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
+
+  const question = getSeeQuestion();
+  const currentChar = question?.char || '';
+  if (!currentChar || !question || !selectedChar) return;
+
+  if (selectedChar === currentChar) {
+    question.selectedChar = selectedChar;
+    if (!question.answered) {
+      question.answered = true;
+      question.countedCorrect = question.hadMistake ? false : true;
+
+      if (!question.hadMistake && !state.seeMode.firstTryCorrectChars.includes(currentChar)) {
+        state.seeMode.firstTryCorrectChars.push(currentChar);
+      }
+      if (!state.seeMode.answeredChars.includes(currentChar)) {
+        state.seeMode.answeredChars.push(currentChar);
+      }
+
+      renderUnit();
+      showToast('选择正确', 'success');
+      stopActiveAudioPlayback();
+      setTimeout(() => {
+        goToNextSeeItem();
+      }, 280);
+    } else {
+      renderUnit();
+      showToast('已切回正确答案', 'success');
+      setTimeout(() => {
+        navigateSeeHistory('next');
+      }, 280);
+    }
+    return;
+  }
+
+  state.seeMode.currentMistaken = true;
+  question.selectedChar = selectedChar;
+  question.hadMistake = true;
+  if (!question.wrongSelections.includes(selectedChar)) {
+    question.wrongSelections.push(selectedChar);
+  }
+  if (!question.revealedOptions.includes(selectedChar)) {
+    question.revealedOptions.push(selectedChar);
+  }
+
+  if (question.countedCorrect === true || question.countedCorrect === null) {
+    question.countedCorrect = false;
+  }
+
+  if (!state.seeMode.mistakeChars.includes(currentChar)) {
+    state.seeMode.mistakeChars.push(currentChar);
+  }
+
+  renderUnit();
+  showToast('错误！请重新选择', 'error');
+  playCharAudio(selectedChar);
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
@@ -925,6 +1194,7 @@ export function setupEventListeners() {
   const unitSelect = document.getElementById('unitSelect');
   const appEl = document.getElementById('app');
   const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
+  const eyeStudyBtn = document.getElementById('eyeStudyToggleBtnMain');
 
   // 密码弹窗元素
   const passwordModal = document.getElementById('passwordModal');
@@ -1049,7 +1319,7 @@ export function setupEventListeners() {
     const val = e.target.value.trim();
     stopLearnBatchPlayback(true);
     if (val && val.length === 1) {
-      if (state.mainViewMode === 'listen') {
+      if (isPracticeMode()) {
         state.mainViewMode = 'study';
         updateEarStudyButtonForMode();
         saveCurrentPosition();
@@ -1058,7 +1328,7 @@ export function setupEventListeners() {
     } else if (val.length === 0) {
       unitNavigator.style.visibility = 'visible';
       refreshCurrentUnitView({
-        resetListen: state.mainViewMode === 'listen',
+        resetListen: isPracticeMode(),
         autoPlayListen: false,
       });
     }
@@ -1070,7 +1340,7 @@ export function setupEventListeners() {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex--;
       refreshCurrentUnitView({
-        resetListen: state.mainViewMode === 'listen',
+        resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
       });
       saveCurrentPosition();
@@ -1082,7 +1352,7 @@ export function setupEventListeners() {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex++;
       refreshCurrentUnitView({
-        resetListen: state.mainViewMode === 'listen',
+        resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
       });
       saveCurrentPosition();
@@ -1098,7 +1368,7 @@ export function setupEventListeners() {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex = idx;
       refreshCurrentUnitView({
-        resetListen: state.mainViewMode === 'listen',
+        resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
       });
       saveCurrentPosition();
@@ -1137,6 +1407,19 @@ export function setupEventListeners() {
       }
     }
 
+    if (state.mainViewMode === 'see' && !state.isTeachingMode) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateSeeHistory('prev');
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateSeeHistory('next');
+        return;
+      }
+    }
+
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       goPrevUnit();
@@ -1152,6 +1435,15 @@ export function setupEventListeners() {
     if (listenOptionBtn) {
       e.stopPropagation();
       handleListenModeAnswer(listenOptionBtn.dataset.char || '');
+      return;
+    }
+
+    const seeOptionBtn = e.target.closest('.see-audio-option');
+    if (seeOptionBtn) {
+      e.stopPropagation();
+      if (Date.now() < seeDragState.suppressClickUntil) return;
+      if (seeOptionBtn.classList.contains('revealed')) return;
+      playSeeOptionAudio(seeOptionBtn.dataset.char || '', seeOptionBtn);
       return;
     }
 
@@ -1192,7 +1484,7 @@ export function setupEventListeners() {
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.play-btn');
     if (!btn) return;
-    if (['learnBatchPlayBtnMain', 'earStudyToggleBtnMain', 'batchRecordBtnMain', 'batchPlayBtnMain'].includes(btn.id)) return;
+    if (['learnBatchPlayBtnMain', 'earStudyToggleBtnMain', 'eyeStudyToggleBtnMain', 'batchRecordBtnMain', 'batchPlayBtnMain'].includes(btn.id)) return;
 
     if (btn.classList.contains('processing') || btn.disabled) return;
 
@@ -1299,7 +1591,7 @@ export function setupEventListeners() {
   });
 
   appEl.addEventListener('touchstart', (e) => {
-    if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+    if (!isPracticeMode() || state.isTeachingMode) return;
     const panel = e.target.closest('.listen-mode-panel');
     if (!panel || e.touches.length !== 1) return;
     listenTouchStartX = e.touches[0].clientX;
@@ -1307,7 +1599,7 @@ export function setupEventListeners() {
   }, { passive: true });
 
   appEl.addEventListener('touchend', (e) => {
-    if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
+    if (!isPracticeMode() || state.isTeachingMode) return;
     const panel = e.target.closest('.listen-mode-panel');
     if (!panel || e.changedTouches.length !== 1) return;
 
@@ -1317,11 +1609,105 @@ export function setupEventListeners() {
     if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
 
     if (deltaX > 0) {
-      navigateListenHistory('prev');
+      if (state.mainViewMode === 'see') {
+        navigateSeeHistory('prev');
+      } else {
+        navigateListenHistory('prev');
+      }
     } else {
-      navigateListenHistory('next');
+      if (state.mainViewMode === 'see') {
+        navigateSeeHistory('next');
+      } else {
+        navigateListenHistory('next');
+      }
     }
   }, { passive: true });
+
+  const clearSeeDragState = () => {
+    if (seeDragState.sourceEl) {
+      seeDragState.sourceEl.classList.remove('dragging');
+    }
+    if (seeDragState.currentTarget) {
+      seeDragState.currentTarget.classList.remove('drag-over');
+    }
+    if (seeDragState.ghostEl?.parentNode) {
+      seeDragState.ghostEl.parentNode.removeChild(seeDragState.ghostEl);
+    }
+    seeDragState.active = false;
+    seeDragState.pointerId = null;
+    seeDragState.ghostEl = null;
+    seeDragState.sourceEl = null;
+    seeDragState.currentTarget = null;
+  };
+
+  const updateSeeDragTarget = (clientX, clientY) => {
+    if (seeDragState.currentTarget) {
+      seeDragState.currentTarget.classList.remove('drag-over');
+      seeDragState.currentTarget = null;
+    }
+
+    const hovered = document.elementFromPoint(clientX, clientY)?.closest('.see-audio-option:not(.revealed)');
+    if (hovered) {
+      hovered.classList.add('drag-over');
+      seeDragState.currentTarget = hovered;
+    }
+  };
+
+  appEl.addEventListener('pointerdown', (e) => {
+    if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
+    const card = e.target.closest('.see-char-card');
+    if (!card || e.button !== 0) return;
+
+    e.preventDefault();
+    clearSeeDragState();
+
+    const rect = card.getBoundingClientRect();
+    const ghostEl = card.cloneNode(true);
+    ghostEl.style.position = 'fixed';
+    ghostEl.style.left = `${rect.left}px`;
+    ghostEl.style.top = `${rect.top}px`;
+    ghostEl.style.width = `${rect.width}px`;
+    ghostEl.style.height = `${rect.height}px`;
+    ghostEl.style.pointerEvents = 'none';
+    ghostEl.style.zIndex = '9999';
+    ghostEl.style.margin = '0';
+    ghostEl.classList.add('dragging');
+    document.body.appendChild(ghostEl);
+
+    seeDragState.active = true;
+    seeDragState.pointerId = e.pointerId;
+    seeDragState.ghostEl = ghostEl;
+    seeDragState.sourceEl = card;
+    card.classList.add('dragging');
+    updateSeeDragTarget(e.clientX, e.clientY);
+  });
+
+  appEl.addEventListener('pointermove', (e) => {
+    if (!seeDragState.active || seeDragState.pointerId !== e.pointerId) return;
+    e.preventDefault();
+
+    if (seeDragState.ghostEl) {
+      const ghostRect = seeDragState.ghostEl.getBoundingClientRect();
+      seeDragState.ghostEl.style.left = `${e.clientX - ghostRect.width / 2}px`;
+      seeDragState.ghostEl.style.top = `${e.clientY - ghostRect.height / 2}px`;
+    }
+
+    updateSeeDragTarget(e.clientX, e.clientY);
+  });
+
+  const finishSeeDrag = (e) => {
+    if (!seeDragState.active || seeDragState.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    const target = seeDragState.currentTarget;
+    clearSeeDragState();
+    if (target) {
+      seeDragState.suppressClickUntil = Date.now() + 320;
+      handleSeeModeAnswer(target.dataset.char || '');
+    }
+  };
+
+  appEl.addEventListener('pointerup', finishSeeDrag);
+  appEl.addEventListener('pointercancel', finishSeeDrag);
 
   // ===== 学习模式 ear/study 按钮 =====
   document.addEventListener('click', (e) => {
@@ -1335,6 +1721,20 @@ export function setupEventListeners() {
     setMainViewMode(state.mainViewMode === 'listen' ? 'study' : 'listen', {
       resetListen: true,
       autoPlay: true,
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#eyeStudyToggleBtnMain');
+    if (!btn || state.isTeachingMode) return;
+    e.stopPropagation();
+    if (searchInput.value) {
+      searchInput.value = '';
+      unitNavigator.style.visibility = 'visible';
+    }
+    setMainViewMode(state.mainViewMode === 'see' ? 'study' : 'see', {
+      resetListen: true,
+      autoPlay: false,
     });
   });
 
@@ -1400,7 +1800,11 @@ export function setupEventListeners() {
       }
 
       state.currentUnitIndex += 1;
-      state.listenMode = createEmptyListenState(getCurrentUnitName());
+      if (state.mainViewMode === 'see') {
+        state.seeMode = createEmptySeeState(getCurrentUnitName());
+      } else {
+        state.listenMode = createEmptyListenState(getCurrentUnitName());
+      }
       refreshCurrentUnitView({ resetListen: true, autoPlayListen: true });
       saveCurrentPosition();
     });
@@ -1411,7 +1815,7 @@ export function setupEventListeners() {
       if (listenCompletionModal) {
         listenCompletionModal.classList.remove('active');
       }
-      retryWrongListenItems();
+      retryWrongPracticeItems(getActivePracticeMode());
     });
   }
 }
