@@ -146,7 +146,19 @@
       display: flex;
     }
 
+    .learning-view.active .char-header,
+    .learning-view.active .writer-container,
+    .learning-view.active .mode-tabs,
+    .learning-view.active .controls,
+    .learning-view.active #animateControls,
+    .learning-view.active #quizControls,
+    .learning-view.active .stroke-info,
+    .learning-view.active #quizResult {
+      transform: translateY(-15px);
+    }
+
     .char-header {
+      position: relative;
       text-align: center;
       margin-bottom: 24px;
       margin-top: 10px;
@@ -1346,17 +1358,28 @@
     /* 测验提示消息样式 */
     .quiz-toast-container {
       position: absolute;
-      top: 220px;
-      /* 大致在拼音位置，根据实际情况调整 */
+      top: calc(60% + 12px);
       left: 50%;
       transform: translateX(-50%);
-      z-index: 100;
+      z-index: 2200;
       pointer-events: none;
       display: flex;
       flex-direction: column;
       gap: 10px;
       align-items: center;
-      width: 100%;
+      width: max-content;
+      max-width: min(80vw, 420px);
+      min-width: 0;
+    }
+
+    .quiz-toast-container .toast {
+      width: auto;
+      max-width: 100%;
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      white-space: normal;
     }
 
     @keyframes fadeInOut {
