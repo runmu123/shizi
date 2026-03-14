@@ -3,7 +3,7 @@ import { state, cacheSuffix } from './state.js';
 import { TEACH_PASSWORD, USER_KEY } from './constants.js';
 import { showToast } from './toast.js';
 import { saveCurrentPosition } from './position.js';
-import { renderUnit, renderSearchResult, escapeHtml, applyResponsiveLayout } from './ui.js';
+import { renderUnit, renderSearchResult, escapeHtml, applyResponsiveLayout, updateAppShell } from './ui.js';
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
 import { enterBatchRecord } from './batch-record.js';
 import { enterBatchPlay } from './batch-play.js';
@@ -277,6 +277,8 @@ export async function navigateToUnit(level, unitName) {
   const index = state.unitKeys.indexOf(unitName);
   if (index !== -1) {
     state.currentUnitIndex = index;
+    state.homeCardIndex = 0;
+    state.homeCardMotion = 'none';
     refreshCurrentUnitView({
       resetListen: isPracticeMode(),
       autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
@@ -696,6 +698,48 @@ function setMainViewMode(mode, { resetListen = true, autoPlay = true } = {}) {
     autoPlayListen: mode === 'listen' ? autoPlay : false,
   });
   saveCurrentPosition();
+}
+
+function setAppSection(section) {
+  if (!['home', 'other', 'profile'].includes(section)) return;
+  state.appSection = section;
+  renderUnit();
+  saveCurrentPosition();
+}
+
+function returnToHomeStudy() {
+  state.appSection = 'home';
+  if (state.mainViewMode !== 'study') {
+    setMainViewMode('study', { resetListen: false, autoPlay: false });
+    return;
+  }
+  renderUnit();
+  saveCurrentPosition();
+}
+
+function getCurrentUnitChars() {
+  const unitName = getCurrentUnitName();
+  return Object.keys(state.currentData?.[unitName] || {});
+}
+
+function navigateHomeCard(targetIndex, direction = 'next') {
+  if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+  const chars = getCurrentUnitChars();
+  if (!chars.length) return;
+  const nextIndex = Math.max(0, Math.min(targetIndex, chars.length - 1));
+  if (nextIndex === state.homeCardIndex) return;
+  state.homeCardMotion = direction;
+  state.homeCardIndex = nextIndex;
+  stopLearnBatchPlayback(true);
+  renderUnit();
+}
+
+function navigateHomeCardByOffset(offset) {
+  const chars = getCurrentUnitChars();
+  if (!chars.length) return;
+  const nextIndex = state.homeCardIndex + offset;
+  if (nextIndex < 0 || nextIndex >= chars.length) return;
+  navigateHomeCard(nextIndex, offset > 0 ? 'next' : 'prev');
 }
 
 function showPracticeCompletionModal(mode = getActivePracticeMode()) {
@@ -1195,6 +1239,7 @@ export function setupEventListeners() {
   const appEl = document.getElementById('app');
   const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
   const eyeStudyBtn = document.getElementById('eyeStudyToggleBtnMain');
+  const bottomNav = document.querySelector('.bottom-nav');
 
   // 密码弹窗元素
   const passwordModal = document.getElementById('passwordModal');
@@ -1206,6 +1251,8 @@ export function setupEventListeners() {
   const nextListenUnitBtn = document.getElementById('nextListenUnitBtn');
   let listenTouchStartX = 0;
   let listenTouchStartY = 0;
+  let homeTouchStartX = 0;
+  let homeTouchStartY = 0;
 
   updateEarStudyButtonForMode();
 
@@ -1305,6 +1352,8 @@ export function setupEventListeners() {
       currentLevelBtn.classList.remove('active');
 
       state.currentLevel = level;
+      state.homeCardIndex = 0;
+      state.homeCardMotion = 'none';
       stopLearnBatchPlayback(true);
       await loadLevel(level);
       saveCurrentPosition();
@@ -1339,6 +1388,8 @@ export function setupEventListeners() {
     if (state.currentUnitIndex > 0) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex--;
+      state.homeCardIndex = 0;
+      state.homeCardMotion = 'none';
       refreshCurrentUnitView({
         resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
@@ -1351,6 +1402,8 @@ export function setupEventListeners() {
     if (state.currentUnitIndex < state.unitKeys.length - 1) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex++;
+      state.homeCardIndex = 0;
+      state.homeCardMotion = 'none';
       refreshCurrentUnitView({
         resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
@@ -1367,6 +1420,8 @@ export function setupEventListeners() {
     if (!isNaN(idx) && idx >= 0 && idx < state.unitKeys.length) {
       stopLearnBatchPlayback(true);
       state.currentUnitIndex = idx;
+      state.homeCardIndex = 0;
+      state.homeCardMotion = 'none';
       refreshCurrentUnitView({
         resetListen: isPracticeMode(),
         autoPlayListen: state.mainViewMode === 'listen' && !state.isTeachingMode,
@@ -1420,6 +1475,19 @@ export function setupEventListeners() {
       }
     }
 
+    if (state.appSection === 'home' && state.mainViewMode === 'study' && !state.isTeachingMode) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateHomeCardByOffset(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateHomeCardByOffset(1);
+        return;
+      }
+    }
+
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       goPrevUnit();
@@ -1450,14 +1518,20 @@ export function setupEventListeners() {
     const unitCharLink = e.target.closest('.unit-char-link');
     if (unitCharLink) {
       const targetChar = unitCharLink.dataset.char;
-      const targetCard = targetChar ? appEl.querySelector(`.card[data-char="${targetChar}"]`) : null;
-      if (targetCard) {
-        const navbarHeight = document.querySelector('.navbar')?.offsetHeight || 0;
-        const toolbarHeight = document.querySelector('.toolbar')?.offsetHeight || 0;
-        const topOffset = navbarHeight + toolbarHeight + 12;
-        const targetTop = targetCard.getBoundingClientRect().top + window.scrollY - topOffset;
-        window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      if (targetChar && state.appSection === 'home' && state.mainViewMode === 'study') {
+        const chars = getCurrentUnitChars();
+        const nextIndex = chars.indexOf(targetChar);
+        if (nextIndex !== -1) {
+          navigateHomeCard(nextIndex, nextIndex > state.homeCardIndex ? 'next' : 'prev');
+        }
       }
+      return;
+    }
+
+    const homeCardNavBtn = e.target.closest('#homeCardPrevBtn, #homeCardNextBtn');
+    if (homeCardNavBtn) {
+      e.stopPropagation();
+      navigateHomeCardByOffset(homeCardNavBtn.id === 'homeCardPrevBtn' ? -1 : 1);
       return;
     }
 
@@ -1598,6 +1672,14 @@ export function setupEventListeners() {
     listenTouchStartY = e.touches[0].clientY;
   }, { passive: true });
 
+  appEl.addEventListener('touchstart', (e) => {
+    if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+    const stage = e.target.closest('.home-card-stage');
+    if (!stage || e.touches.length !== 1) return;
+    homeTouchStartX = e.touches[0].clientX;
+    homeTouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
   appEl.addEventListener('touchend', (e) => {
     if (!isPracticeMode() || state.isTeachingMode) return;
     const panel = e.target.closest('.listen-mode-panel');
@@ -1621,6 +1703,17 @@ export function setupEventListeners() {
         navigateListenHistory('next');
       }
     }
+  }, { passive: true });
+
+  appEl.addEventListener('touchend', (e) => {
+    if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+    const stage = e.target.closest('.home-card-stage');
+    if (!stage || e.changedTouches.length !== 1) return;
+
+    const deltaX = e.changedTouches[0].clientX - homeTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - homeTouchStartY;
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    navigateHomeCardByOffset(deltaX > 0 ? -1 : 1);
   }, { passive: true });
 
   const clearSeeDragState = () => {
@@ -1772,6 +1865,101 @@ export function setupEventListeners() {
     }
   });
 
+  if (bottomNav) {
+    bottomNav.addEventListener('click', (e) => {
+      const item = e.target.closest('.bottom-nav-item');
+      if (!item) return;
+      e.stopPropagation();
+      const section = item.dataset.section || 'home';
+      const learningActive = document.getElementById('learningView')?.classList.contains('active');
+      if (section === 'home') {
+        if (learningActive) {
+          exitLearning();
+          state.appSection = 'home';
+          saveCurrentPosition();
+          updateAppShell();
+          return;
+        }
+        returnToHomeStudy();
+        return;
+      }
+      if (learningActive) {
+        exitLearning();
+      }
+      setAppSection(section);
+    });
+  }
+
+  appEl.addEventListener('click', (e) => {
+    const actionCard = e.target.closest('.section-action-card');
+    if (!actionCard) return;
+    const action = actionCard.dataset.action;
+    if (!action) return;
+
+    if (action === 'listen') {
+      setAppSection('home');
+      setMainViewMode('listen', { resetListen: true, autoPlay: true });
+      return;
+    }
+
+    if (action === 'see') {
+      setAppSection('home');
+      setMainViewMode('see', { resetListen: true, autoPlay: false });
+      return;
+    }
+
+    if (action === 'download') {
+      document.getElementById('menuDownload')?.click();
+      return;
+    }
+
+    if (action === 'clear-cache') {
+      document.getElementById('menuClearCache')?.click();
+      return;
+    }
+
+    if (action === 'toggle-teaching') {
+      const targetId = state.isTeachingMode ? 'menuSwitchLearn' : 'menuSwitchTeach';
+      document.getElementById(targetId)?.click();
+      setAppSection('home');
+      return;
+    }
+
+    if (action === 'refresh') {
+      document.getElementById('menuRefresh')?.click();
+      return;
+    }
+
+    if (action === 'stats') {
+      document.getElementById('menuStats')?.click();
+      return;
+    }
+
+    if (action === 'login') {
+      document.getElementById('menuLogin')?.click();
+      return;
+    }
+
+    if (action === 'progress') {
+      document.getElementById('menuProgress')?.click();
+    }
+  });
+
+  appEl.addEventListener('click', (e) => {
+    const actionBtn = e.target.closest('[data-home-action]');
+    if (!actionBtn) return;
+    const action = actionBtn.dataset.homeAction;
+    if (action === 'batch-play') {
+      e.stopPropagation();
+      enterBatchPlay();
+      return;
+    }
+    if (action === 'batch-record') {
+      e.stopPropagation();
+      enterBatchRecord();
+    }
+  });
+
   if (closeListenCompletion) {
     closeListenCompletion.addEventListener('click', () => {
       if (listenCompletionModal) {
@@ -1800,6 +1988,8 @@ export function setupEventListeners() {
       }
 
       state.currentUnitIndex += 1;
+      state.homeCardIndex = 0;
+      state.homeCardMotion = 'none';
       if (state.mainViewMode === 'see') {
         state.seeMode = createEmptySeeState(getCurrentUnitName());
       } else {

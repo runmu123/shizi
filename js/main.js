@@ -37,6 +37,9 @@ setupBatchPlayEvents();
     if (savedPos.mainViewMode && savedPos.isTeachingMode !== true) {
       state.mainViewMode = savedPos.mainViewMode;
     }
+    if (savedPos.appSection) {
+      state.appSection = savedPos.appSection;
+    }
   }
 
   // 并行执行：初始化等级列表 和 加载当前等级数据

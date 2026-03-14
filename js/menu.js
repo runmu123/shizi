@@ -2,7 +2,7 @@
 import { state, cacheSuffix } from './state.js';
 import { showToast } from './toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, renderUnit, updateAppShell } from './ui.js';
 import { navigateToUnit } from './app.js';
 
 export function setupMenuAndModals() {
@@ -10,6 +10,21 @@ export function setupMenuAndModals() {
 
   let scrollPosition = 0;
   let batchSize = 100; // 默认批次大小
+
+  function emitAuthStateChanged(user) {
+    window.dispatchEvent(new CustomEvent('shizi-auth-changed', {
+      detail: { user: user || '' },
+    }));
+  }
+
+  function refreshAuthDependentUi(user = localStorage.getItem(USER_KEY) || '') {
+    const menuLoginBtn = document.getElementById('menuLogin');
+    if (menuLoginBtn) {
+      menuLoginBtn.textContent = user ? `注销 (${user})` : '登录';
+    }
+    renderUnit();
+    updateAppShell();
+  }
 
   function lockScroll() {
     scrollPosition = window.scrollY;
@@ -210,6 +225,52 @@ export function setupMenuAndModals() {
     lockScroll();
   }
 
+  function setCacheClearProgress({ percent = 0, status = '准备中...' } = {}) {
+    const modal = document.getElementById('cacheClearModal');
+    const fill = document.getElementById('cacheClearFill');
+    const percentText = document.getElementById('cacheClearPercent');
+    const statusText = document.getElementById('cacheClearStatus');
+    if (!modal || !fill || !percentText || !statusText) return;
+
+    modal.classList.add('active');
+    fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    percentText.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
+    statusText.textContent = status;
+  }
+
+  function hideCacheClearProgress(delay = 600) {
+    const modal = document.getElementById('cacheClearModal');
+    if (!modal) return;
+    setTimeout(() => {
+      modal.classList.remove('active');
+      unlockScroll();
+    }, delay);
+  }
+
+  function setTaskProgress({ title = '正在处理', percent = 0, status = '准备中...' } = {}) {
+    const modal = document.getElementById('taskProgressModal');
+    const titleEl = document.getElementById('taskProgressTitle');
+    const fill = document.getElementById('taskProgressFill');
+    const percentText = document.getElementById('taskProgressPercent');
+    const statusText = document.getElementById('taskProgressStatus');
+    if (!modal || !titleEl || !fill || !percentText || !statusText) return;
+
+    modal.classList.add('active');
+    titleEl.textContent = title;
+    fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    percentText.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
+    statusText.textContent = status;
+  }
+
+  function hideTaskProgress(delay = 600) {
+    const modal = document.getElementById('taskProgressModal');
+    if (!modal) return;
+    setTimeout(() => {
+      modal.classList.remove('active');
+      unlockScroll();
+    }, delay);
+  }
+
   document.getElementById('cancelConfirm').addEventListener('click', () => {
     confirmModal.classList.remove('active');
     confirmCallback = null;
@@ -278,8 +339,8 @@ export function setupMenuAndModals() {
       showConfirm('注销确认', `当前已登录为「${user}」\n确定要注销吗？`, () => {
         localStorage.removeItem(USER_KEY);
         showToast('已注销', 'info');
-        document.getElementById('menuLogin').textContent = '登录';
         checkLoginStatus();
+        emitAuthStateChanged('');
       });
     } else {
       loginModal.classList.add('active');
@@ -345,8 +406,8 @@ export function setupMenuAndModals() {
       localStorage.setItem(USER_KEY, username);
       loginLoadingModal.classList.remove('active');
       unlockScroll();
-      document.getElementById('menuLogin').textContent = '注销 (' + username + ')';
       checkLoginStatus();
+      emitAuthStateChanged(username);
     } else {
       loginLoadingModal.classList.remove('active');
       unlockScroll();
@@ -368,6 +429,16 @@ export function setupMenuAndModals() {
   if (currentUser) {
     document.getElementById('menuLogin').textContent = '注销 (' + currentUser + ')';
   }
+
+  window.addEventListener('shizi-auth-changed', (event) => {
+    refreshAuthDependentUi(event.detail?.user || '');
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === USER_KEY) {
+      refreshAuthDependentUi(event.newValue || '');
+    }
+  });
 
   checkLoginStatus();
 
@@ -600,14 +671,8 @@ export function setupMenuAndModals() {
       showToast('数据库未连接', 'error');
       return;
     }
-
-    const progressDiv = document.getElementById('downloadProgress');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-
-    progressDiv.style.display = 'flex';
-    progressFill.style.width = '0%';
-    progressText.textContent = '准备中...';
+    lockScroll();
+    setTaskProgress({ title: '正在下载语音数据', percent: 2, status: '准备中...' });
 
     try {
       let files = await audioManager.getAllAudioRecords();
@@ -618,14 +683,15 @@ export function setupMenuAndModals() {
       }
 
       if (!files || files.length === 0) {
+        setTaskProgress({ title: '正在下载语音数据', percent: 100, status: '没有可下载的语音文件' });
+        hideTaskProgress();
         showToast('没有可下载的语音文件', 'info');
-        progressDiv.style.display = 'none';
         return;
       }
 
       let downloaded = 0;
       const total = files.length;
-      progressText.textContent = `0/${total}`;
+      setTaskProgress({ title: '正在下载语音数据', percent: 3, status: `已找到 ${total} 个语音文件` });
 
       let cache = null;
       if ('caches' in window) {
@@ -704,18 +770,25 @@ export function setupMenuAndModals() {
         // 更新进度条（每批次更新一次 DOM，减少重绘）
         downloaded = Math.min(downloaded + batch.length, total);
         const pct = (downloaded / total) * 100;
-        progressFill.style.width = `${pct}%`;
-        progressText.textContent = `${downloaded}/${total}`;
+        setTaskProgress({
+          title: '正在下载语音数据',
+          percent: pct,
+          status: `正在下载 ${downloaded}/${total}`,
+        });
       }
 
+      setTaskProgress({
+        title: '正在下载语音数据',
+        percent: 100,
+        status: cache ? '下载完成，语音已写入缓存' : '下载完成',
+      });
+      hideTaskProgress(900);
       showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
     } catch (e) {
       console.error(e);
+      setTaskProgress({ title: '正在下载语音数据', percent: 100, status: '下载失败，请稍后重试' });
+      hideTaskProgress(900);
       showToast('下载出错', 'error');
-    } finally {
-      setTimeout(() => {
-        progressDiv.style.display = 'none';
-      }, 2000);
     }
   }
 
@@ -723,15 +796,21 @@ export function setupMenuAndModals() {
   document.getElementById('menuClearCache').addEventListener('click', async () => {
     if ('caches' in window) {
       try {
+        lockScroll();
+        setCacheClearProgress({ percent: 3, status: '正在检查缓存项目...' });
+
         const cache = await caches.open(AUDIO_CACHE_NAME);
         const keys = await cache.keys();
         if (keys.length === 0) {
+          setCacheClearProgress({ percent: 100, status: '未发现可清理的语音缓存' });
+          hideCacheClearProgress();
           showToast('未发现语音缓存', 'info');
           return;
         }
 
         let totalBytes = 0;
-        for (const req of keys) {
+        for (let i = 0; i < keys.length; i++) {
+          const req = keys[i];
           const res = await cache.match(req);
           if (res) {
             const cl = res.headers.get('content-length');
@@ -742,13 +821,31 @@ export function setupMenuAndModals() {
               totalBytes += buf.byteLength;
             }
           }
+          const inspectPercent = 5 + (((i + 1) / keys.length) * 25);
+          setCacheClearProgress({
+            percent: inspectPercent,
+            status: `正在统计缓存大小 ${i + 1}/${keys.length}`,
+          });
+        }
+
+        for (let i = 0; i < keys.length; i++) {
+          await cache.delete(keys[i]);
+          const clearPercent = 30 + (((i + 1) / keys.length) * 70);
+          setCacheClearProgress({
+            percent: clearPercent,
+            status: `正在清理缓存文件 ${i + 1}/${keys.length}`,
+          });
         }
 
         await caches.delete(AUDIO_CACHE_NAME);
         const mb = (totalBytes / 1024 / 1024).toFixed(2);
+        setCacheClearProgress({ percent: 100, status: `清理完成，共清理 ${keys.length} 个文件` });
+        hideCacheClearProgress(900);
         showToast(`语音缓存已清理，共 ${keys.length} 个文件，${mb} MB`, 'success');
       } catch (e) {
         console.error(e);
+        setCacheClearProgress({ percent: 100, status: '清理失败，请稍后重试' });
+        hideCacheClearProgress(900);
         showToast('清理缓存失败', 'error');
       }
     } else {
@@ -758,20 +855,14 @@ export function setupMenuAndModals() {
 
   // ===== 刷新页面 =====
   const handleHardRefresh = async () => {
-    const progressDiv = document.getElementById('downloadProgress');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-
-    progressDiv.style.display = 'flex';
-    progressFill.style.width = '10%';
-    progressText.textContent = '准备刷新...';
+    lockScroll();
+    setTaskProgress({ title: '正在刷新页面', percent: 10, status: '准备刷新...' });
 
     try {
-      progressFill.style.width = '50%';
+      setTaskProgress({ title: '正在刷新页面', percent: 50, status: '正在更新资源...' });
       await new Promise(r => setTimeout(r, 200));
 
-      progressFill.style.width = '100%';
-      progressText.textContent = '刷新中...';
+      setTaskProgress({ title: '正在刷新页面', percent: 100, status: '刷新中...' });
 
       await new Promise(r => setTimeout(r, 200));
 

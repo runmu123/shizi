@@ -2,6 +2,7 @@
 import { state } from './state.js';
 import { showToast, showQuizToast } from './toast.js';
 import { USER_KEY } from './constants.js';
+import { updateAppShell } from './ui.js';
 
 const STROKE_ANIMATION_SPEED = 0.5;
 const STROKE_DELAY = 500;
@@ -224,15 +225,12 @@ export function enterLearning(char, level, unit) {
   const appEl = document.getElementById('app');
   const learningView = document.getElementById('learningView');
   const learnCharEl = document.getElementById('learnChar');
-  const learnPinyinEl = document.getElementById('learnPinyin');
 
   savedScrollPosition = window.scrollY;
 
   appEl.style.display = 'none';
-  document.querySelector('.navbar').style.display = 'none';
-  document.querySelector('.toolbar').style.display = 'none';
-  document.body.style.paddingTop = '20px';
   learningView.classList.add('active');
+  updateAppShell();
   window.scrollTo(0, 0);
 
   updateLearningViewBtn();
@@ -248,13 +246,6 @@ export function enterLearning(char, level, unit) {
   }
 
   learnCharEl.textContent = char;
-  if (typeof pinyinPro !== 'undefined') {
-    const { pinyin } = pinyinPro;
-    learnPinyinEl.textContent = pinyin(char, { multiple: true });
-  } else {
-    learnPinyinEl.textContent = '';
-  }
-
   initWriter(char);
 
   if (!state.isTeachingMode) {
@@ -278,9 +269,7 @@ export function exitLearning() {
 
   document.getElementById('learningView').classList.remove('active');
   document.getElementById('app').style.display = 'flex';
-  document.querySelector('.navbar').style.display = 'flex';
-  document.querySelector('.toolbar').style.display = 'flex';
-  document.body.style.paddingTop = '120px';
+  updateAppShell();
   window.scrollTo(0, savedScrollPosition);
 
   if (state.writer) {
@@ -290,8 +279,6 @@ export function exitLearning() {
 }
 
 export function setupLearningEvents() {
-  document.getElementById('backBtn').addEventListener('click', exitLearning);
-
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => switchMode(tab.dataset.mode));
   });

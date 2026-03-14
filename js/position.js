@@ -9,6 +9,7 @@ export function saveCurrentPosition() {
     unitName: state.unitKeys[state.currentUnitIndex] || '',
     isTeachingMode: state.isTeachingMode,
     mainViewMode: state.mainViewMode,
+    appSection: state.appSection,
     timestamp: Date.now(),
   };
   localStorage.setItem(POSITION_KEY, JSON.stringify(data));
