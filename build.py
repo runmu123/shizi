@@ -219,8 +219,8 @@ def normalize_hex_color(color, fallback="#ffffff"):
 
 
 def detect_navbar_background_color():
-    """从 www/index.html 中提取导航栏背景色（--nav-bg），用于状态栏颜色"""
-    default_color = "#ffffff"
+    """从 www/index.html 中提取顶部工具栏背景色，用于 Android 状态栏颜色"""
+    default_color = "#f7e9cd"
     index_html_path = os.path.join(ANDROID_BUILD_DIR, "www", "index.html")
     if not os.path.exists(index_html_path):
         return default_color
@@ -229,12 +229,21 @@ def detect_navbar_background_color():
         with open(index_html_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # 1) 优先读取 CSS 变量 --nav-bg
+        # 1) 优先读取 .toolbar 的背景或渐变首色
+        toolbar_match = re.search(r"\.toolbar\s*\{[\s\S]*?background\s*:\s*([^;]+);", content, flags=re.MULTILINE)
+        if toolbar_match:
+            toolbar_bg = toolbar_match.group(1).strip()
+            gradient_hex = re.search(r"#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})", toolbar_bg)
+            if gradient_hex:
+                return normalize_hex_color(gradient_hex.group(0), default_color)
+            return normalize_hex_color(toolbar_bg, default_color)
+
+        # 2) 兜底读取 CSS 变量 --nav-bg
         var_match = re.search(r"--nav-bg\s*:\s*([^;]+);", content, flags=re.MULTILINE)
         if var_match:
             return normalize_hex_color(var_match.group(1), default_color)
 
-        # 2) 兜底读取 body 背景色
+        # 3) 兜底读取 body 背景色
         body_match = re.search(r"body\s*\{[\s\S]*?background-color\s*:\s*([^;]+);", content, flags=re.MULTILINE)
         if body_match:
             return normalize_hex_color(body_match.group(1), default_color)
@@ -256,9 +265,12 @@ def write_main_activity_java(path, app_id, enable_zoom):
         bridge.getWebView().getSettings().setLoadWithOverviewMode(true);
 """
 
+    status_bar_color = detect_navbar_background_color()
+
     content = f"""package {app_id};
 
 import android.Manifest;
+import android.graphics.Color;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -267,6 +279,8 @@ import android.webkit.WebChromeClient;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -278,6 +292,8 @@ public class MainActivity extends BridgeActivity {{
     public void onCreate(Bundle savedInstanceState) {{
         super.onCreate(savedInstanceState);
 
+        applySystemBarColors();
+
         if (bridge != null && bridge.getWebView() != null) {{
 {zoom_settings}
             bridge.getWebView().setWebChromeClient(new WebChromeClient() {{
@@ -288,6 +304,19 @@ public class MainActivity extends BridgeActivity {{
                     }});
                 }}
             }});
+        }}
+    }}
+
+    private void applySystemBarColors() {{
+        int statusColor = Color.parseColor("{status_bar_color}");
+        getWindow().setStatusBarColor(statusColor);
+        getWindow().setNavigationBarColor(statusColor);
+
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (controller != null) {{
+            controller.setAppearanceLightStatusBars(true);
+            controller.setAppearanceLightNavigationBars(true);
         }}
     }}
 
@@ -431,6 +460,18 @@ export default config;
                 log_success(f"已同步 MainActivity 包名: {activity_path}")
 
     # 5) 同步状态栏颜色，保持与页面背景一致
+    colors_xml_path = os.path.join(ANDROID_DIR, "app", "src", "main", "res", "values", "colors.xml")
+    colors_xml = f"""<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">{status_bar_color}</color>
+    <color name="colorPrimaryDark">{status_bar_color}</color>
+    <color name="colorAccent">#19d752</color>
+    <color name="statusBarColor">{status_bar_color}</color>
+</resources>
+"""
+    write_file(colors_xml_path, colors_xml)
+    log_success(f"已写入 colors.xml 状态栏颜色: {status_bar_color}")
+
     styles_xml_path = os.path.join(ANDROID_DIR, "app", "src", "main", "res", "values", "styles.xml")
     if os.path.exists(styles_xml_path):
         styles_xml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -440,8 +481,8 @@ export default config;
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:statusBarColor">{status_bar_color}</item>
-        <item name="android:navigationBarColor">{status_bar_color}</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/statusBarColor</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
@@ -449,15 +490,15 @@ export default config;
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <item name="android:statusBarColor">{status_bar_color}</item>
-        <item name="android:navigationBarColor">{status_bar_color}</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/statusBarColor</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
-        <item name="android:statusBarColor">{status_bar_color}</item>
-        <item name="android:navigationBarColor">{status_bar_color}</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/statusBarColor</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
