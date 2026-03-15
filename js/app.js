@@ -1025,7 +1025,28 @@ function clearLearnBatchHighlight() {
   });
 }
 
-function applyLearnBatchHighlight(item) {
+async function syncLearnBatchCard(item) {
+  if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) {
+    return;
+  }
+
+  const chars = getCurrentUnitChars();
+  const targetIndex = chars.indexOf(item.rootChar);
+  if (targetIndex === -1 || targetIndex === state.homeCardIndex) return;
+
+  state.homeCardMotion = targetIndex > state.homeCardIndex ? 'next' : 'prev';
+  state.homeCardIndex = targetIndex;
+  renderUnit();
+
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+}
+
+async function applyLearnBatchHighlight(item) {
+  await syncLearnBatchCard(item);
   clearLearnBatchHighlight();
   if (!item) return;
 
@@ -1119,7 +1140,7 @@ async function runLearnBatchPlaybackLoop(token) {
     learnBatchPlayback.index < learnBatchPlayback.sequence.length
   ) {
     const item = learnBatchPlayback.sequence[learnBatchPlayback.index];
-    applyLearnBatchHighlight(item);
+    await applyLearnBatchHighlight(item);
 
     await new Promise((resolve) => {
       let done = false;
