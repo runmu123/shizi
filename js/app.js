@@ -26,6 +26,11 @@ const seeDragState = {
   suppressClickUntil: 0,
 };
 
+const practiceAudioUiState = {
+  button: null,
+  cleanup: null,
+};
+
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -541,6 +546,11 @@ function stopActiveAudioPlayback() {
   if (window.audioManager && typeof audioManager.stopCurrentAudio === 'function') {
     audioManager.stopCurrentAudio();
   }
+  if (typeof practiceAudioUiState.cleanup === 'function') {
+    practiceAudioUiState.cleanup();
+  }
+  practiceAudioUiState.button = null;
+  practiceAudioUiState.cleanup = null;
 }
 
 function getActivePracticeMode() {
@@ -559,6 +569,10 @@ function playCharAudio(char, { button = null, setPauseIcon = false } = {}) {
 
   const unitName = findCharUnitInCurrentLevel(char);
   const cleanup = () => {
+    if (practiceAudioUiState.button === button) {
+      practiceAudioUiState.button = null;
+      practiceAudioUiState.cleanup = null;
+    }
     if (!button) return;
     button.classList.remove('playing');
     if (setPauseIcon) {
@@ -571,6 +585,8 @@ function playCharAudio(char, { button = null, setPauseIcon = false } = {}) {
     if (setPauseIcon) {
       button.innerHTML = getPauseIconHtml();
     }
+    practiceAudioUiState.button = button;
+    practiceAudioUiState.cleanup = cleanup;
   }
 
   audioManager.stopCurrentAudio();
@@ -604,14 +620,18 @@ function playListenModeAudio() {
 
   if (btn) {
     setSpeakerButtonPlaying(btn, true);
-    btn.disabled = true;
+    practiceAudioUiState.button = btn;
   }
 
   const cleanup = () => {
+    if (practiceAudioUiState.button === btn) {
+      practiceAudioUiState.button = null;
+      practiceAudioUiState.cleanup = null;
+    }
     if (!btn) return;
     setSpeakerButtonPlaying(btn, false);
-    btn.disabled = false;
   };
+  practiceAudioUiState.cleanup = cleanup;
 
   audioManager.stopCurrentAudio();
   audioManager.playAudio(
@@ -702,6 +722,10 @@ function setMainViewMode(mode, { resetListen = true, autoPlay = true } = {}) {
 
 function setAppSection(section) {
   if (!['home', 'other', 'profile'].includes(section)) return;
+  if (section !== 'home') {
+    stopActiveAudioPlayback();
+    stopLearnBatchPlayback(true);
+  }
   state.appSection = section;
   renderUnit();
   saveCurrentPosition();
@@ -1532,6 +1556,10 @@ export function setupEventListeners() {
       e.stopPropagation();
       if (Date.now() < seeDragState.suppressClickUntil) return;
       if (seeOptionBtn.classList.contains('revealed')) return;
+      if (seeOptionBtn.classList.contains('playing')) {
+        stopActiveAudioPlayback();
+        return;
+      }
       playSeeOptionAudio(seeOptionBtn.dataset.char || '', seeOptionBtn);
       return;
     }
@@ -1857,6 +1885,10 @@ export function setupEventListeners() {
     const btn = e.target.closest('#listenReplayBtn');
     if (!btn) return;
     e.stopPropagation();
+    if (btn.classList.contains('playing')) {
+      stopActiveAudioPlayback();
+      return;
+    }
     playListenModeAudio();
   });
 

@@ -535,6 +535,11 @@
       z-index: 2;
     }
 
+    .container.home-stage-layout .home-stage-shell {
+      padding-top: 118px;
+      box-sizing: border-box;
+    }
+
     .container.app-section-layout {
       max-width: 720px;
     }
@@ -1571,8 +1576,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 8px 8px 8px;
+      justify-content: center;
+      padding: 8px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     .listen-audio-btn {
@@ -1799,6 +1807,9 @@
 
     .container.listen-layout {
       gap: 10px;
+      min-height: calc(100vh - var(--app-top-offset) - 96px - 24px);
+      height: calc(100vh - var(--app-top-offset) - 96px - 24px);
+      overflow: hidden;
     }
 
     .listen-unit-title {
@@ -1841,6 +1852,8 @@
 
       .container.listen-layout {
         gap: 8px;
+        min-height: calc(100vh - var(--app-top-offset) - 96px - 12px);
+        height: calc(100vh - var(--app-top-offset) - 96px - 12px);
       }
 
       .container.home-stage-layout {
@@ -1851,6 +1864,10 @@
 
       .container.home-stage-layout .unit-char-strip {
         top: 48px;
+      }
+
+      .container.home-stage-layout .home-stage-shell {
+        padding-top: 104px;
       }
 
       .home-stage-shell {
@@ -1872,7 +1889,12 @@
       }
 
       .listen-mode-panel {
-        padding-top: 10px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
       }
 
       .unit-title {
@@ -1895,7 +1917,7 @@
       .listen-options-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--listen-option-gap, 14px);
-        margin-top: 10px;
+        margin-top: 0;
       }
 
       .listen-option-btn {
@@ -1912,7 +1934,7 @@
       .see-options-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--listen-option-gap, 14px);
-        margin-top: 10px;
+        margin-top: 0;
       }
 
       .see-audio-option {
