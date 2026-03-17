@@ -687,11 +687,16 @@ export function updateAppShell() {
     toolbarTitle.textContent = title;
   }
 
-  const showHomeControls = !learningActive && state.appSection === 'home';
+  const showSearch = !learningActive
+    && state.appSection === 'home'
+    && state.mainViewMode === 'study'
+    && !state.isTeachingMode;
+  const showHomeControls = !learningActive
+    && state.appSection === 'home';
   const showNotebookSwitcher = !learningActive && state.appSection === 'profile'
     && (state.profileView === 'notebookReview' || state.profileView === 'notebookPractice');
   if (toolbarSearch) {
-    toolbarSearch.style.display = showHomeControls ? 'flex' : 'none';
+    toolbarSearch.style.display = showSearch ? 'flex' : 'none';
   }
   if (toolbarControls) {
     toolbarControls.style.display = (showHomeControls || showNotebookSwitcher) ? 'flex' : 'none';
