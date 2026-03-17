@@ -1121,6 +1121,7 @@ function openNotebookPractice(mode, level, groupIndex) {
 }
 
 function returnToNotebookList() {
+  stopActiveAudioPlayback();
   state.profileView = 'main';
   document.body.style.overflow = '';
   document.body.style.position = '';
@@ -1271,8 +1272,20 @@ function handleNotebookListenPracticeAnswer(selectedChar) {
   if (!question.wrongSelections.includes(selectedChar)) {
     question.wrongSelections.push(selectedChar);
   }
-  showToast('错误！请重新选择', 'error');
+  const currentContext = getNotebookPracticeCharContext(currentChar);
   const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  updateUserMistakeRecord({
+    char: currentChar,
+    level: currentContext?.level || session.level || state.currentLevel,
+    unit: currentContext?.unit || getCurrentUnitName(),
+    mistakeMode: session.mode,
+    wrongChar: {
+      char: selectedChar,
+      level: selectedContext?.level || session.level || state.currentLevel,
+      unit: selectedContext?.unit || getCurrentUnitName(),
+    },
+  });
+  showToast('错误！请重新选择', 'error');
   playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
 }
 
@@ -1312,9 +1325,21 @@ function handleNotebookSeePracticeAnswer(selectedChar) {
   if (!question.revealedOptions.includes(selectedChar)) {
     question.revealedOptions.push(selectedChar);
   }
+  const currentContext = getNotebookPracticeCharContext(currentChar);
+  const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  updateUserMistakeRecord({
+    char: currentChar,
+    level: currentContext?.level || session.level || state.currentLevel,
+    unit: currentContext?.unit || getCurrentUnitName(),
+    mistakeMode: session.mode,
+    wrongChar: {
+      char: selectedChar,
+      level: selectedContext?.level || session.level || state.currentLevel,
+      unit: selectedContext?.unit || getCurrentUnitName(),
+    },
+  });
   renderUnit();
   showToast('错误！请重新选择', 'error');
-  const selectedContext = getNotebookPracticeCharContext(selectedChar);
   playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
 }
 
