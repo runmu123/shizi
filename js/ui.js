@@ -405,7 +405,7 @@ function renderNotebookCollectionSection(mode, label) {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </div>
               <div class="progress-level-content${levelExpanded ? ' show' : ''}">
-                <div class="notebook-group-list">
+                <div class="notebook-group-list notebook-level-group-list">
                   ${groups.map((group, index) => `
                       <div class="notebook-group-row">
                         <div class="progress-unit-info notebook-group-info">

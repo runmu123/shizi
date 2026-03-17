@@ -914,6 +914,22 @@
       gap: 0;
     }
 
+    .notebook-level-group-list {
+      max-height: calc(8em + 93px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    .notebook-level-group-list::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
     .notebook-group-row {
       margin-bottom: 12px;
       line-height: 1.6;
