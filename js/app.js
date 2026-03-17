@@ -908,16 +908,26 @@ async function loadProfileProgressData(force = false) {
   }
 }
 
-async function loadProfilePageData(force = false, { showDoneToast = true } = {}) {
-  const dismissToast = showPersistentToast('正在查询数据中...', 'info');
+async function loadProfilePageData(force = false, { showQueryToasts = true } = {}) {
+  const dismissToast = showQueryToasts
+    ? showPersistentToast('正在查询数据中...', 'info')
+    : () => {};
+  const queryToastStart = showQueryToasts ? Date.now() : 0;
   try {
     await Promise.all([
       loadNotebookData(force),
       loadProfileProgressData(force),
     ]);
   } finally {
+    if (showQueryToasts) {
+      const elapsed = Date.now() - queryToastStart;
+      const minVisibleMs = 500;
+      if (elapsed < minVisibleMs) {
+        await new Promise((resolve) => setTimeout(resolve, minVisibleMs - elapsed));
+      }
+    }
     dismissToast();
-    if (showDoneToast) {
+    if (showQueryToasts) {
       showToast('查询完毕！', 'success');
     }
   }
@@ -942,7 +952,7 @@ function resetProfilePageData() {
 }
 
 export async function refreshProfilePageDataAfterLogin() {
-  await loadProfilePageData(true, { showDoneToast: true });
+  await loadProfilePageData(true, { showQueryToasts: true });
 }
 
 export function clearProfilePageDataAfterLogout() {
@@ -1951,7 +1961,7 @@ export function setupEventListeners() {
   });
 
   if (state.appSection === 'profile') {
-    loadProfilePageData(true);
+    loadProfilePageData(true, { showQueryToasts: true });
   }
 
   window.addEventListener('resize', () => {
