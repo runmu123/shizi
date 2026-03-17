@@ -219,7 +219,32 @@ function getNotebookGroups(mode) {
   const items = (state.notebook.items || [])
     .filter((item) => item.mistake_mode === mode)
     .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
-  return splitIntoGroups(items, 5);
+
+  const grouped = {};
+  items.forEach((item) => {
+    const level = item.level || '未分级';
+    if (!grouped[level]) grouped[level] = [];
+    grouped[level].push(item);
+  });
+
+  return sortProgressLevels(Object.keys(grouped)).flatMap((level) => splitIntoGroups(grouped[level], 5));
+}
+
+function getNotebookGroupsByLevel(mode) {
+  const items = (state.notebook.items || [])
+    .filter((item) => item.mistake_mode === mode)
+    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
+
+  const grouped = {};
+  items.forEach((item) => {
+    const level = item.level || '未分级';
+    if (!grouped[level]) grouped[level] = [];
+    grouped[level].push(item);
+  });
+
+  return Object.fromEntries(
+    sortProgressLevels(Object.keys(grouped)).map((level) => [level, splitIntoGroups(grouped[level], 5)]),
+  );
 }
 
 function getNotebookChevronIcon(expanded) {
@@ -311,6 +336,10 @@ function formatProgressUnitDisplay(unit) {
   return normalized;
 }
 
+function formatAlignedIndex(value) {
+  return String(value).padStart(3, ' ');
+}
+
 function renderProfileProgressContent() {
   const grouped = state.profileProgress.grouped || {};
   const levels = sortProgressLevels(Object.keys(grouped));
@@ -350,9 +379,14 @@ function renderProfileProgressContent() {
 }
 
 function renderNotebookCollectionSection(mode, label) {
-  const groups = getNotebookGroups(mode);
+  const groupedLevels = getNotebookGroupsByLevel(mode);
+  const levels = sortProgressLevels(Object.keys(groupedLevels));
   const expanded = !!state.notebook.expandedSections?.[mode];
-  const total = groups.reduce((sum, group) => sum + group.length, 0);
+  const total = Object.values(groupedLevels).reduce(
+    (sum, groups) => sum + groups.reduce((groupSum, group) => groupSum + group.length, 0),
+    0,
+  );
+  let groupCounter = 0;
 
   return `
     <div class="notebook-section-card">
@@ -363,17 +397,40 @@ function renderNotebookCollectionSection(mode, label) {
         <span class="notebook-section-arrow${expanded ? ' expanded' : ''}">${getNotebookChevronIcon(expanded)}</span>
       </button>
       <div class="notebook-collapse${expanded ? ' expanded' : ''}">
-        <div class="notebook-group-list">
-          ${groups.map((group, index) => `
-            <div class="notebook-group-row">
-              <div class="notebook-group-text">${index + 1}：${group.map((item) => escapeHtml(item.char)).join('，')}</div>
-              <div class="notebook-group-actions">
-                <button class="modal-btn confirm" type="button" data-notebook-action="review" data-mode="${mode}" data-group-index="${index}">复习</button>
-                <button class="modal-btn retry" type="button" data-notebook-action="practice" data-mode="${mode}" data-group-index="${index}">练习</button>
+        ${levels.length ? levels.map((level) => {
+          const levelExpanded = !!state.notebook.expandedLevels?.[mode]?.[level];
+          const groups = groupedLevels[level] || [];
+          return `
+            <div class="progress-level-item notebook-level-item">
+              <div class="progress-level-header${levelExpanded ? ' active' : ''}" data-notebook-level-header="${escapeHtml(mode)}|${escapeHtml(level)}">
+                <span>${escapeHtml(level)}</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+              <div class="progress-level-content${levelExpanded ? ' show' : ''}">
+                <div class="notebook-group-list">
+                  ${groups.map((group, index) => {
+                    const flatIndex = groupCounter++;
+
+                    return `
+                      <div class="notebook-group-row">
+                        <div class="progress-unit-info notebook-group-info">
+                          <span class="progress-unit-name">
+                            <span class="progress-unit-number">${escapeHtml(formatAlignedIndex(flatIndex + 1))}</span><span class="progress-unit-colon"> :</span>
+                          </span>
+                          <span class="progress-char-list notebook-group-text">${group.map((item) => `<span class="progress-char learned">${escapeHtml(item.char)}</span>`).join('，')}</span>
+                        </div>
+                        <div class="notebook-group-actions">
+                          <button class="modal-btn confirm" type="button" data-notebook-action="review" data-mode="${mode}" data-group-index="${flatIndex}">复习</button>
+                          <button class="modal-btn retry" type="button" data-notebook-action="practice" data-mode="${mode}" data-group-index="${flatIndex}">练习</button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
               </div>
             </div>
-          `).join('')}
-        </div>
+          `;
+        }).join('') : '<div class="loading">暂无错题记录</div>'}
       </div>
     </div>
   `;

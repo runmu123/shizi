@@ -911,33 +911,60 @@
     .notebook-group-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 0;
     }
 
     .notebook-group-row {
-      border: 1px solid #efe3cf;
-      border-radius: 18px;
-      background: rgba(255, 251, 244, 0.92);
-      padding: 14px 16px;
+      margin-bottom: 12px;
+      line-height: 1.6;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      box-shadow: 0 8px 18px rgba(120, 53, 15, 0.04);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .notebook-group-row:last-child {
+      margin-bottom: 0;
     }
 
     .notebook-group-text {
-      color: #5b4535;
-      font-size: 1rem;
-      line-height: 1.6;
-      flex: 1;
+      color: #6b7280;
+      white-space: nowrap;
     }
 
     .notebook-group-actions {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 10px;
-      flex-shrink: 0;
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    .notebook-group-info {
+      min-width: 0;
+      white-space: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .notebook-group-info::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    .notebook-group-actions .modal-btn {
+      padding: 5px 12px;
+      font-size: 0.88rem;
+      line-height: 1.2;
+    }
+
+    @media (max-width: 640px) {
+      .notebook-group-actions {
+        gap: 8px;
+      }
     }
 
     .notebook-topbar {
@@ -2314,13 +2341,18 @@
     }
 
     .progress-level-content {
-      display: none;
-      padding: 16px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      padding: 0 16px;
       background: #fff;
+      transition: max-height 0.28s ease, opacity 0.22s ease, padding 0.22s ease;
     }
 
     .progress-level-content.show {
-      display: block;
+      max-height: 1200px;
+      opacity: 1;
+      padding: 16px;
     }
 
     .progress-level-scroll {

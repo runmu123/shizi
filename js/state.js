@@ -30,6 +30,10 @@ export const state = {
       listen: false,
       see: false,
     },
+    expandedLevels: {
+      listen: {},
+      see: {},
+    },
     reviewMode: 'listen',
     reviewGroupIndex: 0,
     reviewCardIndex: 0,

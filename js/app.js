@@ -889,16 +889,36 @@ function chunkNotebookItems(items, size = 5) {
 }
 
 function getNotebookGroups(mode) {
-  return chunkNotebookItems(
-    (state.notebook.items || [])
-      .filter((item) => item.mistake_mode === mode)
-      .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0)),
-    5,
-  );
+  const items = (state.notebook.items || [])
+    .filter((item) => item.mistake_mode === mode)
+    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
+
+  const grouped = {};
+  items.forEach((item) => {
+    const level = item.level || '未分级';
+    if (!grouped[level]) grouped[level] = [];
+    grouped[level].push(item);
+  });
+
+  const levels = Object.keys(grouped).sort((a, b) => {
+    const na = parseInt(String(a).replace(/\D/g, ''), 10) || 0;
+    const nb = parseInt(String(b).replace(/\D/g, ''), 10) || 0;
+    return nb - na;
+  });
+
+  return levels.flatMap((level) => chunkNotebookItems(grouped[level], 5));
 }
 
 function setNotebookSectionExpanded(mode, expanded) {
   state.notebook.expandedSections[mode] = expanded;
+  renderUnit();
+}
+
+function setNotebookLevelExpanded(mode, level, expanded) {
+  if (!state.notebook.expandedLevels[mode]) {
+    state.notebook.expandedLevels[mode] = {};
+  }
+  state.notebook.expandedLevels[mode][level] = expanded;
   renderUnit();
 }
 
@@ -2562,6 +2582,15 @@ export function setupEventListeners() {
     if (!toggle) return;
     const mode = toggle.dataset.notebookSection;
     setNotebookSectionExpanded(mode, !state.notebook.expandedSections[mode]);
+  });
+
+  appEl.addEventListener('click', (e) => {
+    const notebookLevelHeader = e.target.closest('[data-notebook-level-header]');
+    if (!notebookLevelHeader) return;
+    const [mode, level] = (notebookLevelHeader.dataset.notebookLevelHeader || '').split('|');
+    if (!mode || !level) return;
+    const current = !!state.notebook.expandedLevels?.[mode]?.[level];
+    setNotebookLevelExpanded(mode, level, !current);
   });
 
   appEl.addEventListener('click', (e) => {
