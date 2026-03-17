@@ -745,6 +745,14 @@ function invalidateProfileProgressCache() {
   state.profileProgress.loadedUser = '';
 }
 
+function renderUnitPreservingScroll() {
+  const currentScrollY = window.scrollY;
+  renderUnit();
+  requestAnimationFrame(() => {
+    window.scrollTo(0, currentScrollY);
+  });
+}
+
 async function loadNotebookData(force = false) {
   const user = localStorage.getItem(USER_KEY) || '';
   if (!user) {
@@ -752,7 +760,11 @@ async function loadNotebookData(force = false) {
     state.notebook.loading = false;
     state.notebook.error = '';
     state.notebook.loadedUser = '';
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
     return;
   }
 
@@ -762,14 +774,22 @@ async function loadNotebookData(force = false) {
 
   state.notebook.loading = true;
   state.notebook.error = '';
-  renderUnit();
+  if (state.appSection === 'profile' && state.profileView === 'main') {
+    renderUnitPreservingScroll();
+  } else {
+    renderUnit();
+  }
 
   if (!window.audioManager?.supabase) {
     state.notebook.items = [];
     state.notebook.loading = false;
     state.notebook.error = '数据库未连接';
     state.notebook.loadedUser = user;
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
     return;
   }
 
@@ -799,7 +819,11 @@ async function loadNotebookData(force = false) {
     state.notebook.loadedUser = user;
   } finally {
     state.notebook.loading = false;
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
   }
 }
 
@@ -811,7 +835,11 @@ async function loadProfileProgressData(force = false) {
     state.profileProgress.loading = false;
     state.profileProgress.error = '';
     state.profileProgress.loadedUser = '';
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
     return;
   }
 
@@ -821,7 +849,11 @@ async function loadProfileProgressData(force = false) {
 
   state.profileProgress.loading = true;
   state.profileProgress.error = '';
-  renderUnit();
+  if (state.appSection === 'profile' && state.profileView === 'main') {
+    renderUnitPreservingScroll();
+  } else {
+    renderUnit();
+  }
 
   if (!window.audioManager?.supabase) {
     state.profileProgress.grouped = {};
@@ -829,7 +861,11 @@ async function loadProfileProgressData(force = false) {
     state.profileProgress.loading = false;
     state.profileProgress.error = '数据库未连接';
     state.profileProgress.loadedUser = user;
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
     return;
   }
 
@@ -864,11 +900,15 @@ async function loadProfileProgressData(force = false) {
     state.profileProgress.loadedUser = user;
   } finally {
     state.profileProgress.loading = false;
-    renderUnit();
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    } else {
+      renderUnit();
+    }
   }
 }
 
-async function loadProfilePageData(force = false) {
+async function loadProfilePageData(force = false, { showDoneToast = true } = {}) {
   const dismissToast = showPersistentToast('正在查询数据中...', 'info');
   try {
     await Promise.all([
@@ -877,6 +917,9 @@ async function loadProfilePageData(force = false) {
     ]);
   } finally {
     dismissToast();
+    if (showDoneToast) {
+      showToast('查询完毕！', 'success');
+    }
   }
 }
 
@@ -899,11 +942,7 @@ function resetProfilePageData() {
 }
 
 export async function refreshProfilePageDataAfterLogin() {
-  try {
-    await loadProfilePageData(true);
-  } finally {
-    showToast('查询完毕！', 'success');
-  }
+  await loadProfilePageData(true, { showDoneToast: true });
 }
 
 export function clearProfilePageDataAfterLogout() {
@@ -965,7 +1004,7 @@ function getNotebookGroupsByLevel(mode) {
 
 function setNotebookSectionExpanded(mode, expanded) {
   state.notebook.expandedSections[mode] = expanded;
-  renderUnit();
+  renderUnitPreservingScroll();
 }
 
 function setNotebookLevelExpanded(mode, level, expanded) {
@@ -973,7 +1012,7 @@ function setNotebookLevelExpanded(mode, level, expanded) {
     state.notebook.expandedLevels[mode] = {};
   }
   state.notebook.expandedLevels[mode][level] = expanded;
-  renderUnit();
+  renderUnitPreservingScroll();
 }
 
 function navigateNotebookReviewCard(offset) {
@@ -1810,6 +1849,56 @@ export function setupEventListeners() {
   let scrollPosition = 0;
   const toolbarNotebookSwitcher = document.getElementById('toolbarNotebookSwitcher');
 
+  function toggleInlineCollapse(toggleEl, expanded) {
+    const arrow = toggleEl.querySelector('.notebook-section-arrow');
+    const panel = toggleEl.nextElementSibling;
+    if (!panel) return;
+
+    arrow?.classList.toggle('expanded', expanded);
+
+    if (panel._collapseCleanup) {
+      panel.removeEventListener('transitionend', panel._collapseCleanup);
+      panel._collapseCleanup = null;
+    }
+
+    if (expanded) {
+      panel.classList.add('expanded');
+      panel.style.height = '0px';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          panel.style.height = `${panel.scrollHeight}px`;
+        });
+      });
+
+      const cleanup = (event) => {
+        if (event.propertyName !== 'height') return;
+        panel.style.height = '';
+        panel.removeEventListener('transitionend', cleanup);
+        panel._collapseCleanup = null;
+      };
+      panel._collapseCleanup = cleanup;
+      panel.addEventListener('transitionend', cleanup);
+      return;
+    }
+
+    panel.style.height = `${panel.scrollHeight}px`;
+    requestAnimationFrame(() => {
+      panel.classList.remove('expanded');
+      requestAnimationFrame(() => {
+        panel.style.height = '0px';
+      });
+    });
+
+    const cleanup = (event) => {
+      if (event.propertyName !== 'height') return;
+      panel.style.height = '';
+      panel.removeEventListener('transitionend', cleanup);
+      panel._collapseCleanup = null;
+    };
+    panel._collapseCleanup = cleanup;
+    panel.addEventListener('transitionend', cleanup);
+  }
+
   function lockScroll() {
     scrollPosition = window.scrollY;
     document.body.style.overflow = 'hidden';
@@ -2620,7 +2709,7 @@ export function setupEventListeners() {
 
     if (action === 'progress') {
       state.profileProgress.expanded = !state.profileProgress.expanded;
-      renderUnit();
+      toggleInlineCollapse(actionCard, state.profileProgress.expanded);
       if (state.profileProgress.expanded) {
         loadProfileProgressData();
       }
@@ -2661,7 +2750,9 @@ export function setupEventListeners() {
     const toggle = e.target.closest('[data-notebook-section]');
     if (!toggle) return;
     const mode = toggle.dataset.notebookSection;
-    setNotebookSectionExpanded(mode, !state.notebook.expandedSections[mode]);
+    const expanded = !state.notebook.expandedSections[mode];
+    state.notebook.expandedSections[mode] = expanded;
+    toggleInlineCollapse(toggle, expanded);
   });
 
   appEl.addEventListener('click', (e) => {
@@ -2669,8 +2760,13 @@ export function setupEventListeners() {
     if (!notebookLevelHeader) return;
     const [mode, level] = (notebookLevelHeader.dataset.notebookLevelHeader || '').split('|');
     if (!mode || !level) return;
-    const current = !!state.notebook.expandedLevels?.[mode]?.[level];
-    setNotebookLevelExpanded(mode, level, !current);
+    const expanded = !(!!state.notebook.expandedLevels?.[mode]?.[level]);
+    if (!state.notebook.expandedLevels[mode]) {
+      state.notebook.expandedLevels[mode] = {};
+    }
+    state.notebook.expandedLevels[mode][level] = expanded;
+    notebookLevelHeader.classList.toggle('active', expanded);
+    notebookLevelHeader.nextElementSibling?.classList.toggle('show', expanded);
   });
 
   appEl.addEventListener('click', (e) => {

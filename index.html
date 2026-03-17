@@ -867,7 +867,7 @@
     .notebook-section-card {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 0;
     }
 
     .notebook-section-toggle {
@@ -895,15 +895,15 @@
     }
 
     .notebook-collapse {
-      max-height: 0;
+      height: 0;
       overflow: hidden;
       opacity: 0;
-      transition: max-height 0.28s ease, opacity 0.22s ease, margin-top 0.22s ease;
+      transition: height 0.2s ease, opacity 0.14s ease, margin-top 0.14s ease;
       margin-top: 0;
     }
 
     .notebook-collapse.expanded {
-      max-height: 1200px;
+      height: auto;
       opacity: 1;
       margin-top: 6px;
     }
@@ -2400,16 +2400,21 @@
     }
 
     .progress-level-content {
-      max-height: 0;
+      display: grid;
+      grid-template-rows: 0fr;
       overflow: hidden;
       opacity: 0;
       padding: 0 16px;
       background: #fff;
-      transition: max-height 0.28s ease, opacity 0.22s ease, padding 0.22s ease;
+      transition: grid-template-rows 0.2s ease, opacity 0.14s ease, padding 0.14s ease;
+    }
+
+    .progress-level-content>* {
+      min-height: 0;
     }
 
     .progress-level-content.show {
-      max-height: 1200px;
+      grid-template-rows: 1fr;
       opacity: 1;
       padding: 16px;
     }
