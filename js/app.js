@@ -539,6 +539,44 @@ function getCurrentListenChar() {
   return state.listenMode.sequence[state.listenMode.currentIndex] || '';
 }
 
+async function ensureLevelDataAvailable(level) {
+  if (!level) return null;
+  if (level === state.currentLevel && state.currentData) return state.currentData;
+  if (state.levelDataCache[level]) return state.levelDataCache[level];
+
+  try {
+    const res = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    const data = jsyaml.load(text);
+    state.levelDataCache[level] = data;
+    return data;
+  } catch (error) {
+    console.warn('加载等级数据失败:', level, error);
+    return null;
+  }
+}
+
+async function resolveCharOrigin(char, preferredLevel = '') {
+  if (!char) return { level: preferredLevel || state.currentLevel, unit: getCurrentUnitName() };
+
+  const levels = Array.from(new Set([preferredLevel, ...(state.LEVELS || [])].filter(Boolean)));
+  for (const level of levels) {
+    const levelData = await ensureLevelDataAvailable(level);
+    if (!levelData) continue;
+    for (const [unitName, unitData] of Object.entries(levelData)) {
+      if (unitData && Object.prototype.hasOwnProperty.call(unitData, char)) {
+        return { level, unit: unitName };
+      }
+    }
+  }
+
+  return {
+    level: preferredLevel || state.currentLevel,
+    unit: getCurrentUnitName(),
+  };
+}
+
 function getCurrentSeeChar() {
   return state.seeMode.sequence[state.seeMode.currentIndex] || '';
 }
@@ -1240,7 +1278,7 @@ function goToNextNotebookPracticeItem() {
   }
 }
 
-function handleNotebookListenPracticeAnswer(selectedChar) {
+async function handleNotebookListenPracticeAnswer(selectedChar) {
   const session = state.notebook.practice;
   if (state.profileView !== 'notebookPractice' || session.mode !== 'listen') return;
   const question = getNotebookPracticeQuestion();
@@ -1273,7 +1311,10 @@ function handleNotebookListenPracticeAnswer(selectedChar) {
     question.wrongSelections.push(selectedChar);
   }
   const currentContext = getNotebookPracticeCharContext(currentChar);
-  const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  const selectedContext = await resolveCharOrigin(
+    selectedChar,
+    currentContext?.level || session.level || state.currentLevel,
+  );
   updateUserMistakeRecord({
     char: currentChar,
     level: currentContext?.level || session.level || state.currentLevel,
@@ -1289,7 +1330,7 @@ function handleNotebookListenPracticeAnswer(selectedChar) {
   playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
 }
 
-function handleNotebookSeePracticeAnswer(selectedChar) {
+async function handleNotebookSeePracticeAnswer(selectedChar) {
   const session = state.notebook.practice;
   if (state.profileView !== 'notebookPractice' || session.mode !== 'see') return;
   const question = getNotebookPracticeQuestion();
@@ -1326,7 +1367,10 @@ function handleNotebookSeePracticeAnswer(selectedChar) {
     question.revealedOptions.push(selectedChar);
   }
   const currentContext = getNotebookPracticeCharContext(currentChar);
-  const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  const selectedContext = await resolveCharOrigin(
+    selectedChar,
+    currentContext?.level || session.level || state.currentLevel,
+  );
   updateUserMistakeRecord({
     char: currentChar,
     level: currentContext?.level || session.level || state.currentLevel,
