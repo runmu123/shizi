@@ -340,6 +340,34 @@ function formatAlignedIndex(value) {
   return String(value).padStart(3, ' ');
 }
 
+function convertNumberToChinese(num) {
+  const value = parseInt(num, 10);
+  if (!Number.isFinite(value) || value <= 0) return String(num);
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const units = ['', '十', '百', '千'];
+  if (value < 10) return digits[value];
+  if (value < 10000) {
+    const chars = String(value).split('').map(Number);
+    let result = '';
+    for (let i = 0; i < chars.length; i++) {
+      const digit = chars[i];
+      const unitIndex = chars.length - i - 1;
+      if (digit === 0) {
+        if (!result.endsWith('零') && i < chars.length - 1 && chars.slice(i + 1).some((n) => n !== 0)) {
+          result += '零';
+        }
+        continue;
+      }
+      if (!(digit === 1 && unitIndex === 1 && result === '')) {
+        result += digits[digit];
+      }
+      result += units[unitIndex];
+    }
+    return result.replace(/零+$/g, '');
+  }
+  return String(value);
+}
+
 function renderProfileProgressContent() {
   const grouped = state.profileProgress.grouped || {};
   const levels = sortProgressLevels(Object.keys(grouped));
@@ -456,7 +484,6 @@ function renderNotebookReviewSection(appEl) {
   const safeCardIndex = Math.min(Math.max(state.notebook.reviewCardIndex, 0), Math.max(0, group.length - 1));
   state.notebook.reviewCardIndex = safeCardIndex;
   const currentItem = group[safeCardIndex] || null;
-  const modeLabel = state.notebook.reviewMode === 'listen' ? '听音识字错题集' : '看字识音错题集';
 
   appEl.classList.remove('listen-layout');
   appEl.classList.add('home-stage-layout', 'app-section-layout', 'notebook-review-layout');
@@ -464,22 +491,12 @@ function renderNotebookReviewSection(appEl) {
   appEl.style.removeProperty('--listen-option-gap');
   appEl.innerHTML = `
     <section class="section-page notebook-review-page">
-      <div class="notebook-topbar">
-        <div class="section-title-row">
-          <span class="section-title-text">${modeLabel}复习</span>
-        </div>
-        <div class="notebook-switcher">
-          <button class="nav-btn" type="button" data-notebook-review-nav="prev" ${safeGroupIndex === 0 ? 'disabled' : ''}>&lt;</button>
-          <span class="notebook-switcher-label">${safeGroupIndex + 1} / ${groups.length || 1}</span>
-          <button class="nav-btn" type="button" data-notebook-review-nav="next" ${safeGroupIndex >= groups.length - 1 ? 'disabled' : ''}>&gt;</button>
-        </div>
-      </div>
       <div class="notebook-group-header">
         <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
-        <span class="notebook-group-title">${safeGroupIndex + 1}</span>
+        <span class="notebook-group-title">第${escapeHtml(convertNumberToChinese(safeGroupIndex + 1))}组</span>
       </div>
       <div class="unit-char-strip notebook-char-strip">
-        ${group.map((item, index) => `<span class="unit-char-link${index === safeCardIndex ? ' active' : ''}" data-notebook-review-char="${index}">${escapeHtml(item.char)}</span>`).join('，')}
+        ${group.map((item, index) => `<span class="unit-char-link${index === safeCardIndex ? ' active' : ''}" data-notebook-review-char="${index}" data-char="${escapeHtml(item.char)}">${escapeHtml(item.char)}</span>`).join('，')}
       </div>
       <div class="home-stage-shell notebook-home-stage">
         <button class="home-card-nav prev" type="button" data-notebook-review-card="prev" ${safeCardIndex === 0 ? 'disabled' : ''}>‹</button>
@@ -514,10 +531,9 @@ function renderNotebookReviewSection(appEl) {
 function renderNotebookPracticeSection(appEl) {
   const session = state.notebook.practice;
   const total = session.sequence.length;
-  const groupChars = session.sourceItems.map((item) => item.char);
   const currentStep = Math.min(session.currentIndex + 1, Math.max(total, 1));
   const progressPercent = total === 0 ? 0 : Math.round((session.answeredChars.length / total) * 100);
-  const titleText = `${session.groupIndex + 1}`;
+  const titleText = `第${convertNumberToChinese(session.groupIndex + 1)}组`;
   const groupCount = (getNotebookGroupsByLevel(session.mode)[session.level] || []).length;
 
   appEl.classList.add('listen-layout', 'notebook-practice-layout');
@@ -525,11 +541,6 @@ function renderNotebookPracticeSection(appEl) {
 
   if (!total) {
     appEl.innerHTML = `
-      <div class="notebook-topbar compact">
-        <div class="section-title-row">
-          <span class="section-title-text">${session.mode === 'listen' ? '听音识字练习' : '看字识音练习'}</span>
-        </div>
-      </div>
       <div class="loading">当前错题组暂无可练习内容</div>
     `;
     return;
@@ -540,21 +551,10 @@ function renderNotebookPracticeSection(appEl) {
     const currentChar = question?.char || session.sequence[session.currentIndex] || '';
     const options = Array.isArray(question?.options) ? question.options : [];
     appEl.innerHTML = `
-      <div class="notebook-topbar compact">
-        <div class="section-title-row">
-          <span class="section-title-text">听音识字练习</span>
-        </div>
-        <div class="notebook-switcher">
-          <button class="nav-btn" type="button" data-notebook-practice-group="prev" ${session.groupIndex === 0 ? 'disabled' : ''}>&lt;</button>
-          <span class="notebook-switcher-label">${titleText}</span>
-          <button class="nav-btn" type="button" data-notebook-practice-group="next" ${session.groupIndex >= groupCount - 1 ? 'disabled' : ''}>&gt;</button>
-        </div>
-      </div>
       <div class="notebook-group-header">
         <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
         <span class="notebook-group-title">${titleText}</span>
       </div>
-      <div class="unit-char-strip notebook-char-strip">${groupChars.map((char) => escapeHtml(char)).join('，')}</div>
       <div class="listen-progress-card">
         <div class="listen-progress-header"><span>听音识字进度</span><span>${currentStep}/${total}</span></div>
         <div class="progress-track listen-progress-track"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
@@ -575,21 +575,10 @@ function renderNotebookPracticeSection(appEl) {
   const options = Array.isArray(question?.options) ? question.options : [];
   const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
   appEl.innerHTML = `
-    <div class="notebook-topbar compact">
-      <div class="section-title-row">
-        <span class="section-title-text">看字识音练习</span>
-      </div>
-      <div class="notebook-switcher">
-        <button class="nav-btn" type="button" data-notebook-practice-group="prev" ${session.groupIndex === 0 ? 'disabled' : ''}>&lt;</button>
-        <span class="notebook-switcher-label">${titleText}</span>
-        <button class="nav-btn" type="button" data-notebook-practice-group="next" ${session.groupIndex >= groupCount - 1 ? 'disabled' : ''}>&gt;</button>
-      </div>
-    </div>
     <div class="notebook-group-header">
       <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
       <span class="notebook-group-title">${titleText}</span>
     </div>
-    <div class="unit-char-strip notebook-char-strip">${groupChars.map((char) => escapeHtml(char)).join('，')}</div>
     <div class="listen-progress-card">
       <div class="listen-progress-header"><span>看字识音进度</span><span>${currentStep}/${total}</span></div>
       <div class="progress-track listen-progress-track"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
@@ -668,6 +657,8 @@ export function updateAppShell() {
   const toolbarTitle = document.getElementById('toolbarTitle');
   const toolbarSearch = document.querySelector('.toolbar-search');
   const toolbarControls = document.querySelector('.toolbar-right');
+  const toolbarHomeControls = document.getElementById('toolbarHomeControls');
+  const toolbarNotebookSwitcher = document.getElementById('toolbarNotebookSwitcher');
   const homeNavItem = document.querySelector('.bottom-nav-item[data-section="home"]');
   const learningActive = document.getElementById('learningView')?.classList.contains('active');
   const appEl = document.getElementById('app');
@@ -698,11 +689,41 @@ export function updateAppShell() {
   }
 
   const showHomeControls = !learningActive && state.appSection === 'home';
+  const showNotebookSwitcher = !learningActive && state.appSection === 'profile'
+    && (state.profileView === 'notebookReview' || state.profileView === 'notebookPractice');
   if (toolbarSearch) {
     toolbarSearch.style.display = showHomeControls ? 'flex' : 'none';
   }
   if (toolbarControls) {
-    toolbarControls.style.display = showHomeControls ? 'flex' : 'none';
+    toolbarControls.style.display = (showHomeControls || showNotebookSwitcher) ? 'flex' : 'none';
+  }
+  if (toolbarHomeControls) {
+    toolbarHomeControls.style.display = showHomeControls ? 'flex' : 'none';
+  }
+  if (toolbarNotebookSwitcher) {
+    if (showNotebookSwitcher) {
+      if (state.profileView === 'notebookReview') {
+        const groups = getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
+        const index = Math.min(Math.max(state.notebook.reviewGroupIndex, 0), Math.max(0, groups.length - 1));
+        toolbarNotebookSwitcher.innerHTML = `
+          <button class="nav-btn" type="button" data-notebook-review-nav="prev" ${index === 0 ? 'disabled' : ''}>&lt;</button>
+          <span class="toolbar-notebook-switcher-label">${index + 1}/${groups.length || 1}</span>
+          <button class="nav-btn" type="button" data-notebook-review-nav="next" ${index >= groups.length - 1 ? 'disabled' : ''}>&gt;</button>
+        `;
+      } else {
+        const groups = getNotebookGroupsByLevel(state.notebook.practice.mode)[state.notebook.practice.level] || [];
+        const index = Math.min(Math.max(state.notebook.practice.groupIndex, 0), Math.max(0, groups.length - 1));
+        toolbarNotebookSwitcher.innerHTML = `
+          <button class="nav-btn" type="button" data-notebook-practice-group="prev" ${index === 0 ? 'disabled' : ''}>&lt;</button>
+          <span class="toolbar-notebook-switcher-label">${index + 1}/${groups.length || 1}</span>
+          <button class="nav-btn" type="button" data-notebook-practice-group="next" ${index >= groups.length - 1 ? 'disabled' : ''}>&gt;</button>
+        `;
+      }
+      toolbarNotebookSwitcher.classList.add('show');
+    } else {
+      toolbarNotebookSwitcher.innerHTML = '';
+      toolbarNotebookSwitcher.classList.remove('show');
+    }
   }
 
   if (homeNavItem) {

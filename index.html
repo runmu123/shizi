@@ -1531,6 +1531,36 @@
       flex-shrink: 0;
     }
 
+    .toolbar-home-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .toolbar-notebook-switcher {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-family: system-ui, sans-serif;
+      color: #6b7280;
+    }
+
+    .toolbar-notebook-switcher.show {
+      display: inline-flex;
+    }
+
+    .toolbar-notebook-switcher .nav-btn {
+      padding: 4px 10px;
+    }
+
+    .toolbar-notebook-switcher-label {
+      min-width: 56px;
+      text-align: center;
+      font-weight: 700;
+      color: #6f3d10;
+      font-size: 0.98rem;
+    }
+
     /* 复用级别选择器样式给模式选择器 */
     .mode-option {
       padding: 8px 12px;
@@ -2189,6 +2219,10 @@
         gap: 10px;
       }
 
+      .toolbar-home-controls {
+        gap: 10px;
+      }
+
       .app-brand {
         font-size: 1.2rem;
       }
@@ -2200,6 +2234,15 @@
 
       .toolbar-title {
         font-size: 1.4rem;
+      }
+
+      .toolbar-notebook-switcher {
+        gap: 6px;
+      }
+
+      .toolbar-notebook-switcher-label {
+        min-width: 46px;
+        font-size: 0.9rem;
       }
 
       .search-input {
@@ -2781,23 +2824,26 @@
       </div>
 
       <div class="toolbar-right">
-        <!-- 级别选择器 -->
-        <div class="level-selector-wrapper" id="levelSelector">
-          <button class="level-selector-btn" id="currentLevelBtn">L0</button>
-          <div class="level-dropdown" id="levelDropdown">
-            <!-- 选项将动态生成 -->
+        <div class="toolbar-home-controls" id="toolbarHomeControls">
+          <!-- 级别选择器 -->
+          <div class="level-selector-wrapper" id="levelSelector">
+            <button class="level-selector-btn" id="currentLevelBtn">L0</button>
+            <div class="level-dropdown" id="levelDropdown">
+              <!-- 选项将动态生成 -->
+            </div>
           </div>
-        </div>
 
-        <!-- 单元导航 -->
-        <div class="unit-navigator">
-          <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
-          <div class="unit-indicator">
-            <span id="indicatorText">1/1</span>
-            <select id="unitSelect" class="unit-select"></select>
+          <!-- 单元导航 -->
+          <div class="unit-navigator">
+            <button class="nav-btn" id="prevUnit" title="上一单元">&lt;</button>
+            <div class="unit-indicator">
+              <span id="indicatorText">1/1</span>
+              <select id="unitSelect" class="unit-select"></select>
+            </div>
+            <button class="nav-btn" id="nextUnit" title="下一单元">&gt;</button>
           </div>
-          <button class="nav-btn" id="nextUnit" title="下一单元">&gt;</button>
         </div>
+        <div class="toolbar-notebook-switcher" id="toolbarNotebookSwitcher"></div>
       </div>
     </div>
   </div>

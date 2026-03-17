@@ -953,6 +953,17 @@ function navigateNotebookReviewCard(offset) {
   renderUnit();
 }
 
+function navigateNotebookReviewCardTo(targetIndex) {
+  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
+  const group = groups[state.notebook.reviewGroupIndex] || [];
+  if (!group.length) return;
+  const nextIndex = Math.max(0, Math.min(targetIndex, group.length - 1));
+  if (nextIndex === state.notebook.reviewCardIndex) return;
+  state.notebook.reviewMotion = nextIndex > state.notebook.reviewCardIndex ? 'next' : 'prev';
+  state.notebook.reviewCardIndex = nextIndex;
+  renderUnit();
+}
+
 function navigateNotebookReviewGroup(offset) {
   const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
   const nextGroup = state.notebook.reviewGroupIndex + offset;
@@ -977,11 +988,17 @@ function getNotebookPracticeSourceItems(mode, level, groupIndex) {
   return (getNotebookGroupsByLevel(mode)[level] || [])[groupIndex] || [];
 }
 
+function collectNotebookPracticeChars(sourceItems) {
+  return Array.from(new Set(
+    (sourceItems || [])
+      .flatMap((item) => [item.char, ...(Array.isArray(item.wrong_chars) ? item.wrong_chars : [])])
+      .filter(Boolean),
+  ));
+}
+
 function initializeNotebookPracticeSession(mode, level, groupIndex) {
   const sourceItems = getNotebookPracticeSourceItems(mode, level, groupIndex);
-  const chars = mode === 'see'
-    ? Array.from(new Set(sourceItems.flatMap((item) => [item.char, ...(Array.isArray(item.wrong_chars) ? item.wrong_chars : [])]).filter(Boolean)))
-    : Array.from(new Set(sourceItems.map((item) => item.char).filter(Boolean)));
+  const chars = collectNotebookPracticeChars(sourceItems);
 
   state.notebook.practice = {
     mode,
@@ -1758,6 +1775,7 @@ function toggleLearnBatchPlayback(btn) {
 export function setupEventListeners() {
   let resizeFrame = 0;
   let scrollPosition = 0;
+  const toolbarNotebookSwitcher = document.getElementById('toolbarNotebookSwitcher');
 
   function lockScroll() {
     scrollPosition = window.scrollY;
@@ -2104,6 +2122,15 @@ export function setupEventListeners() {
       return;
     }
 
+    const notebookReviewChar = e.target.closest('[data-notebook-review-char]');
+    if (notebookReviewChar) {
+      const nextIndex = parseInt(notebookReviewChar.dataset.notebookReviewChar || '0', 10);
+      if (!Number.isNaN(nextIndex)) {
+        navigateNotebookReviewCardTo(nextIndex);
+      }
+      return;
+    }
+
     const unitCharLink = e.target.closest('.unit-char-link');
     if (unitCharLink) {
       const targetChar = unitCharLink.dataset.char;
@@ -2121,17 +2148,6 @@ export function setupEventListeners() {
     if (homeCardNavBtn) {
       e.stopPropagation();
       navigateHomeCardByOffset(homeCardNavBtn.id === 'homeCardPrevBtn' ? -1 : 1);
-      return;
-    }
-
-    const notebookReviewChar = e.target.closest('[data-notebook-review-char]');
-    if (notebookReviewChar) {
-      const nextIndex = parseInt(notebookReviewChar.dataset.notebookReviewChar || '0', 10);
-      if (!Number.isNaN(nextIndex)) {
-        state.notebook.reviewMotion = nextIndex > state.notebook.reviewCardIndex ? 'next' : 'prev';
-        state.notebook.reviewCardIndex = nextIndex;
-        renderUnit();
-      }
       return;
     }
 
@@ -2669,6 +2685,21 @@ export function setupEventListeners() {
 
     if (notebookActionBtn.dataset.notebookPracticeGroup) {
       switchNotebookPracticeGroup(notebookActionBtn.dataset.notebookPracticeGroup === 'next' ? 1 : -1);
+    }
+  });
+
+  toolbarNotebookSwitcher?.addEventListener('click', (e) => {
+    const toolbarBtn = e.target.closest('[data-notebook-review-nav], [data-notebook-practice-group]');
+    if (!toolbarBtn) return;
+    e.stopPropagation();
+
+    if (toolbarBtn.dataset.notebookReviewNav) {
+      navigateNotebookReviewGroup(toolbarBtn.dataset.notebookReviewNav === 'next' ? 1 : -1);
+      return;
+    }
+
+    if (toolbarBtn.dataset.notebookPracticeGroup) {
+      switchNotebookPracticeGroup(toolbarBtn.dataset.notebookPracticeGroup === 'next' ? 1 : -1);
     }
   });
 
