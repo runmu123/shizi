@@ -909,6 +909,27 @@ function getNotebookGroups(mode) {
   return levels.flatMap((level) => chunkNotebookItems(grouped[level], 5));
 }
 
+function getNotebookGroupsByLevel(mode) {
+  const items = (state.notebook.items || [])
+    .filter((item) => item.mistake_mode === mode)
+    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
+
+  const grouped = {};
+  items.forEach((item) => {
+    const level = item.level || '未分级';
+    if (!grouped[level]) grouped[level] = [];
+    grouped[level].push(item);
+  });
+
+  const levels = Object.keys(grouped).sort((a, b) => {
+    const na = parseInt(String(a).replace(/\D/g, ''), 10) || 0;
+    const nb = parseInt(String(b).replace(/\D/g, ''), 10) || 0;
+    return nb - na;
+  });
+
+  return Object.fromEntries(levels.map((level) => [level, chunkNotebookItems(grouped[level], 5)]));
+}
+
 function setNotebookSectionExpanded(mode, expanded) {
   state.notebook.expandedSections[mode] = expanded;
   renderUnit();
@@ -923,7 +944,7 @@ function setNotebookLevelExpanded(mode, level, expanded) {
 }
 
 function navigateNotebookReviewCard(offset) {
-  const groups = getNotebookGroups(state.notebook.reviewMode);
+  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
   const group = groups[state.notebook.reviewGroupIndex] || [];
   const nextIndex = state.notebook.reviewCardIndex + offset;
   if (nextIndex < 0 || nextIndex >= group.length) return;
@@ -933,7 +954,7 @@ function navigateNotebookReviewCard(offset) {
 }
 
 function navigateNotebookReviewGroup(offset) {
-  const groups = getNotebookGroups(state.notebook.reviewMode);
+  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
   const nextGroup = state.notebook.reviewGroupIndex + offset;
   if (nextGroup < 0 || nextGroup >= groups.length) return;
   state.notebook.reviewGroupIndex = nextGroup;
@@ -942,27 +963,29 @@ function navigateNotebookReviewGroup(offset) {
   renderUnit();
 }
 
-function openNotebookReview(mode, groupIndex) {
+function openNotebookReview(mode, level, groupIndex) {
   state.profileView = 'notebookReview';
   state.notebook.reviewMode = mode;
+  state.notebook.reviewLevel = level;
   state.notebook.reviewGroupIndex = groupIndex;
   state.notebook.reviewCardIndex = 0;
   state.notebook.reviewMotion = 'none';
   renderUnit();
 }
 
-function getNotebookPracticeSourceItems(mode, groupIndex) {
-  return getNotebookGroups(mode)[groupIndex] || [];
+function getNotebookPracticeSourceItems(mode, level, groupIndex) {
+  return (getNotebookGroupsByLevel(mode)[level] || [])[groupIndex] || [];
 }
 
-function initializeNotebookPracticeSession(mode, groupIndex) {
-  const sourceItems = getNotebookPracticeSourceItems(mode, groupIndex);
+function initializeNotebookPracticeSession(mode, level, groupIndex) {
+  const sourceItems = getNotebookPracticeSourceItems(mode, level, groupIndex);
   const chars = mode === 'see'
     ? Array.from(new Set(sourceItems.flatMap((item) => [item.char, ...(Array.isArray(item.wrong_chars) ? item.wrong_chars : [])]).filter(Boolean)))
     : Array.from(new Set(sourceItems.map((item) => item.char).filter(Boolean)));
 
   state.notebook.practice = {
     mode,
+    level,
     groupIndex,
     title: `第${groupIndex + 1}组`,
     sourceItems,
@@ -983,8 +1006,8 @@ function initializeNotebookPracticeSession(mode, groupIndex) {
   };
 }
 
-function openNotebookPractice(mode, groupIndex) {
-  initializeNotebookPracticeSession(mode, groupIndex);
+function openNotebookPractice(mode, level, groupIndex) {
+  initializeNotebookPracticeSession(mode, level, groupIndex);
   state.profileView = 'notebookPractice';
   renderUnit();
   if (mode === 'listen') {
@@ -994,6 +1017,10 @@ function openNotebookPractice(mode, groupIndex) {
 
 function returnToNotebookList() {
   state.profileView = 'main';
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
   renderUnit();
 }
 
@@ -1116,10 +1143,10 @@ function handleNotebookSeePracticeAnswer(selectedChar) {
 }
 
 function switchNotebookPracticeGroup(offset) {
-  const groups = getNotebookGroups(state.notebook.practice.mode);
+  const groups = (getNotebookGroupsByLevel(state.notebook.practice.mode)[state.notebook.practice.level] || []);
   const nextGroup = state.notebook.practice.groupIndex + offset;
   if (nextGroup < 0 || nextGroup >= groups.length) return;
-  initializeNotebookPracticeSession(state.notebook.practice.mode, nextGroup);
+  initializeNotebookPracticeSession(state.notebook.practice.mode, state.notebook.practice.level, nextGroup);
   renderUnit();
   if (state.notebook.practice.mode === 'listen') {
     setTimeout(() => playNotebookPracticeAudio(), 80);
@@ -2599,12 +2626,20 @@ export function setupEventListeners() {
     e.stopPropagation();
 
     if (notebookActionBtn.dataset.notebookAction === 'review') {
-      openNotebookReview(notebookActionBtn.dataset.mode || 'listen', parseInt(notebookActionBtn.dataset.groupIndex || '0', 10));
+      openNotebookReview(
+        notebookActionBtn.dataset.mode || 'listen',
+        notebookActionBtn.dataset.level || '未分级',
+        parseInt(notebookActionBtn.dataset.groupIndex || '0', 10),
+      );
       return;
     }
 
     if (notebookActionBtn.dataset.notebookAction === 'practice') {
-      openNotebookPractice(notebookActionBtn.dataset.mode || 'listen', parseInt(notebookActionBtn.dataset.groupIndex || '0', 10));
+      openNotebookPractice(
+        notebookActionBtn.dataset.mode || 'listen',
+        notebookActionBtn.dataset.level || '未分级',
+        parseInt(notebookActionBtn.dataset.groupIndex || '0', 10),
+      );
       return;
     }
 

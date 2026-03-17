@@ -35,11 +35,13 @@ export const state = {
       see: {},
     },
     reviewMode: 'listen',
+    reviewLevel: '',
     reviewGroupIndex: 0,
     reviewCardIndex: 0,
     reviewMotion: 'none',
     practice: {
       mode: 'listen',
+      level: '',
       groupIndex: 0,
       title: '',
       sourceItems: [],

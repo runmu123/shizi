@@ -187,7 +187,7 @@ function renderHomeStudyMode(appEl, unitName, unitChars) {
 }
 
 function renderOtherSection(appEl) {
-  appEl.classList.remove('listen-layout');
+  appEl.classList.remove('listen-layout', 'home-stage-layout', 'notebook-review-layout', 'notebook-practice-layout');
   appEl.classList.add('app-section-layout');
   appEl.style.removeProperty('--listen-option-height');
   appEl.style.removeProperty('--listen-option-gap');
@@ -386,8 +386,6 @@ function renderNotebookCollectionSection(mode, label) {
     (sum, groups) => sum + groups.reduce((groupSum, group) => groupSum + group.length, 0),
     0,
   );
-  let groupCounter = 0;
-
   return `
     <div class="notebook-section-card">
       <button class="section-action-card notebook-section-toggle" type="button" data-notebook-section="${mode}">
@@ -408,24 +406,20 @@ function renderNotebookCollectionSection(mode, label) {
               </div>
               <div class="progress-level-content${levelExpanded ? ' show' : ''}">
                 <div class="notebook-group-list">
-                  ${groups.map((group, index) => {
-                    const flatIndex = groupCounter++;
-
-                    return `
+                  ${groups.map((group, index) => `
                       <div class="notebook-group-row">
                         <div class="progress-unit-info notebook-group-info">
                           <span class="progress-unit-name">
-                            <span class="progress-unit-number">${escapeHtml(formatAlignedIndex(flatIndex + 1))}</span><span class="progress-unit-colon"> :</span>
+                            <span class="progress-unit-number">${escapeHtml(formatAlignedIndex(index + 1))}</span><span class="progress-unit-colon"> :</span>
                           </span>
                           <span class="progress-char-list notebook-group-text">${group.map((item) => `<span class="progress-char learned">${escapeHtml(item.char)}</span>`).join('，')}</span>
                         </div>
                         <div class="notebook-group-actions">
-                          <button class="modal-btn confirm" type="button" data-notebook-action="review" data-mode="${mode}" data-group-index="${flatIndex}">复习</button>
-                          <button class="modal-btn retry" type="button" data-notebook-action="practice" data-mode="${mode}" data-group-index="${flatIndex}">练习</button>
+                          <button class="modal-btn confirm" type="button" data-notebook-action="review" data-mode="${mode}" data-level="${escapeHtml(level)}" data-group-index="${index}">复习</button>
+                          <button class="modal-btn retry" type="button" data-notebook-action="practice" data-mode="${mode}" data-level="${escapeHtml(level)}" data-group-index="${index}">练习</button>
                         </div>
                       </div>
-                    `;
-                  }).join('')}
+                  `).join('')}
                 </div>
               </div>
             </div>
@@ -455,7 +449,7 @@ function buildReviewMistakeRows(item) {
 }
 
 function renderNotebookReviewSection(appEl) {
-  const groups = getNotebookGroups(state.notebook.reviewMode);
+  const groups = getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
   const safeGroupIndex = Math.min(Math.max(state.notebook.reviewGroupIndex, 0), Math.max(0, groups.length - 1));
   state.notebook.reviewGroupIndex = safeGroupIndex;
   const group = groups[safeGroupIndex] || [];
@@ -524,7 +518,7 @@ function renderNotebookPracticeSection(appEl) {
   const currentStep = Math.min(session.currentIndex + 1, Math.max(total, 1));
   const progressPercent = total === 0 ? 0 : Math.round((session.answeredChars.length / total) * 100);
   const titleText = `${session.groupIndex + 1}`;
-  const groupCount = getNotebookGroups(session.mode).length;
+  const groupCount = (getNotebookGroupsByLevel(session.mode)[session.level] || []).length;
 
   appEl.classList.add('listen-layout', 'notebook-practice-layout');
   appEl.classList.remove('app-section-layout', 'home-stage-layout');
@@ -619,7 +613,7 @@ function renderProfileSection(appEl) {
   const avatarText = username ? username.slice(0, 1).toUpperCase() : '我';
   const helperText = username ? '点击可切换登录状态' : '点击登录后可同步学习进度';
 
-  appEl.classList.remove('listen-layout');
+  appEl.classList.remove('listen-layout', 'home-stage-layout', 'notebook-review-layout', 'notebook-practice-layout');
   appEl.classList.add('app-section-layout');
   appEl.style.removeProperty('--listen-option-height');
   appEl.style.removeProperty('--listen-option-gap');
@@ -793,6 +787,17 @@ export function applyResponsiveLayout() {
   fitListenLayout();
 }
 
+function resetAppLayoutClasses(appEl) {
+  if (!appEl) return;
+  appEl.classList.remove(
+    'listen-layout',
+    'home-stage-layout',
+    'app-section-layout',
+    'notebook-review-layout',
+    'notebook-practice-layout',
+  );
+}
+
 function renderListenMode(appEl, unitName) {
   const session = state.listenMode;
   const total = session.sequence.length;
@@ -906,14 +911,13 @@ export function renderUnit() {
   const isHomeSection = state.appSection === 'home';
   const isCenteredHomeStage = isHomeSection && state.mainViewMode === 'study' && !state.isTeachingMode;
   document.body.classList.toggle('home-lock-scroll', isCenteredHomeStage);
+  resetAppLayoutClasses(appEl);
   bottomTabs.forEach((item) => {
     item.classList.toggle('active', item.dataset.section === state.appSection);
   });
   updateAppShell();
 
   if (!state.currentData || state.unitKeys.length === 0) {
-    appEl.classList.remove('listen-layout');
-    appEl.classList.remove('home-stage-layout', 'app-section-layout');
     appEl.style.removeProperty('--listen-option-height');
     appEl.style.removeProperty('--listen-option-gap');
     appEl.innerHTML = '<div class="loading">暂无数据</div>';
@@ -942,7 +946,6 @@ export function renderUnit() {
   }
 
   if (state.mainViewMode === 'listen' && !state.isTeachingMode) {
-    appEl.classList.remove('home-stage-layout', 'app-section-layout');
     appEl.classList.add('listen-layout');
     renderListenMode(appEl, unitName);
     window.scrollTo(0, 0);
@@ -950,15 +953,12 @@ export function renderUnit() {
   }
 
   if (state.mainViewMode === 'see' && !state.isTeachingMode) {
-    appEl.classList.remove('home-stage-layout', 'app-section-layout');
     appEl.classList.add('listen-layout');
     renderSeeMode(appEl, unitName);
     window.scrollTo(0, 0);
     return;
   }
 
-  appEl.classList.remove('listen-layout');
-  appEl.classList.remove('app-section-layout');
   appEl.style.removeProperty('--listen-option-height');
   appEl.style.removeProperty('--listen-option-gap');
   renderHomeStudyMode(appEl, unitName, unitChars);
