@@ -1127,12 +1127,59 @@ function getNotebookPracticeQuestion() {
   return state.notebook.practice.questions[state.notebook.practice.currentIndex] || null;
 }
 
+function findNotebookPracticeMistakeItem(char) {
+  if (!char) return null;
+  const sourceItems = state.notebook.practice.sourceItems || [];
+  const exact = sourceItems.find((item) => item.char === char);
+  if (exact) return exact;
+  return sourceItems.find((item) => Array.isArray(item.wrong_chars) && item.wrong_chars.includes(char)) || null;
+}
+
 function getNotebookPracticeCharContext(char) {
   const exact = state.notebook.practice.sourceItems.find((item) => item.char === char);
   if (exact) return exact;
   const related = state.notebook.practice.sourceItems.find((item) => Array.isArray(item.wrong_chars) && item.wrong_chars.includes(char));
   if (related) return related;
   return state.notebook.practice.sourceItems[0] || { level: state.currentLevel, unit: getCurrentUnitName(), char };
+}
+
+function removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode }) {
+  state.notebook.items = (state.notebook.items || []).filter((item) => !(
+    item.char === char
+    && item.level === level
+    && item.unit === unit
+    && item.mistake_mode === mistakeMode
+  ));
+
+  if (state.appSection === 'profile' && state.profileView === 'main') {
+    renderUnitPreservingScroll();
+  }
+}
+
+async function removeUserMistakeRecord({ char, level, unit, mistakeMode }) {
+  const username = localStorage.getItem(USER_KEY) || '';
+  if (!char || !level || !unit || !mistakeMode) return;
+
+  if (!window.audioManager?.supabase || !username) {
+    removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode });
+    return;
+  }
+
+  try {
+    const { error } = await audioManager.supabase
+      .from('user_mistakes')
+      .delete()
+      .eq('username', username)
+      .eq('char', char)
+      .eq('level', level)
+      .eq('unit', unit)
+      .eq('mistake_mode', mistakeMode);
+
+    if (error) throw error;
+    removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode });
+  } catch (error) {
+    console.error('移除生字本错题失败:', error);
+  }
 }
 
 function playNotebookPracticeAudio() {
@@ -1195,6 +1242,15 @@ function handleNotebookListenPracticeAnswer(selectedChar) {
       if (!session.answeredChars.includes(currentChar)) {
         session.answeredChars.push(currentChar);
       }
+      const mistakeItem = findNotebookPracticeMistakeItem(currentChar);
+      if (mistakeItem) {
+        removeUserMistakeRecord({
+          char: mistakeItem.char,
+          level: mistakeItem.level,
+          unit: mistakeItem.unit,
+          mistakeMode: mistakeItem.mistake_mode || session.mode,
+        });
+      }
       showToast('选择正确', 'success');
       setTimeout(() => goToNextNotebookPracticeItem(), 280);
     }
@@ -1221,6 +1277,15 @@ function handleNotebookSeePracticeAnswer(selectedChar) {
       question.answered = true;
       if (!session.answeredChars.includes(currentChar)) {
         session.answeredChars.push(currentChar);
+      }
+      const mistakeItem = findNotebookPracticeMistakeItem(currentChar);
+      if (mistakeItem) {
+        removeUserMistakeRecord({
+          char: mistakeItem.char,
+          level: mistakeItem.level,
+          unit: mistakeItem.unit,
+          mistakeMode: mistakeItem.mistake_mode || session.mode,
+        });
       }
       renderUnit();
       showToast('选择正确', 'success');
