@@ -1,6 +1,7 @@
 ﻿// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
 import { state } from './state.js';
 import { USER_KEY } from './constants.js';
+import { normalizeWrongCharEntries } from './mistake-utils.js';
 
 const UNIT_CHAR_BASE_REM = 1.9;
 const UNIT_CHAR_MIN_REM = 0.75;
@@ -457,7 +458,7 @@ function renderNotebookCollectionSection(mode, label) {
 }
 
 function buildReviewMistakeRows(item) {
-  const wrongChars = Array.isArray(item.wrong_chars) ? item.wrong_chars : [];
+  const wrongChars = normalizeWrongCharEntries(item.wrong_chars, item.level, item.unit);
   if (!wrongChars.length) {
     return '<div class="mistake-empty">暂无</div>';
   }
@@ -466,8 +467,8 @@ function buildReviewMistakeRows(item) {
     <div class="mistake-grid">
       ${wrongChars.map((wrongChar) => `
         <div class="mistake-word-item">
-          <span class="mistake-word-text">${escapeHtml(wrongChar)}</span>
-          ${getBtnHtml(wrongChar, 'char', wrongChar, item.level, item.unit, true)}
+          <span class="mistake-word-text">${escapeHtml(wrongChar.char)}</span>
+          ${getBtnHtml(wrongChar.char, 'char', wrongChar.char, wrongChar.level, wrongChar.unit, true)}
         </div>
       `).join('')}
     </div>

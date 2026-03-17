@@ -7,6 +7,7 @@ import { renderUnit, renderSearchResult, escapeHtml, applyResponsiveLayout, upda
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
 import { enterBatchRecord } from './batch-record.js';
 import { enterBatchPlay } from './batch-play.js';
+import { normalizeWrongCharEntries, findWrongCharEntry } from './mistake-utils.js';
 
 const learnBatchPlayback = {
   running: false,
@@ -564,10 +565,11 @@ function getPracticeQuestion(mode = state.mainViewMode, index = null) {
   return session.questions[resolvedIndex] || null;
 }
 
-function playCharAudio(char, { button = null, setPauseIcon = false } = {}) {
+function playCharAudio(char, { button = null, setPauseIcon = false, level = '', unit = '' } = {}) {
   if (!char || state.isTeachingMode || !window.audioManager) return;
 
-  const unitName = findCharUnitInCurrentLevel(char);
+  const resolvedLevel = level || state.currentLevel;
+  const unitName = unit || findCharUnitInCurrentLevel(char);
   const cleanup = () => {
     if (practiceAudioUiState.button === button) {
       practiceAudioUiState.button = null;
@@ -591,7 +593,7 @@ function playCharAudio(char, { button = null, setPauseIcon = false } = {}) {
 
   audioManager.stopCurrentAudio();
   audioManager.playAudio(
-    state.currentLevel,
+    resolvedLevel,
     unitName,
     char,
     char,
@@ -806,9 +808,13 @@ async function loadNotebookData(force = false) {
 
     state.notebook.items = (data || []).map((item) => ({
       ...item,
-      wrong_chars: Array.isArray(item.wrong_chars)
-        ? item.wrong_chars
-        : (typeof item.wrong_chars === 'string' ? JSON.parse(item.wrong_chars || '[]') : []),
+      wrong_chars: normalizeWrongCharEntries(
+        Array.isArray(item.wrong_chars)
+          ? item.wrong_chars
+          : (typeof item.wrong_chars === 'string' ? JSON.parse(item.wrong_chars || '[]') : []),
+        item.level,
+        item.unit,
+      ),
     }));
     state.notebook.loadedUser = user;
     state.notebook.error = '';
@@ -1073,7 +1079,7 @@ function getNotebookPracticeSourceItems(mode, level, groupIndex) {
 function collectNotebookPracticeChars(sourceItems) {
   return Array.from(new Set(
     (sourceItems || [])
-      .flatMap((item) => [item.char, ...(Array.isArray(item.wrong_chars) ? item.wrong_chars : [])])
+      .flatMap((item) => [item.char, ...normalizeWrongCharEntries(item.wrong_chars, item.level, item.unit).map((entry) => entry.char)])
       .filter(Boolean),
   ));
 }
@@ -1132,14 +1138,18 @@ function findNotebookPracticeMistakeItem(char) {
   const sourceItems = state.notebook.practice.sourceItems || [];
   const exact = sourceItems.find((item) => item.char === char);
   if (exact) return exact;
-  return sourceItems.find((item) => Array.isArray(item.wrong_chars) && item.wrong_chars.includes(char)) || null;
+  return sourceItems.find((item) => !!findWrongCharEntry(item.wrong_chars, char, item.level, item.unit)) || null;
 }
 
 function getNotebookPracticeCharContext(char) {
   const exact = state.notebook.practice.sourceItems.find((item) => item.char === char);
   if (exact) return exact;
-  const related = state.notebook.practice.sourceItems.find((item) => Array.isArray(item.wrong_chars) && item.wrong_chars.includes(char));
-  if (related) return related;
+  for (const item of (state.notebook.practice.sourceItems || [])) {
+    const relatedEntry = findWrongCharEntry(item.wrong_chars, char, item.level, item.unit);
+    if (relatedEntry) {
+      return relatedEntry;
+    }
+  }
   return state.notebook.practice.sourceItems[0] || { level: state.currentLevel, unit: getCurrentUnitName(), char };
 }
 
@@ -1262,7 +1272,8 @@ function handleNotebookListenPracticeAnswer(selectedChar) {
     question.wrongSelections.push(selectedChar);
   }
   showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar);
+  const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
 }
 
 function handleNotebookSeePracticeAnswer(selectedChar) {
@@ -1303,7 +1314,8 @@ function handleNotebookSeePracticeAnswer(selectedChar) {
   }
   renderUnit();
   showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar);
+  const selectedContext = getNotebookPracticeCharContext(selectedChar);
+  playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
 }
 
 function switchNotebookPracticeGroup(offset) {
@@ -1343,12 +1355,10 @@ async function updateUserMistakeRecord({ char, level, unit, mistakeMode, wrongCh
 
     if (error) throw error;
 
-    const nextWrongChars = Array.from(
-      new Set([
-        ...((data && Array.isArray(data.wrong_chars)) ? data.wrong_chars : []),
-        ...(wrongChar ? [wrongChar] : []),
-      ].filter(Boolean))
-    );
+    const nextWrongChars = normalizeWrongCharEntries([
+      ...((data && Array.isArray(data.wrong_chars)) ? data.wrong_chars : []),
+      ...(wrongChar ? [wrongChar] : []),
+    ], level, unit);
 
     const payload = {
       username,
@@ -1583,7 +1593,11 @@ function handleListenModeAnswer(selectedChar) {
     level: state.currentLevel,
     unit: getCurrentUnitName(),
     mistakeMode: 'listen',
-    wrongChar: selectedChar,
+    wrongChar: {
+      char: selectedChar,
+      level: state.currentLevel,
+      unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
+    },
   });
   showToast('错误！请重新选择', 'error');
   playSpecificListenCharAudio(selectedChar);
@@ -1697,11 +1711,18 @@ function handleSeeModeAnswer(selectedChar) {
     level: state.currentLevel,
     unit: getCurrentUnitName(),
     mistakeMode: 'see',
-    wrongChar: selectedChar,
+    wrongChar: {
+      char: selectedChar,
+      level: state.currentLevel,
+      unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
+    },
   });
   renderUnit();
   showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar);
+  playCharAudio(selectedChar, {
+    level: state.currentLevel,
+    unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
+  });
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
