@@ -451,7 +451,7 @@ function renderNotebookCollectionSection(mode, label) {
               </div>
             </div>
           `;
-        }).join('') : '<div class="loading">暂无错题记录</div>'}
+        }).join('') : '<div class="loading">祝贺您！没有错题啦</div>'}
       </div>
     </div>
   `;
