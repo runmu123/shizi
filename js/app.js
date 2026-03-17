@@ -2616,6 +2616,10 @@ export function setupEventListeners() {
     if (progressNavBtn) {
       const [level, unit] = (progressNavBtn.dataset.profileProgressNav || '').split('|');
       if (level && unit) {
+        state.appSection = 'home';
+        if (state.mainViewMode !== 'study') {
+          state.mainViewMode = 'study';
+        }
         navigateToUnit(level, unit);
       }
       return;

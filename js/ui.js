@@ -394,9 +394,7 @@ function renderProfileProgressContent() {
                     ${(grouped[level][unit] || []).map((char) => `<span class="progress-char learned">${escapeHtml(char)}</span>`).join('，')}
                   </span>
                 </div>
-                <button class="progress-nav-btn" type="button" data-profile-progress-nav="${escapeHtml(level)}|${escapeHtml(unit)}" title="前往该单元">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </button>
+                <button class="modal-btn confirm progress-review-btn" type="button" data-profile-progress-nav="${escapeHtml(level)}|${escapeHtml(unit)}" title="复习该单元">复习</button>
               </div>
             `).join('')}
           </div>
