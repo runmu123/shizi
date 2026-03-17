@@ -1166,6 +1166,9 @@ function returnToNotebookList() {
   document.body.style.top = '';
   document.body.style.width = '';
   renderUnit();
+  if (state.appSection === 'profile') {
+    loadProfilePageData(true, { showQueryToasts: true });
+  }
 }
 
 function getNotebookPracticeQuestion() {
