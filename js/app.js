@@ -880,6 +880,39 @@ async function loadProfilePageData(force = false) {
   }
 }
 
+function resetProfilePageData() {
+  state.profileProgress.expanded = false;
+  state.profileProgress.loading = false;
+  state.profileProgress.error = '';
+  state.profileProgress.loadedUser = '';
+  state.profileProgress.total = 0;
+  state.profileProgress.grouped = {};
+
+  state.notebook.loading = false;
+  state.notebook.error = '';
+  state.notebook.loadedUser = '';
+  state.notebook.items = [];
+  state.notebook.expandedSections.listen = false;
+  state.notebook.expandedSections.see = false;
+  state.notebook.expandedLevels.listen = {};
+  state.notebook.expandedLevels.see = {};
+}
+
+export async function refreshProfilePageDataAfterLogin() {
+  try {
+    await loadProfilePageData(true);
+  } finally {
+    showToast('查询完毕！', 'success');
+  }
+}
+
+export function clearProfilePageDataAfterLogout() {
+  resetProfilePageData();
+  if (state.appSection === 'profile') {
+    renderUnit();
+  }
+}
+
 function chunkNotebookItems(items, size = 5) {
   const groups = [];
   for (let i = 0; i < items.length; i += size) {

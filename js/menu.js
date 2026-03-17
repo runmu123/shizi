@@ -3,7 +3,7 @@ import { state, cacheSuffix } from './state.js';
 import { showToast } from './toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
 import { escapeHtml, renderUnit, updateAppShell } from './ui.js';
-import { navigateToUnit } from './app.js';
+import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin } from './app.js';
 
 export function setupMenuAndModals() {
   audioManager.init();
@@ -338,8 +338,10 @@ export function setupMenuAndModals() {
     if (user) {
       showConfirm('注销确认', `当前已登录为「${user}」\n确定要注销吗？`, () => {
         localStorage.removeItem(USER_KEY);
+        clearProfilePageDataAfterLogout();
         showToast('已注销', 'info');
         checkLoginStatus();
+        refreshAuthDependentUi('');
         emitAuthStateChanged('');
       });
     } else {
@@ -407,7 +409,9 @@ export function setupMenuAndModals() {
       loginLoadingModal.classList.remove('active');
       unlockScroll();
       checkLoginStatus();
+      refreshAuthDependentUi(username);
       emitAuthStateChanged(username);
+      await refreshProfilePageDataAfterLogin();
     } else {
       loginLoadingModal.classList.remove('active');
       unlockScroll();
