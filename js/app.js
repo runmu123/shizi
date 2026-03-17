@@ -1,7 +1,7 @@
 // 核心应用逻辑：初始化、级别加载、事件、导航
 import { state, cacheSuffix } from './state.js';
 import { TEACH_PASSWORD, USER_KEY } from './constants.js';
-import { showToast } from './toast.js';
+import { showToast, showPersistentToast } from './toast.js';
 import { saveCurrentPosition } from './position.js';
 import { renderUnit, renderSearchResult, escapeHtml, applyResponsiveLayout, updateAppShell } from './ui.js';
 import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.js';
@@ -726,9 +726,452 @@ function setAppSection(section) {
     stopActiveAudioPlayback();
     stopLearnBatchPlayback(true);
   }
+  if (section === 'profile') {
+    state.profileView = 'main';
+  }
   state.appSection = section;
   renderUnit();
+  if (section === 'profile') {
+    loadProfilePageData();
+  }
   saveCurrentPosition();
+}
+
+function invalidateNotebookCache() {
+  state.notebook.loadedUser = '';
+}
+
+function invalidateProfileProgressCache() {
+  state.profileProgress.loadedUser = '';
+}
+
+async function loadNotebookData(force = false) {
+  const user = localStorage.getItem(USER_KEY) || '';
+  if (!user) {
+    state.notebook.items = [];
+    state.notebook.loading = false;
+    state.notebook.error = '';
+    state.notebook.loadedUser = '';
+    renderUnit();
+    return;
+  }
+
+  if (!force && state.notebook.loadedUser === user && state.notebook.items.length > 0) {
+    return;
+  }
+
+  state.notebook.loading = true;
+  state.notebook.error = '';
+  renderUnit();
+
+  if (!window.audioManager?.supabase) {
+    state.notebook.items = [];
+    state.notebook.loading = false;
+    state.notebook.error = '数据库未连接';
+    state.notebook.loadedUser = user;
+    renderUnit();
+    return;
+  }
+
+  try {
+    const { data, error } = await audioManager.supabase
+      .from('user_mistakes')
+      .select('*')
+      .eq('username', user)
+      .order('last_wrong_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    state.notebook.items = (data || []).map((item) => ({
+      ...item,
+      wrong_chars: Array.isArray(item.wrong_chars)
+        ? item.wrong_chars
+        : (typeof item.wrong_chars === 'string' ? JSON.parse(item.wrong_chars || '[]') : []),
+    }));
+    state.notebook.loadedUser = user;
+    state.notebook.error = '';
+  } catch (error) {
+    console.error('加载生字本失败:', error);
+    state.notebook.items = [];
+    state.notebook.error = '生字本加载失败';
+    state.notebook.loadedUser = user;
+  } finally {
+    state.notebook.loading = false;
+    renderUnit();
+  }
+}
+
+async function loadProfileProgressData(force = false) {
+  const user = localStorage.getItem(USER_KEY) || '';
+  if (!user) {
+    state.profileProgress.grouped = {};
+    state.profileProgress.total = 0;
+    state.profileProgress.loading = false;
+    state.profileProgress.error = '';
+    state.profileProgress.loadedUser = '';
+    renderUnit();
+    return;
+  }
+
+  if (!force && state.profileProgress.loadedUser === user && Object.keys(state.profileProgress.grouped || {}).length > 0) {
+    return;
+  }
+
+  state.profileProgress.loading = true;
+  state.profileProgress.error = '';
+  renderUnit();
+
+  if (!window.audioManager?.supabase) {
+    state.profileProgress.grouped = {};
+    state.profileProgress.total = 0;
+    state.profileProgress.loading = false;
+    state.profileProgress.error = '数据库未连接';
+    state.profileProgress.loadedUser = user;
+    renderUnit();
+    return;
+  }
+
+  try {
+    const { data, error } = await audioManager.supabase
+      .from('user_progress')
+      .select('*')
+      .eq('username', user);
+
+    if (error) throw error;
+
+    const records = data || [];
+    const uniqueChars = new Set(records.map((record) => record.char));
+    const grouped = {};
+    records.forEach((record) => {
+      const level = record.level || '未知等级';
+      const unit = record.unit || '未知单元';
+      if (!grouped[level]) grouped[level] = {};
+      if (!grouped[level][unit]) grouped[level][unit] = [];
+      grouped[level][unit].push(record.char);
+    });
+
+    state.profileProgress.grouped = grouped;
+    state.profileProgress.total = uniqueChars.size;
+    state.profileProgress.loadedUser = user;
+    state.profileProgress.error = '';
+  } catch (error) {
+    console.error('加载学习进度失败:', error);
+    state.profileProgress.grouped = {};
+    state.profileProgress.total = 0;
+    state.profileProgress.error = '学习进度加载失败';
+    state.profileProgress.loadedUser = user;
+  } finally {
+    state.profileProgress.loading = false;
+    renderUnit();
+  }
+}
+
+async function loadProfilePageData(force = false) {
+  const dismissToast = showPersistentToast('正在查询数据中...', 'info');
+  try {
+    await Promise.all([
+      loadNotebookData(force),
+      loadProfileProgressData(force),
+    ]);
+  } finally {
+    dismissToast();
+  }
+}
+
+function chunkNotebookItems(items, size = 5) {
+  const groups = [];
+  for (let i = 0; i < items.length; i += size) {
+    groups.push(items.slice(i, i + size));
+  }
+  return groups;
+}
+
+function getNotebookGroups(mode) {
+  return chunkNotebookItems(
+    (state.notebook.items || [])
+      .filter((item) => item.mistake_mode === mode)
+      .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0)),
+    5,
+  );
+}
+
+function setNotebookSectionExpanded(mode, expanded) {
+  state.notebook.expandedSections[mode] = expanded;
+  renderUnit();
+}
+
+function navigateNotebookReviewCard(offset) {
+  const groups = getNotebookGroups(state.notebook.reviewMode);
+  const group = groups[state.notebook.reviewGroupIndex] || [];
+  const nextIndex = state.notebook.reviewCardIndex + offset;
+  if (nextIndex < 0 || nextIndex >= group.length) return;
+  state.notebook.reviewMotion = offset > 0 ? 'next' : 'prev';
+  state.notebook.reviewCardIndex = nextIndex;
+  renderUnit();
+}
+
+function navigateNotebookReviewGroup(offset) {
+  const groups = getNotebookGroups(state.notebook.reviewMode);
+  const nextGroup = state.notebook.reviewGroupIndex + offset;
+  if (nextGroup < 0 || nextGroup >= groups.length) return;
+  state.notebook.reviewGroupIndex = nextGroup;
+  state.notebook.reviewCardIndex = 0;
+  state.notebook.reviewMotion = 'none';
+  renderUnit();
+}
+
+function openNotebookReview(mode, groupIndex) {
+  state.profileView = 'notebookReview';
+  state.notebook.reviewMode = mode;
+  state.notebook.reviewGroupIndex = groupIndex;
+  state.notebook.reviewCardIndex = 0;
+  state.notebook.reviewMotion = 'none';
+  renderUnit();
+}
+
+function getNotebookPracticeSourceItems(mode, groupIndex) {
+  return getNotebookGroups(mode)[groupIndex] || [];
+}
+
+function initializeNotebookPracticeSession(mode, groupIndex) {
+  const sourceItems = getNotebookPracticeSourceItems(mode, groupIndex);
+  const chars = mode === 'see'
+    ? Array.from(new Set(sourceItems.flatMap((item) => [item.char, ...(Array.isArray(item.wrong_chars) ? item.wrong_chars : [])]).filter(Boolean)))
+    : Array.from(new Set(sourceItems.map((item) => item.char).filter(Boolean)));
+
+  state.notebook.practice = {
+    mode,
+    groupIndex,
+    title: `第${groupIndex + 1}组`,
+    sourceItems,
+    sequence: shuffleArray(chars),
+    questions: chars.map((char) => ({
+      char,
+      options: buildListenOptions(char),
+      selectedChar: '',
+      answered: false,
+      hadMistake: false,
+      countedCorrect: null,
+      wrongSelections: [],
+      revealedOptions: [],
+    })),
+    currentIndex: 0,
+    answeredChars: [],
+    currentMistaken: false,
+  };
+}
+
+function openNotebookPractice(mode, groupIndex) {
+  initializeNotebookPracticeSession(mode, groupIndex);
+  state.profileView = 'notebookPractice';
+  renderUnit();
+  if (mode === 'listen') {
+    setTimeout(() => playNotebookPracticeAudio(), 80);
+  }
+}
+
+function returnToNotebookList() {
+  state.profileView = 'main';
+  renderUnit();
+}
+
+function getNotebookPracticeQuestion() {
+  return state.notebook.practice.questions[state.notebook.practice.currentIndex] || null;
+}
+
+function getNotebookPracticeCharContext(char) {
+  const exact = state.notebook.practice.sourceItems.find((item) => item.char === char);
+  if (exact) return exact;
+  const related = state.notebook.practice.sourceItems.find((item) => Array.isArray(item.wrong_chars) && item.wrong_chars.includes(char));
+  if (related) return related;
+  return state.notebook.practice.sourceItems[0] || { level: state.currentLevel, unit: getCurrentUnitName(), char };
+}
+
+function playNotebookPracticeAudio() {
+  if (state.profileView !== 'notebookPractice' || state.notebook.practice.mode !== 'listen' || state.isTeachingMode) return;
+  const question = getNotebookPracticeQuestion();
+  if (!question) return;
+  const context = getNotebookPracticeCharContext(question.char);
+  const btn = document.getElementById('notebookListenReplayBtn');
+  if (!btn) return;
+
+  if (btn.classList.contains('playing')) {
+    stopActiveAudioPlayback();
+    return;
+  }
+
+  const cleanup = () => {
+    if (practiceAudioUiState.button === btn) {
+      practiceAudioUiState.button = null;
+      practiceAudioUiState.cleanup = null;
+    }
+    setSpeakerButtonPlaying(btn, false);
+  };
+
+  setSpeakerButtonPlaying(btn, true);
+  practiceAudioUiState.button = btn;
+  practiceAudioUiState.cleanup = cleanup;
+  audioManager.stopCurrentAudio();
+  audioManager.playAudio(context.level, context.unit, question.char, question.char, 'char', null, cleanup).catch((err) => {
+    cleanup();
+    showToast('播放失败: ' + err.message, 'error');
+  });
+}
+
+function goToNextNotebookPracticeItem() {
+  stopActiveAudioPlayback();
+  const session = state.notebook.practice;
+  if (session.currentIndex >= session.sequence.length - 1) {
+    showToast('本组练习完成', 'success');
+    returnToNotebookList();
+    return;
+  }
+  session.currentIndex += 1;
+  session.currentMistaken = false;
+  renderUnit();
+  if (session.mode === 'listen') {
+    setTimeout(() => playNotebookPracticeAudio(), 80);
+  }
+}
+
+function handleNotebookListenPracticeAnswer(selectedChar) {
+  const session = state.notebook.practice;
+  if (state.profileView !== 'notebookPractice' || session.mode !== 'listen') return;
+  const question = getNotebookPracticeQuestion();
+  const currentChar = question?.char || '';
+  if (!question || !currentChar) return;
+
+  if (selectedChar === currentChar) {
+    if (!question.answered) {
+      question.answered = true;
+      if (!session.answeredChars.includes(currentChar)) {
+        session.answeredChars.push(currentChar);
+      }
+      showToast('选择正确', 'success');
+      setTimeout(() => goToNextNotebookPracticeItem(), 280);
+    }
+    return;
+  }
+
+  question.hadMistake = true;
+  if (!question.wrongSelections.includes(selectedChar)) {
+    question.wrongSelections.push(selectedChar);
+  }
+  showToast('错误！请重新选择', 'error');
+  playCharAudio(selectedChar);
+}
+
+function handleNotebookSeePracticeAnswer(selectedChar) {
+  const session = state.notebook.practice;
+  if (state.profileView !== 'notebookPractice' || session.mode !== 'see') return;
+  const question = getNotebookPracticeQuestion();
+  const currentChar = question?.char || '';
+  if (!question || !currentChar) return;
+
+  if (selectedChar === currentChar) {
+    if (!question.answered) {
+      question.answered = true;
+      if (!session.answeredChars.includes(currentChar)) {
+        session.answeredChars.push(currentChar);
+      }
+      renderUnit();
+      showToast('选择正确', 'success');
+      setTimeout(() => goToNextNotebookPracticeItem(), 280);
+    }
+    return;
+  }
+
+  question.hadMistake = true;
+  if (!question.wrongSelections.includes(selectedChar)) {
+    question.wrongSelections.push(selectedChar);
+  }
+  if (!question.revealedOptions.includes(selectedChar)) {
+    question.revealedOptions.push(selectedChar);
+  }
+  renderUnit();
+  showToast('错误！请重新选择', 'error');
+  playCharAudio(selectedChar);
+}
+
+function switchNotebookPracticeGroup(offset) {
+  const groups = getNotebookGroups(state.notebook.practice.mode);
+  const nextGroup = state.notebook.practice.groupIndex + offset;
+  if (nextGroup < 0 || nextGroup >= groups.length) return;
+  initializeNotebookPracticeSession(state.notebook.practice.mode, nextGroup);
+  renderUnit();
+  if (state.notebook.practice.mode === 'listen') {
+    setTimeout(() => playNotebookPracticeAudio(), 80);
+  }
+}
+
+function setProfileView(view) {
+  state.profileView = view;
+  renderUnit();
+  saveCurrentPosition();
+  if (view === 'notebook') {
+    loadNotebookData();
+  }
+}
+
+async function updateUserMistakeRecord({ char, level, unit, mistakeMode, wrongChar }) {
+  const username = localStorage.getItem(USER_KEY) || '';
+  if (!username || !window.audioManager?.supabase || !char || !mistakeMode) return;
+
+  try {
+    const { data, error } = await audioManager.supabase
+      .from('user_mistakes')
+      .select('*')
+      .eq('username', username)
+      .eq('char', char)
+      .eq('level', level)
+      .eq('unit', unit)
+      .eq('mistake_mode', mistakeMode)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const nextWrongChars = Array.from(
+      new Set([
+        ...((data && Array.isArray(data.wrong_chars)) ? data.wrong_chars : []),
+        ...(wrongChar ? [wrongChar] : []),
+      ].filter(Boolean))
+    );
+
+    const payload = {
+      username,
+      char,
+      level,
+      unit,
+      mistake_mode: mistakeMode,
+      mistake_count: (data?.mistake_count || 0) + 1,
+      wrong_chars: nextWrongChars,
+      last_wrong_at: new Date().toISOString(),
+    };
+
+    const { error: upsertError } = await audioManager.supabase
+      .from('user_mistakes')
+      .upsert(payload, { onConflict: 'username,char,level,unit,mistake_mode' });
+
+    if (upsertError) throw upsertError;
+    invalidateNotebookCache();
+  } catch (error) {
+    console.error('写入生字本失败:', error);
+  }
+}
+
+async function jumpToNotebookOrigin(level, unit, char) {
+  if (!level || !unit || !char) return;
+  state.appSection = 'home';
+  await navigateToUnit(level, unit);
+  const chars = getCurrentUnitChars();
+  const nextIndex = chars.indexOf(char);
+  if (nextIndex !== -1) {
+    state.homeCardIndex = nextIndex;
+    state.homeCardMotion = 'none';
+  }
+  setMainViewMode('study', { resetListen: false, autoPlay: false });
 }
 
 function returnToHomeStudy() {
@@ -924,6 +1367,13 @@ function handleListenModeAnswer(selectedChar) {
   if (!state.listenMode.mistakeChars.includes(currentChar)) {
     state.listenMode.mistakeChars.push(currentChar);
   }
+  updateUserMistakeRecord({
+    char: currentChar,
+    level: state.currentLevel,
+    unit: getCurrentUnitName(),
+    mistakeMode: 'listen',
+    wrongChar: selectedChar,
+  });
   showToast('错误！请重新选择', 'error');
   playSpecificListenCharAudio(selectedChar);
 }
@@ -1031,6 +1481,13 @@ function handleSeeModeAnswer(selectedChar) {
     state.seeMode.mistakeChars.push(currentChar);
   }
 
+  updateUserMistakeRecord({
+    char: currentChar,
+    level: state.currentLevel,
+    unit: getCurrentUnitName(),
+    mistakeMode: 'see',
+    wrongChar: selectedChar,
+  });
   renderUnit();
   showToast('错误！请重新选择', 'error');
   playCharAudio(selectedChar);
@@ -1301,6 +1758,15 @@ export function setupEventListeners() {
 
   updateEarStudyButtonForMode();
 
+  window.addEventListener('shizi-auth-changed', () => {
+    invalidateNotebookCache();
+    invalidateProfileProgressCache();
+  });
+
+  if (state.appSection === 'profile') {
+    loadProfilePageData(true);
+  }
+
   window.addEventListener('resize', () => {
     if (resizeFrame) {
       cancelAnimationFrame(resizeFrame);
@@ -1533,6 +1999,19 @@ export function setupEventListeners() {
       }
     }
 
+    if (state.appSection === 'profile' && state.profileView === 'notebookReview') {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateNotebookReviewCard(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateNotebookReviewCard(1);
+        return;
+      }
+    }
+
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       goPrevUnit();
@@ -1547,6 +2026,10 @@ export function setupEventListeners() {
     const listenOptionBtn = e.target.closest('.listen-option-btn');
     if (listenOptionBtn) {
       e.stopPropagation();
+      if (state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'listen') {
+        handleNotebookListenPracticeAnswer(listenOptionBtn.dataset.char || '');
+        return;
+      }
       handleListenModeAnswer(listenOptionBtn.dataset.char || '');
       return;
     }
@@ -1554,6 +2037,16 @@ export function setupEventListeners() {
     const seeOptionBtn = e.target.closest('.see-audio-option');
     if (seeOptionBtn) {
       e.stopPropagation();
+      if (state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'see') {
+        if (Date.now() < seeDragState.suppressClickUntil) return;
+        if (seeOptionBtn.classList.contains('revealed')) return;
+        if (seeOptionBtn.classList.contains('playing')) {
+          stopActiveAudioPlayback();
+          return;
+        }
+        playSeeOptionAudio(seeOptionBtn.dataset.char || '', seeOptionBtn);
+        return;
+      }
       if (Date.now() < seeDragState.suppressClickUntil) return;
       if (seeOptionBtn.classList.contains('revealed')) return;
       if (seeOptionBtn.classList.contains('playing')) {
@@ -1581,6 +2074,17 @@ export function setupEventListeners() {
     if (homeCardNavBtn) {
       e.stopPropagation();
       navigateHomeCardByOffset(homeCardNavBtn.id === 'homeCardPrevBtn' ? -1 : 1);
+      return;
+    }
+
+    const notebookReviewChar = e.target.closest('[data-notebook-review-char]');
+    if (notebookReviewChar) {
+      const nextIndex = parseInt(notebookReviewChar.dataset.notebookReviewChar || '0', 10);
+      if (!Number.isNaN(nextIndex)) {
+        state.notebook.reviewMotion = nextIndex > state.notebook.reviewCardIndex ? 'next' : 'prev';
+        state.notebook.reviewCardIndex = nextIndex;
+        renderUnit();
+      }
       return;
     }
 
@@ -1765,6 +2269,24 @@ export function setupEventListeners() {
     navigateHomeCardByOffset(deltaX > 0 ? -1 : 1);
   }, { passive: true });
 
+  appEl.addEventListener('touchstart', (e) => {
+    if (state.appSection !== 'profile' || state.profileView !== 'notebookReview') return;
+    const stage = e.target.closest('.home-card-stage');
+    if (!stage || e.touches.length !== 1) return;
+    homeTouchStartX = e.touches[0].clientX;
+    homeTouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  appEl.addEventListener('touchend', (e) => {
+    if (state.appSection !== 'profile' || state.profileView !== 'notebookReview') return;
+    const stage = e.target.closest('.home-card-stage');
+    if (!stage || e.changedTouches.length !== 1) return;
+    const deltaX = e.changedTouches[0].clientX - homeTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - homeTouchStartY;
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    navigateNotebookReviewCard(deltaX > 0 ? -1 : 1);
+  }, { passive: true });
+
   const clearSeeDragState = () => {
     if (seeDragState.sourceEl) {
       seeDragState.sourceEl.classList.remove('dragging');
@@ -1796,7 +2318,10 @@ export function setupEventListeners() {
   };
 
   appEl.addEventListener('pointerdown', (e) => {
-    if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
+    const isSeePage =
+      (!state.isTeachingMode && state.mainViewMode === 'see') ||
+      (state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'see');
+    if (!isSeePage || state.isTeachingMode) return;
     const card = e.target.closest('.see-char-card');
     if (!card || e.button !== 0) return;
 
@@ -1844,7 +2369,11 @@ export function setupEventListeners() {
     clearSeeDragState();
     if (target) {
       seeDragState.suppressClickUntil = Date.now() + 320;
-      handleSeeModeAnswer(target.dataset.char || '');
+      if (state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'see') {
+        handleNotebookSeePracticeAnswer(target.dataset.char || '');
+      } else {
+        handleSeeModeAnswer(target.dataset.char || '');
+      }
     }
   };
 
@@ -1994,7 +2523,97 @@ export function setupEventListeners() {
     }
 
     if (action === 'progress') {
-      document.getElementById('menuProgress')?.click();
+      state.profileProgress.expanded = !state.profileProgress.expanded;
+      renderUnit();
+      if (state.profileProgress.expanded) {
+        loadProfileProgressData();
+      }
+      return;
+    }
+
+    if (action === 'notebook') {
+      setProfileView('notebook');
+      return;
+    }
+
+    if (action === 'notebook-item') {
+      return;
+    }
+  });
+
+  appEl.addEventListener('click', (e) => {
+    const progressHeader = e.target.closest('[data-profile-progress-header]');
+    if (progressHeader) {
+      progressHeader.classList.toggle('active');
+      progressHeader.nextElementSibling?.classList.toggle('show');
+      return;
+    }
+
+    const progressNavBtn = e.target.closest('[data-profile-progress-nav]');
+    if (progressNavBtn) {
+      const [level, unit] = (progressNavBtn.dataset.profileProgressNav || '').split('|');
+      if (level && unit) {
+        navigateToUnit(level, unit);
+      }
+      return;
+    }
+
+    const toggle = e.target.closest('[data-notebook-section]');
+    if (!toggle) return;
+    const mode = toggle.dataset.notebookSection;
+    setNotebookSectionExpanded(mode, !state.notebook.expandedSections[mode]);
+  });
+
+  appEl.addEventListener('click', (e) => {
+    const notebookActionBtn = e.target.closest('[data-notebook-action], [data-notebook-review-nav], [data-notebook-review-card], [data-notebook-practice-group]');
+    if (!notebookActionBtn) return;
+    e.stopPropagation();
+
+    if (notebookActionBtn.dataset.notebookAction === 'review') {
+      openNotebookReview(notebookActionBtn.dataset.mode || 'listen', parseInt(notebookActionBtn.dataset.groupIndex || '0', 10));
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookAction === 'practice') {
+      openNotebookPractice(notebookActionBtn.dataset.mode || 'listen', parseInt(notebookActionBtn.dataset.groupIndex || '0', 10));
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookAction === 'back-to-notebook') {
+      returnToNotebookList();
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookAction === 'jump') {
+      jumpToNotebookOrigin(
+        notebookActionBtn.dataset.level || '',
+        notebookActionBtn.dataset.unit || '',
+        notebookActionBtn.dataset.char || '',
+      );
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookReviewNav) {
+      navigateNotebookReviewGroup(notebookActionBtn.dataset.notebookReviewNav === 'next' ? 1 : -1);
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookReviewCard) {
+      navigateNotebookReviewCard(notebookActionBtn.dataset.notebookReviewCard === 'next' ? 1 : -1);
+      return;
+    }
+
+    if (notebookActionBtn.dataset.notebookPracticeGroup) {
+      switchNotebookPracticeGroup(notebookActionBtn.dataset.notebookPracticeGroup === 'next' ? 1 : -1);
+    }
+  });
+
+  appEl.addEventListener('click', (e) => {
+    if (state.profileView !== 'notebookPractice') return;
+    const replayBtn = e.target.closest('#notebookListenReplayBtn');
+    if (replayBtn) {
+      e.stopPropagation();
+      playNotebookPracticeAudio();
     }
   });
 

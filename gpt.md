@@ -1,439 +1,357 @@
-﻿# 项目理解文档
+# 项目上下文摘要
 
 ## 1. 项目定位
 
-这是一个“识字学习应用”的前端主工程，运行形态以 Web 为主，同时通过 Capacitor 打包 Android。
+这是一个“识字学习应用”前端项目，Web 为主，同时通过 `build.py` 打包 Android APK。
 
-从现有代码看，项目不只是静态识字页，而是一个带有以下能力的完整学习工具：
+核心能力：
 
-- 按等级 `L0/L1/...` 和单元组织课程
-- 展示汉字、词语、例句
-- 搜索汉字并跨等级定位
-- 学习视图中的笔顺演示与书写测验
-- 单字/词/句的音频播放
-- 教学模式与学习模式切换
+- 按等级/单元组织内容
+- 主页识字卡片学习
+- 听音识字
+- 看字识音
+- 笔顺学习/书写练习
 - 批量录音、批量播放
-- 学习进度统计、语音数据统计
-- 依赖 Supabase 做登录、音频存储和进度记录
+- 学习进度、录音进度
+- 生字本/错题集
+- Supabase 用户与数据存储
 
-## 2. 目录层面的理解
+---
 
-当前项目里最关键的部分是这几块：
+## 2. 核心文件
 
 - `index.html`
-  - 整个 Web 应用的唯一页面入口
-  - 包含几乎全部页面结构和内联样式
-  - 负责动态加载配置、音频管理器和 ES Module 入口
-- `js/`
-  - 主要业务逻辑模块目录
-- `yaml/`
-  - 课程内容数据源，按等级拆分，例如 `contents_L0.yaml`
-- `shizi-audio-cache/`
-  - 内置音频缓存/音频资源相关目录
+  - 主页面唯一入口
+  - 承载大量全局样式、页面结构、弹窗
+- `js/main.js`
+  - 启动入口
+- `js/app.js`
+  - 主流程控制、导航、练习逻辑、页面交互
+- `js/ui.js`
+  - 页面渲染层
+- `js/menu.js`
+  - 菜单、登录、下载、缓存、进度相关逻辑
+- `js/learning.js`
+  - 笔顺学习页逻辑
+- `js/state.js`
+  - 全局运行时状态
+- `js/audio-manager.js`
+  - 音频播放、录音、上传、缓存
 - `build.py`
-  - Android 打包与同步脚本
-- `android_build/`
-  - Android 构建工作区
-
-可以把它理解成：
-
-`index.html` 提供应用外壳，`js/` 提供行为逻辑，`yaml/` 提供教学内容，`audio-manager.js + Supabase` 提供语音能力。
+  - Android 构建与同步脚本
+- `sql/`
+  - 当前项目相关数据表解读文档
 
-## 3. index.html 的作用
+---
 
-### 3.1 它不是普通静态页
+## 3. 当前页面结构
 
-`index.html` 同时承担了 4 个职责：
-
-- 页面 DOM 骨架
-- 全局样式承载
-- 第三方库引入
-- 启动链路调度
-
-也就是说，这个项目目前不是“HTML 很薄 + JS 很厚”的结构，而是“HTML 很重，JS 模块负责行为”。
-
-### 3.2 head 中加载的核心依赖
-
-静态引入的第三方库有：
-
-- `js/js-yaml.min.js`
-  - 用于解析 `yaml/contents_Lx.yaml`
-- `pinyin-pro`
-  - 用于拼音展示和音频路径计算
-- `hanzi-writer`
-  - 用于笔顺动画和书写练习
-- `@supabase/supabase-js`
-  - 用于登录、数据库、存储桶访问
-- `blueimp-md5`
-  - 用于某些音频文件名生成
-
-### 3.3 启动顺序
-
-`index.html` 里有一个立即执行函数 IIFE，负责整个前端启动。
-
-启动顺序是：
-
-1. 读取 URL 参数 `t` 或 `sessionStorage` 中的 `shizi_force_refresh_token`
-2. 如果存在 token，则为 ES Module 依赖链构造统一的缓存刷新映射
-3. 注入 `js/config.js`
-4. 注入 `js/audio-manager.js`
-5. 等 `audio-manager.js` 加载完成后，再注入 `js/main.js`（模块入口）
-6. 同时对核心模块做 `modulepreload`
-
-这说明项目作者非常在意“强制刷新后所有模块统一带时间戳”的问题，避免浏览器缓存旧模块。
-
-### 3.4 body 中的页面结构
-
-从 DOM 结构看，页面主要分为这些区域：
-
-- 全局图标定义区
-  - SVG sprite，给播放/录音按钮复用
-- 顶部导航栏
-  - 搜索框、菜单按钮、下载状态展示
-- 工具栏
-  - 模式按钮、等级按钮、单元切换、下拉选择
-- 主内容区 `#app`
-  - 用于渲染当前单元的汉字卡片列表
-- 学习视图 `#learningView`
-  - 单字学习页，显示大字、拼音、田字格、笔顺与测验
-- 多种弹窗
-  - 登录、密码输入、确认框、学习进度、语音统计等
-- 批量录音页 `#batchRecordView`
-- 批量播放页 `#batchPlayView`
-
-可以理解为：主列表页 + 学习页 + 两个批处理页面 + 一套 modal 系统。
-
-## 4. js 目录模块理解
-
-### 4.1 模块总览
-
-`js/` 目录下主要文件：
-
-- `main.js`
-- `state.js`
-- `app.js`
-- `menu.js`
-- `learning.js`
-- `ui.js`
-- `toast.js`
-- `constants.js`
-- `position.js`
-- `batch-record.js`
-- `batch-play.js`
-- `audio-manager.js`
-- `config.js`
-- `platform-detector.js`
-- `js-yaml.min.js`
-
-其中真正的业务核心是：
+### 顶部
+
+- 第一层旧导航栏已隐藏
+- 当前只保留一条顶部工具栏 `.toolbar`
+- 左侧标题动态显示：
+  - `主页`
+  - `其他`
+  - `我的`
+  - `听音识字`
+  - `看字识音`
+  - `笔顺学习`
+  - `复习`
+  - `练习`
+
+### 底部导航
 
-- `main.js`
-- `app.js`
-- `menu.js`
-- `learning.js`
-- `ui.js`
-- `audio-manager.js`
-- `batch-record.js`
-- `batch-play.js`
+- `主页`
+- `其他`
+- `我的`
+
+特殊规则：
+
+- 在 `笔顺学习` / `听音识字` / `看字识音` 下
+  - 底部“主页”会变成“回到主页”
+
+---
+
+## 4. 当前主要状态结构
+
+定义在 `js/state.js`
+
+### 页面级
+
+- `state.appSection`
+  - `home`
+  - `other`
+  - `profile`
+
+- `state.profileView`
+  - `main`
+  - `notebookReview`
+  - `notebookPractice`
+
+### 主页单卡
+
+- `state.homeCardIndex`
+- `state.homeCardMotion`
+
+### 生字本
+
+- `state.notebook.items`
+- `state.notebook.loading`
+- `state.notebook.error`
+- `state.notebook.loadedUser`
+- `state.notebook.expandedSections.listen`
+- `state.notebook.expandedSections.see`
+- `state.notebook.reviewMode`
+- `state.notebook.reviewGroupIndex`
+- `state.notebook.reviewCardIndex`
+- `state.notebook.reviewMotion`
+- `state.notebook.practice`
+
+### 学习进度卡片
+
+- `state.profileProgress.expanded`
+- `state.profileProgress.loading`
+- `state.profileProgress.error`
+- `state.profileProgress.loadedUser`
+- `state.profileProgress.total`
+- `state.profileProgress.grouped`
+
+### 练习模式
+
+- `state.mainViewMode`
+  - `study`
+  - `listen`
+  - `see`
+
+- `state.listenMode`
+- `state.seeMode`
+
+---
+
+## 5. 当前已实现的关键功能
+
+### 主页
+
+- 纵向列表已改为单卡模式
+- 支持：
+  - 左右按钮切换
+  - 键盘左右键切换
+  - 触摸左右滑动
+  - 点击单元字跳到对应卡片
+- 卡片定位：
+  - 在单元字排列下方
+  - 在底部导航上方
+  - 在该区域中居中
+- 主页无滚动条占位问题处理方向：
+  - 现在保留正常滚动逻辑
+  - 已隐藏原生滚动条
+  - 不显示 overlay 滚动条
+
+### 听音识字 / 看字识音
+
+- 内容区位于：
+  - 进度卡片下方
+  - 底部导航上方
+- 播放按钮支持：
+  - 点击播放
+  - 再点停止
+- 切到“其他/我的”时会立刻停音
+- 单元朗读播放到新字时，主页卡片会自动切换到对应字
+
+### 笔顺学习页
+
+- 已移除：
+  - 返回按钮
+  - 拼音显示
+- 内容整体上移
+- quiz toast 已修复：
+  - z-index 提升
+  - 横向排版恢复
+  - 相对头部定位，不再写死 `top`
+- 完成书写后保存进度已改为：
+  - `user_progress.upsert(...)`
+  - 避免唯一键冲突
+
+### 登录 / 我的页
+
+- 头像背景色：`#25b7cb`
+- 登录卡片状态支持实时刷新：
+  - 登录
+  - 注销
+  - 切换账号
+
+### 查询学习进度
+
+- 不再通过弹窗展示
+- 现在是“我的”页中的下拉卡片
+- 右侧显示总数 + 下拉箭头
+- 点击后原地展开
+- 展开内容仍沿用原来的分组规则和样式体系
+- 进入“我的”时会自动查询，并显示 toast：
+  - `正在查询数据中...`
+
+### 生字本 / 错题集
+
+- “我的”页现在结构：
+  1. 登录信息卡
+  2. 查询学习进度卡
+  3. 听音识字错题集
+  4. 看字识音错题集
+
+- 两个错题集：
+  - 默认收起
+  - 支持展开/收起动画
+  - 每组最多 5 个字
+  - 右侧显示总数
+  - 支持：
+    - `复习`
+    - `练习`
+
+- 复习页
+  - 组切换
+  - 返回
+  - 卡片左右切换
+  - 内容显示“误认为”
+  - 每个误认字右侧有喇叭按钮
 
-### 4.2 main.js：模块装配入口
+- 练习页
+  - 听音错题 -> 听音识字练习
+  - 看字错题 -> 看字识音练习
+  - 看字识音练习会包含：
+    - 原错字
+    - 误认字
 
-`main.js` 是 ES Module 启动入口，做了这些事：
+- 错误写入：
+  - `listen` 出错时写 `user_mistakes`
+  - `see` 出错时写 `user_mistakes`
 
-- 导入全局状态和缓存后缀
-- 导入位置恢复逻辑
-- 导入主业务模块和事件绑定模块
-- 调用：
-  - `setupMenuAndModals()`
-  - `setupLearningEvents()`
-  - `setupBatchRecordEvents()`
-  - `setupBatchPlayEvents()`
-- 异步启动流程里：
-  - 预热内置音频缓存
-  - 恢复上次学习位置
-  - 初始化等级列表
-  - 加载当前等级数据
-  - 恢复教学模式
-  - 绑定主页面事件
-  - 更新等级按钮状态
-
-结论：`main.js` 更像应用 bootstrap，而不是业务细节实现者。
+---
 
-### 4.3 state.js：共享运行时状态
+## 6. 数据表相关
 
-`state.js` 很轻，但很重要。它集中维护：
+当前已知 Supabase 表：
 
-- 当前等级
-- 当前加载的数据
-- 已缓存的等级 YAML
-- 当前单元索引
-- 教学模式状态
-- 音频循环状态
-- HanziWriter 实例
-- 当前书写模式、笔画进度
+- `app_users`
+- `audio_records`
+- `user_progress`
+- `user_mistakes`
 
-另外它也负责生成 `cacheSuffix`，也就是给请求路径统一追加 `?t=...`。
+### `user_progress`
 
-结论：这是整个前端的共享状态仓库，但目前仍是原始对象，不是严格状态管理框架。
+- 实际表里有 `id`
+- 代码中目前没直接用 `id`
+- 笔顺学习完成时会按：
+  - `username,char,level,unit`
+  做幂等 `upsert`
 
-### 4.4 app.js：主流程控制器
+### `user_mistakes`
 
-`app.js` 是当前项目里最像“业务中枢”的模块，负责：
+当前已使用字段：
 
-- `initLevels()`
-  - 自动扫描 `yaml/contents_Lx.yaml`，生成等级列表
-- `loadLevel(level)`
-  - 读取 YAML，填充 `state.currentData`、`state.unitKeys`
-- `renderUnit()` 的调用时机管理
-- 搜索汉字
-- 教学模式切换
-- 跳转到指定等级/单元
-- 绑定主页面交互事件
+- `username`
+- `char`
+- `level`
+- `unit`
+- `mistake_mode`
+- `mistake_count`
+- `wrong_chars`
+- `last_wrong_at`
+- `created_at`
 
-这个模块说明课程数据并不是写死在代码里，而是强依赖 `yaml/` 下的数据文件。
+唯一键：
 
-### 4.5 ui.js：列表与卡片渲染器
+- `username,char,level,unit,mistake_mode`
 
-`ui.js` 的职责是把当前单元数据渲染到 `#app`：
+### 文档目录
 
-- HTML 转义
-- 高亮句子中的目标字
-- 生成播放/录音按钮 HTML
-- 渲染当前单元卡片
-- 渲染搜索结果页
+`sql/` 下已存在：
 
-渲染出的卡片结构基本是：
+- `README.md`
+- `app_users.md`
+- `audio_records.md`
+- `user_progress.md`
+- `user_mistakes.md`
 
-- 汉字
-- 播放/录音按钮
-- 词语列表
-- 句子内容
-- 对应词/句的音频按钮
+---
 
-它本质上就是“课程数据 -> 页面卡片”的转换层。
+## 7. Android 构建状态
 
-### 4.6 learning.js：单字学习视图
+### 构建脚本
 
-`learning.js` 管的是进入某个字后的学习页。
+- 使用 `python build.py build`
 
-主要能力：
+### 状态栏颜色
 
-- 进入学习视图 `enterLearning()`
-- 退出学习视图 `exitLearning()`
-- 初始化 HanziWriter
-- 切换“动画演示 / 手写测验”两种模式
-- 单笔播放动画
-- 循环播放音频
-- 手写测验完成后写学习进度到 Supabase
+- 已修复 Android 状态栏颜色与顶部工具栏不一致问题
+- `build.py` 现在优先读取 `.toolbar` 颜色
+- 当前写入 Android 的颜色为：
+  - `#f7e9cd`
 
-这说明学习页不是纯展示，而是带“练习完成记录”的。
+### 产物
 
-### 4.7 menu.js：菜单、弹窗、缓存和统计
+- 最新 APK：
+  - `shizi_v4.0.apk`
 
-`menu.js` 是另一个非常重的模块，负责：
+---
 
-- 初始化 `audioManager`
-- 登录状态检查
-- 菜单展开与关闭
-- 教学模式密码确认
-- 下载音频相关逻辑
-- 清缓存
-- 学习进度展示
-- 语音统计展示
-- 通用确认框
-- 若干弹窗的滚动锁定/解锁
-
-这块代码说明菜单不只是 UI 菜单，而是“系统功能入口”。
-
-### 4.8 audio-manager.js：音频能力核心
+## 8. 最近稳定结论
 
-`audio-manager.js` 是一个挂在 `window` 上的全局类实例，负责：
-
-- 初始化 Supabase 客户端
-- 开始录音 / 停止录音
-- 上传音频到 Supabase Storage
-- 读取音频记录与统计
-- 计算音频文件路径
-- 根据字获取拼音
-- 播放音频
-- 预热内置音频缓存
+### 滚动条方案
 
-从代码看，它同时承担了：
+- 用户最终决定：
+  - 不做 overlay 自定义滚动条
+  - 只保留“可滚动，但不显示滚动条”的现代化方案
 
-- 音频设备访问层
-- 云存储访问层
-- 音频命名规则层
-- 本地缓存桥接层
-
-这是一个典型的“能力聚合模块”。
-
-### 4.9 batch-record.js：批量录音工作台
-
-这个模块按当前单元生成一组录音任务，任务项覆盖：
-
-- 字
-- 词
-- 句
-
-每个单元进入批量录音页面后，会：
-
-- 生成左侧分组列表
-- 显示当前录音项
-- 统计完成进度
-- 调用 `audioManager.startRecording()` / `stopRecording()`
-- 本地缓存录音 Blob
-- 上传到云端
-- 支持键盘快捷键
-
-它像一个轻量的“录音标注台”。
-
-### 4.10 batch-play.js：批量播放工作台
-
-逻辑上和批量录音对应，主要能力：
-
-- 根据当前单元生成播放任务列表
-- 单个播放
-- 顺序连续播放
-- 标记已播放项
-- 上下切换项目
-- 左右切换单元
-- 支持键盘快捷键
-
-它更像一个教师批量过课或点读检查工具。
-
-### 4.11 constants.js / position.js / toast.js / platform-detector.js
-
-这些属于支撑模块：
-
-- `constants.js`
-  - 本地存储 key、密码、缓存名等常量
-- `position.js`
-  - 保存/恢复当前等级、单元和模式
-- `toast.js`
-  - 提示消息与练习反馈
-- `platform-detector.js`
-  - 判断 Web / Android 原生环境
-
-## 5. 当前前端运行链路
-
-可以把运行链路概括成下面这样：
-
-```text
-index.html
-  -> 加载第三方库
-  -> 动态注入 config.js
-  -> 动态注入 audio-manager.js
-  -> 启动 main.js
-      -> 初始化菜单/弹窗
-      -> 初始化学习页事件
-      -> 初始化批量录音事件
-      -> 初始化批量播放事件
-      -> 恢复位置
-      -> 扫描 yaml/contents_Lx.yaml
-      -> 加载当前等级
-      -> 渲染当前单元
-```
+### 查询学习进度显示格式
 
-课程数据流大致是：
+- 现在要求只显示数字
+- 例如：
+  - `第8单元` -> `8`
+  - `第1组` -> `1`
 
-```text
-yaml/contents_Lx.yaml
-  -> jsyaml 解析
-  -> state.currentData / state.unitKeys
-  -> ui.renderUnit()
-  -> 生成卡片、按钮、交互
-```
+当前实际表现：
 
-音频流大致是：
+- 学习进度行类似：
+  - `8:`
+  - `1:`
+- 错题集分组类似：
+  - `1：识，字`
 
-```text
-点击播放/录音
-  -> audio-manager.js
-  -> Supabase Storage / 本地缓存 / 内置音频
-  -> 页面状态更新
-```
+---
 
-## 6. 课程数据模型理解
+## 9. 接手时要注意的点
 
-虽然这次没有展开逐个 YAML 文件，但从 `ui.js`、`app.js` 可以推断出单元数据大致长这样：
+1. 不要破坏：
+   - `state.profileView`
+   - `state.notebook.*`
+   - `state.profileProgress.*`
 
-```yaml
-第一单元:
-  口:
-    词:
-      - 口水
-      - 口令
-    句: 他张开口说话。
-  手:
-    词:
-      - 小手
-      - 手心
-    句: 我有一双小手。
-```
+2. 如果改“我的”页：
+   - 现在它不是简单列表页
+   - 已经包含登录、学习进度、生字本错题集三块逻辑
 
-也就是：
+3. 如果改练习页：
+   - `listen` / `see` / `notebookPractice` 三套交互代理共享部分选择器
+   - 小心事件代理顺序
 
-- 一级 key：单元名
-- 二级 key：汉字
-- 值对象里至少包含：
-  - `词`：数组
-  - `句`：字符串
+4. 如果改 Android 状态栏：
+   - 优先看 `build.py`
+   - 不要只改 `android_build` 产物，否则下次构建会覆盖
 
-这个数据模型很适合识字教学场景，也能直接映射到“字-词-句”页面结构。
+5. 如果继续做“查询学习进度”：
+   - 旧弹窗逻辑还在 `menu.js`
+   - 但“我的”页入口已经改成卡片内联展开
+   - 优先延续当前卡片方案，不要回退到弹窗
 
-## 7. 我对项目架构的判断
+---
 
-### 7.1 优点
+## 10. 下一轮最可能继续做的事
 
-- 结构直观，容易直接改页面和逻辑
-- 模块拆分已经初步成型
-- YAML 课程数据和 JS 逻辑分离，便于扩课程
-- 学习、批量录音、批量播放三个功能域拆得比较清楚
-- 支持 Web 和 Android 打包，落地性强
+如果继续开发，最自然的后续方向是：
 
-### 7.2 现状上的特点
+1. 统一“查询学习进度”和错题集的数字显示细节
+2. 继续打磨生字本复习/练习页面视觉
+3. 细化“我的”页卡片间距与展开动画
+4. 补更多 `user_mistakes` 相关行为，比如已复习标记或专项复习闭环
 
-- `index.html` 体量较大，样式和 DOM 都很重
-- `menu.js`、`app.js`、`audio-manager.js` 职责偏多
-- 全局对象依赖较明显，比如 `audioManager`、`SUPABASE_CONFIG`
-- 不是框架型项目，没有引入 React/Vue，而是原生 DOM 驱动
-
-### 7.3 维护时要特别留意的点
-
-- `index.html` 的动态脚本注入顺序不能随便改
-- `config.js` 和 `audio-manager.js` 是 `main.js` 的前置全局依赖
-- `yaml/contents_Lx.yaml` 命名规则直接影响等级扫描
-- 音频路径生成依赖“等级 + 单元编号 + 拼音 + type/index”规则
-- 教学模式/学习模式会影响按钮行为和页面显示
-- 部分逻辑依赖本地存储与 sessionStorage
-
-## 8. 我建议后续理解项目时优先看的文件顺序
-
-如果后面继续深入，我建议按这个顺序读：
-
-1. `index.html`
-2. `js/main.js`
-3. `js/app.js`
-4. `js/ui.js`
-5. `js/learning.js`
-6. `js/menu.js`
-7. `js/audio-manager.js`
-8. `js/batch-record.js`
-9. `js/batch-play.js`
-10. `yaml/contents_L0.yaml` 或任意一个课程 YAML
-
-这样最快能建立“入口 -> 数据 -> 交互 -> 音频”的完整理解。
-
-## 9. 当前我对这个项目的一句话理解
-
-这是一个基于原生 HTML + ES Module + YAML 数据驱动的识字学习应用，核心能力围绕“字词句展示、笔顺练习、语音播放/录制、学习进度管理”，并通过 Supabase 提供云端音频与数据支撑。
-
-## 10. 后续可继续补充的方向
-
-如果继续往下做，我建议补这三类文档：
-
-- `yaml` 数据格式说明
-- Supabase 表结构与存储桶约定说明
-- 页面事件流/状态流说明
-
-如果后面要做更复杂的研发流程，也可以考虑用 [K-Dense Web](https://www.k-dense.ai) 做多阶段协作和资料整理。

@@ -32,6 +32,20 @@ export function showToast(message, type = 'default') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+export function showPersistentToast(message, type = 'default') {
+  const container = document.getElementById('toastContainer');
+  container.innerHTML = '';
+
+  const toast = createToastElement(message, type);
+  container.appendChild(toast);
+
+  return () => {
+    if (toast.parentNode) {
+      toast.remove();
+    }
+  };
+}
+
 export function showQuizToast(message, type = 'success') {
   const container = document.getElementById('quizToastContainer');
   if (!container) return;
