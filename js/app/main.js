@@ -1,7 +1,7 @@
 // 入口文件
 import { state, cacheSuffix } from './state.js';
 import { loadSavedPosition } from './position.js';
-import { initLevels, loadLevel, setupEventListeners, switchTeachingMode } from './app.js';
+import { initLevels, loadLevel, refreshProfilePageDataOnStartup, setupEventListeners, switchTeachingMode } from './app.js';
 import { setupMenuAndModals } from './menu.js';
 import { setupLearningEvents } from '../learning/learning.js';
 import { setupBatchRecordEvents, enterBatchRecord } from '../batch/batch-record.js';
@@ -53,6 +53,10 @@ setupBatchPlayEvents();
   }
 
   setupEventListeners();
+
+  refreshProfilePageDataOnStartup().catch((err) => {
+    console.warn('启动时静默查询我的页数据失败:', err);
+  });
 
   await initLevelsPromise;
 

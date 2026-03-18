@@ -3,7 +3,7 @@ import { state, cacheSuffix } from './state.js';
 import { showToast } from '../utils/toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
 import { escapeHtml, renderUnit, updateAppShell } from '../ui/ui.js';
-import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin } from './app.js';
+import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin, refreshProfilePageDataOnStartup } from './app.js';
 import { loadLevelData } from './level-data-loader.js';
 
 export function setupMenuAndModals() {
@@ -805,6 +805,8 @@ export function setupMenuAndModals() {
     setTaskProgress({ title: '正在刷新页面', percent: 10, status: '准备刷新...' });
 
     try {
+      await refreshProfilePageDataOnStartup();
+
       setTaskProgress({ title: '正在刷新页面', percent: 50, status: '正在更新资源...' });
       await new Promise(r => setTimeout(r, 200));
 

@@ -22,6 +22,7 @@ import { createNotebookEngine } from '../profile/notebook-engine.js';
 import { createNotebookSupport } from '../profile/notebook-support.js';
 import { getNotebookGroupsByLevel as getNotebookGroupsByLevelShared } from '../profile/notebook-grouping.js';
 import { createProfileDataSupport } from '../profile/profile-data-support.js';
+import { upsertNotebookItemInState } from '../profile/profile-cache-support.js';
 import { createHomeSupport } from '../home/home-support.js';
 import { createLearnBatchSupport } from '../home/learn-batch-support.js';
 import {
@@ -537,9 +538,6 @@ function setAppSection(section) {
   }
   state.appSection = section;
   renderUnit();
-  if (section === 'profile') {
-    profileDataSupport.loadProfilePageData(true, { showQueryToasts: true });
-  }
   saveCurrentPosition();
 }
 
@@ -571,6 +569,12 @@ const profileDataSupport = createProfileDataSupport({
 
 export async function refreshProfilePageDataAfterLogin() {
   await profileDataSupport.loadProfilePageData(true, { showQueryToasts: true });
+}
+
+export async function refreshProfilePageDataOnStartup() {
+  const user = localStorage.getItem(USER_KEY) || '';
+  if (!user) return;
+  await profileDataSupport.loadProfilePageData(true, { showQueryToasts: false });
 }
 
 export function clearProfilePageDataAfterLogout() {
@@ -618,7 +622,16 @@ async function updateUserMistakeRecord({ char, level, unit, mistakeMode, wrongCh
       .upsert(payload, { onConflict: 'username,char,level,unit,mistake_mode' });
 
     if (upsertError) throw upsertError;
-    invalidateNotebookCache();
+    upsertNotebookItemInState(state, {
+      username,
+      char,
+      level,
+      unit,
+      mistakeMode,
+      mistakeCount: payload.mistake_count,
+      wrongChars: nextWrongChars,
+      lastWrongAt: payload.last_wrong_at,
+    });
   } catch (error) {
     console.error('写入生字本失败:', error);
   }
@@ -850,10 +863,6 @@ export function setupEventListeners() {
     invalidateNotebookCache();
     invalidateProfileProgressCache();
   });
-
-  if (state.appSection === 'profile') {
-    profileDataSupport.loadProfilePageData(true, { showQueryToasts: true });
-  }
 
   window.addEventListener('resize', () => {
     if (resizeFrame) {

@@ -67,7 +67,6 @@ export function createNotebookSupport({
     if (!char || !level || !unit || !mistakeMode) return;
 
     if (!window.audioManager?.supabase || !username) {
-      removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode });
       return;
     }
 
@@ -101,15 +100,6 @@ export function createNotebookSupport({
     if (!ownerChar || !ownerLevel || !ownerUnit || !mistakeMode || !wrongChar) return;
 
     if (!window.audioManager?.supabase || !username) {
-      removeWrongCharEntryLocally({
-        ownerChar,
-        ownerLevel,
-        ownerUnit,
-        mistakeMode,
-        wrongChar,
-        wrongLevel,
-        wrongUnit,
-      });
       return;
     }
 
@@ -210,9 +200,6 @@ export function createNotebookSupport({
     document.body.style.top = '';
     document.body.style.width = '';
     renderUnit();
-    if (state.appSection === 'profile') {
-      loadProfilePageData(true, { showQueryToasts: true });
-    }
   }
 
   async function jumpToNotebookOrigin(level, unit, char) {

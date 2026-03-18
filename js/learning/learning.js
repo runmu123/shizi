@@ -2,6 +2,7 @@
 import { state } from '../app/state.js';
 import { showToast, showQuizToast } from '../utils/toast.js';
 import { USER_KEY } from '../app/constants.js';
+import { upsertProgressEntryInState } from '../profile/profile-cache-support.js';
 import { updateAppShell } from '../ui/ui.js';
 
 const STROKE_ANIMATION_SPEED = 0.5;
@@ -80,6 +81,12 @@ function startQuizLogic() {
             console.error('错误详情:', error.message, error.hint);
           } else {
             console.log('进度已保存:', char, level, unit);
+            upsertProgressEntryInState(state, {
+              username: user,
+              char,
+              level,
+              unit,
+            });
           }
         } catch (e) {
           console.error('保存进度出错:', e);
