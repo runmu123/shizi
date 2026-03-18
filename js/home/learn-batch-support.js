@@ -23,6 +23,16 @@ export function createLearnBatchSupport({
     btn.innerHTML = isPlaying ? getPauseIconHtml() : getPlayIconHtml();
   }
 
+  function syncLearnBatchButtonState() {
+    const btn = document.getElementById('learnBatchPlayBtnMain');
+    if (!btn) {
+      return;
+    }
+
+    playbackState.button = btn;
+    setLearnBatchBtnState(btn, playbackState.running && !playbackState.paused);
+  }
+
   function clearLearnBatchHighlight() {
     document.querySelectorAll('.unit-reading-active').forEach((el) => {
       el.classList.remove('unit-reading-active');
@@ -41,6 +51,7 @@ export function createLearnBatchSupport({
     state.homeCardMotion = targetIndex > state.homeCardIndex ? 'next' : 'prev';
     state.homeCardIndex = targetIndex;
     renderUnit();
+    syncLearnBatchButtonState();
 
     await new Promise((resolve) => {
       requestAnimationFrame(() => {
