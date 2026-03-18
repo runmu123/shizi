@@ -759,18 +759,23 @@ function resetAppLayoutClasses(appEl) {
   );
 }
 
-function renderListenMode(appEl, unitName) {
-  const session = state.listenMode;
+function renderPracticeEmptyState(appEl, unitName) {
+  appEl.classList.add('listen-layout');
+  appEl.innerHTML = `
+    ${getUnitTitleHtml(unitName)}
+    <div class="card">
+      <div class="loading">当前单元暂无可练习汉字</div>
+    </div>
+  `;
+}
+
+function renderPracticeMode(appEl, unitName, mode) {
+  const isSeeMode = mode === 'see';
+  const session = isSeeMode ? state.seeMode : state.listenMode;
   const total = session.sequence.length;
 
   if (!total) {
-    appEl.classList.add('listen-layout');
-    appEl.innerHTML = `
-      ${getUnitTitleHtml(unitName)}
-      <div class="card">
-        <div class="loading">当前单元暂无可练习汉字</div>
-      </div>
-    `;
+    renderPracticeEmptyState(appEl, unitName);
     return;
   }
 
@@ -780,12 +785,44 @@ function renderListenMode(appEl, unitName) {
   const completedCount = Math.min(session.answeredChars.length, total);
   const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
   const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+  const progressTitle = isSeeMode ? '看字识音进度' : '听音识字进度';
+  const panelClassName = isSeeMode ? 'listen-mode-panel see-mode-panel' : 'listen-mode-panel';
+
+  const panelHtml = isSeeMode
+    ? (() => {
+      const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
+      return `
+        <div class="see-char-card" id="seePromptCard" data-char="${escapeHtml(currentChar)}" tabindex="0" role="button" aria-label="拖动汉字到正确读音">
+          ${escapeHtml(currentChar)}
+        </div>
+        <div class="see-options-grid">
+          ${options.map((option) => {
+            const isRevealed = revealedOptions.includes(option);
+            return `
+              <button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">
+                ${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    })()
+    : `
+      <button class="listen-audio-btn" id="listenReplayBtn" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
+        ${getListenSpeakerIconHtml()}
+      </button>
+      <div class="listen-options-grid">
+        ${options.map((option) => `
+          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
+        `).join('')}
+      </div>
+    `;
 
   appEl.innerHTML = `
     ${getUnitTitleHtml(unitName, 'listen-unit-title')}
     <div class="listen-progress-card">
       <div class="listen-progress-header">
-        <span>听音识字进度</span>
+        <span>${progressTitle}</span>
         <span>${currentStep}/${total}</span>
       </div>
       <div class="progress-track listen-progress-track">
@@ -793,72 +830,19 @@ function renderListenMode(appEl, unitName) {
       </div>
       <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
     </div>
-    <div class="listen-mode-panel" data-char="${escapeHtml(currentChar)}">
-      <button class="listen-audio-btn" id="listenReplayBtn" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
-        ${getListenSpeakerIconHtml()}
-      </button>
-      <div class="listen-options-grid">
-        ${options.map(option => `
-          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
-        `).join('')}
-      </div>
+    <div class="${panelClassName}" data-char="${escapeHtml(currentChar)}">
+      ${panelHtml}
     </div>
   `;
   requestAnimationFrame(() => applyResponsiveLayout());
 }
 
+function renderListenMode(appEl, unitName) {
+  renderPracticeMode(appEl, unitName, 'listen');
+}
+
 function renderSeeMode(appEl, unitName) {
-  const session = state.seeMode;
-  const total = session.sequence.length;
-
-  if (!total) {
-    appEl.classList.add('listen-layout');
-    appEl.innerHTML = `
-      ${getUnitTitleHtml(unitName)}
-      <div class="card">
-        <div class="loading">当前单元暂无可练习汉字</div>
-      </div>
-    `;
-    return;
-  }
-
-  const question = session.questions[session.currentIndex] || null;
-  const currentChar = question?.char || session.sequence[session.currentIndex] || '';
-  const options = Array.isArray(question?.options) ? question.options : [];
-  const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
-  const completedCount = Math.min(session.answeredChars.length, total);
-  const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
-  const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-
-  appEl.innerHTML = `
-    ${getUnitTitleHtml(unitName, 'listen-unit-title')}
-    <div class="listen-progress-card">
-      <div class="listen-progress-header">
-        <span>看字识音进度</span>
-        <span>${currentStep}/${total}</span>
-      </div>
-      <div class="progress-track listen-progress-track">
-        <div class="progress-fill" style="width:${progressPercent}%"></div>
-      </div>
-      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
-    </div>
-    <div class="listen-mode-panel see-mode-panel" data-char="${escapeHtml(currentChar)}">
-      <div class="see-char-card" id="seePromptCard" data-char="${escapeHtml(currentChar)}" tabindex="0" role="button" aria-label="拖动汉字到正确读音">
-        ${escapeHtml(currentChar)}
-      </div>
-      <div class="see-options-grid">
-        ${options.map((option) => {
-          const isRevealed = revealedOptions.includes(option);
-          return `
-            <button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">
-              ${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}
-            </button>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `;
-  requestAnimationFrame(() => applyResponsiveLayout());
+  renderPracticeMode(appEl, unitName, 'see');
 }
 
 export function renderUnit() {
