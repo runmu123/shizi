@@ -3,9 +3,9 @@ import { state, cacheSuffix } from './state.js';
 import { loadSavedPosition } from './position.js';
 import { initLevels, loadLevel, setupEventListeners, switchTeachingMode } from './app.js';
 import { setupMenuAndModals } from './menu.js';
-import { setupLearningEvents } from './learning.js';
-import { setupBatchRecordEvents, enterBatchRecord } from './batch-record.js';
-import { setupBatchPlayEvents, enterBatchPlay } from './batch-play.js';
+import { setupLearningEvents } from '../learning/learning.js';
+import { setupBatchRecordEvents, enterBatchRecord } from '../batch/batch-record.js';
+import { setupBatchPlayEvents, enterBatchPlay } from '../batch/batch-play.js';
 import PlatformDetector from './platform-detector.js';
 
 // 初始化全局音频管理器缓存后缀

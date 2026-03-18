@@ -1,8 +1,8 @@
 // 菜单和弹窗：登录、统计、进度、下载、缓存
 import { state, cacheSuffix } from './state.js';
-import { showToast } from './toast.js';
+import { showToast } from '../utils/toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
-import { escapeHtml, renderUnit, updateAppShell } from './ui.js';
+import { escapeHtml, renderUnit, updateAppShell } from '../ui/ui.js';
 import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin } from './app.js';
 import { loadLevelData } from './level-data-loader.js';
 

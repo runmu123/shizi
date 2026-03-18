@@ -1,8 +1,8 @@
 // 学习视图：笔顺演示、书写练习、音频循环
-import { state } from './state.js';
-import { showToast, showQuizToast } from './toast.js';
-import { USER_KEY } from './constants.js';
-import { updateAppShell } from './ui.js';
+import { state } from '../app/state.js';
+import { showToast, showQuizToast } from '../utils/toast.js';
+import { USER_KEY } from '../app/constants.js';
+import { updateAppShell } from '../ui/ui.js';
 
 const STROKE_ANIMATION_SPEED = 0.5;
 const STROKE_DELAY = 500;

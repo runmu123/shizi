@@ -532,7 +532,7 @@ export default config;
 
 def cleanup_legacy_root_assets():
     """清理 android_build 根目录里历史遗留的重复资源"""
-    legacy_dirs = ["js", "yaml"]
+    legacy_dirs = ["js", "yaml", "styles"]
     legacy_files = ["index.html", "icon.png"]
 
     for name in legacy_dirs:
@@ -795,6 +795,16 @@ def sync():
     else:
         log_error("js 目录不存在")
         return False
+
+    # 复制 styles 目录到 www 目录
+    if os.path.exists("styles"):
+        styles_dest = os.path.join(www_dir, "styles")
+        if os.path.exists(styles_dest):
+            shutil.rmtree(styles_dest)
+        shutil.copytree("styles", styles_dest)
+        log_success("复制 styles 目录成功")
+    else:
+        log_warning("styles 目录不存在，跳过样式资源复制")
     
     # 复制 yaml 目录到 www 目录
     if os.path.exists("yaml"):

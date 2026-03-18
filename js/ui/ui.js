@@ -1,8 +1,8 @@
 ﻿// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
-import { state } from './state.js';
-import { USER_KEY } from './constants.js';
-import { normalizeWrongCharEntries } from './mistake-utils.js';
-import { getNotebookGroupsByLevel } from './profile/notebook-grouping.js';
+import { state } from '../app/state.js';
+import { USER_KEY } from '../app/constants.js';
+import { normalizeWrongCharEntries } from '../utils/mistake-utils.js';
+import { getNotebookGroupsByLevel } from '../profile/notebook-grouping.js';
 
 const UNIT_CHAR_BASE_REM = 1.9;
 const UNIT_CHAR_MIN_REM = 0.75;

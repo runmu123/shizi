@@ -1,6 +1,6 @@
 // 批量录音功能模块
-import { state } from './state.js';
-import { showToast } from './toast.js';
+import { state } from '../app/state.js';
+import { showToast } from '../utils/toast.js';
 import {
   bindBatchKeyboard,
   buildBatchItemsFromUnit,
