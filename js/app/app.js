@@ -693,6 +693,7 @@ const practiceEngine = createPracticeEngine({
 
 const homeSupport = createHomeSupport({
   state,
+  completionModalState,
   getCurrentUnitName,
   renderUnit,
   saveCurrentPosition,

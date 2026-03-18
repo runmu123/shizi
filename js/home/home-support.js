@@ -1,5 +1,6 @@
 export function createHomeSupport({
   state,
+  completionModalState,
   getCurrentUnitName,
   renderUnit,
   saveCurrentPosition,
@@ -57,8 +58,8 @@ export function createHomeSupport({
     const replayBtn = document.getElementById('listenReplayBtn');
     if (!modal || !correctList || !wrongList || !summary || !session) return;
 
-    state.completionModalState.kind = 'main';
-    state.completionModalState.mode = mode;
+    completionModalState.kind = 'main';
+    completionModalState.mode = mode;
 
     stopActiveAudioPlayback();
     if (replayBtn) {
