@@ -1961,7 +1961,8 @@
     }
 
     .see-char-card {
-      min-width: min(240px, 72vw);
+      width: 132px;
+      min-width: 132px;
       min-height: 132px;
       border-radius: 18px;
       border: 1px solid #fdba74;
@@ -2254,7 +2255,8 @@
       }
 
       .see-char-card {
-        min-width: min(220px, 78vw);
+        width: 108px;
+        min-width: 108px;
         min-height: 108px;
       }
 

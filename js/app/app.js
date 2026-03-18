@@ -538,7 +538,7 @@ function setAppSection(section) {
   state.appSection = section;
   renderUnit();
   if (section === 'profile') {
-    loadProfilePageData();
+    profileDataSupport.loadProfilePageData(true, { showQueryToasts: true });
   }
   saveCurrentPosition();
 }
@@ -909,7 +909,6 @@ export function setupEventListeners() {
     switchTeachingMode,
     tryEnterTeachingMode,
     toggleInlineCollapse,
-    loadProfileProgressData: (force = false) => profileDataSupport.loadProfileProgressData(force),
     setProfileView: (view) => notebookSupport.setProfileView(view),
   });
 

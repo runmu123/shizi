@@ -11,7 +11,6 @@ export function setupHomeSectionEvents({
   switchTeachingMode,
   tryEnterTeachingMode,
   toggleInlineCollapse,
-  loadProfileProgressData,
   setProfileView,
 }) {
   if (bottomNav) {
@@ -95,9 +94,6 @@ export function setupHomeSectionEvents({
     if (action === 'progress') {
       state.profileProgress.expanded = !state.profileProgress.expanded;
       toggleInlineCollapse(actionCard, state.profileProgress.expanded);
-      if (state.profileProgress.expanded) {
-        loadProfileProgressData();
-      }
       return;
     }
 

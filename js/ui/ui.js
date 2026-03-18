@@ -528,7 +528,7 @@ function renderProfileSection(appEl) {
         <div class="profile-progress-card-wrap">
           <button class="section-action-card profile-progress-toggle" type="button" data-action="progress">
             <span class="section-action-icon">${SECTION_ICONS.progress}</span>
-            <span class="section-action-label">查询学习进度</span>
+            <span class="section-action-label">显示学习进度</span>
             <span class="section-action-count">${state.profileProgress.total}</span>
             <span class="notebook-section-arrow${state.profileProgress.expanded ? ' expanded' : ''}">${getProgressChevronIcon(state.profileProgress.expanded)}</span>
           </button>
