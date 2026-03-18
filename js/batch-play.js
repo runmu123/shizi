@@ -1,7 +1,17 @@
 // 批量播放功能模块
 import { state } from './state.js';
 import { showToast } from './toast.js';
-import { escapeHtml, renderUnit } from './ui.js';
+import {
+  bindBatchKeyboard,
+  buildBatchItemsFromUnit,
+  hideBatchView,
+  moveBatchUnit,
+  renderBatchListPanel,
+  selectBatchIndex,
+  showBatchView,
+  updateBatchCurrentInfo,
+  updateBatchProgress,
+} from './batch-shared.js';
 
 // 批量播放状态
 const batchState = {
@@ -16,130 +26,57 @@ const batchState = {
 
 // 获取当前单元的所有字、词、句项
 function getBatchItems() {
-  const items = [];
   const unitData = state.currentData[state.unitKeys[state.currentUnitIndex]];
-
-  for (const [rootChar, charData] of Object.entries(unitData)) {
-    // 汉字
-    items.push({
-      index: items.length,
-      rootChar: rootChar,
+  return buildBatchItemsFromUnit(unitData, {
+    buildCharItem: (rootChar, _charData, listIndex) => ({
+      index: listIndex,
+      rootChar,
       text: rootChar,
       type: 'char',
       typeLabel: '字',
-    });
-
-    // 词组
-    if (charData.词 && Array.isArray(charData.词)) {
-      charData.词.forEach((word, wordIndex) => {
-        items.push({
-          index: items.length,
-          rootChar: rootChar,
-          text: word,
-          type: 'word',
-          typeLabel: `词`,
-          wordIndex: wordIndex, // 保存词语在词组中的原始索引
-        });
-      });
-    }
-
-    // 例句
-    if (charData.句) {
-      items.push({
-        index: items.length,
-        rootChar: rootChar,
-        text: charData.句,
-        type: 'sentence',
-        typeLabel: '句',
-      });
-    }
-  }
-
-  return items;
+    }),
+    buildWordItem: (rootChar, word, wordIndex, listIndex) => ({
+      index: listIndex,
+      rootChar,
+      text: word,
+      type: 'word',
+      typeLabel: '词',
+      wordIndex,
+    }),
+    buildSentenceItem: (rootChar, sentence, listIndex) => ({
+      index: listIndex,
+      rootChar,
+      text: sentence,
+      type: 'sentence',
+      typeLabel: '句',
+    }),
+  });
 }
 
 // 渲染左侧列表
 function renderLeftPanel() {
-  const leftPanel = document.getElementById('batchPlayLeft');
-  if (!leftPanel) return;
-
-  leftPanel.innerHTML = '';
-
-  // 按 rootChar 分组
-  const groups = {};
-  batchState.items.forEach(item => {
-    if (!groups[item.rootChar]) {
-      groups[item.rootChar] = [];
-    }
-    groups[item.rootChar].push(item);
+  renderBatchListPanel({
+    panelId: 'batchPlayLeft',
+    items: batchState.items,
+    currentIndex: batchState.currentIndex,
+    completedSet: batchState.completed,
+    getGroupKey: (item) => item.rootChar,
+    formatGroupTitle: (groupKey) => groupKey,
+    getPendingStatusText: () => '待播放',
+    onSelect: (index) => selectItem(index),
+    itemTextClass: 'item-text',
   });
-
-  // 渲染每个分组
-  Object.entries(groups).forEach(([rootChar, groupItems]) => {
-    const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'batch-record-section';
-
-    const sectionTitle = document.createElement('div');
-    sectionTitle.className = 'batch-record-section-title';
-    sectionTitle.textContent = rootChar;
-    sectionDiv.appendChild(sectionTitle);
-
-    // 渲染组内每个项目
-    groupItems.forEach(item => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'batch-record-item';
-      itemDiv.dataset.index = item.index;
-      if (item.index === batchState.currentIndex) {
-        itemDiv.classList.add('active');
-      }
-
-      const textSpan = document.createElement('span');
-      textSpan.className = 'item-text';
-      textSpan.textContent = item.text;
-      itemDiv.appendChild(textSpan);
-
-      // 创建状态容器
-      const statusContainer = document.createElement('div');
-      statusContainer.style.display = 'flex';
-      statusContainer.style.alignItems = 'center';
-
-      const typeSpan = document.createElement('span');
-      typeSpan.className = 'item-type';
-      typeSpan.textContent = item.typeLabel;
-      statusContainer.appendChild(typeSpan);
-
-      const statusSpan = document.createElement('span');
-      statusSpan.className = 'item-status';
-      if (batchState.completed.has(item.index)) {
-        statusSpan.textContent = '✓ 已完成';
-        statusSpan.classList.add('completed');
-      } else {
-        statusSpan.textContent = '待播放';
-      }
-      statusContainer.appendChild(statusSpan);
-
-      itemDiv.appendChild(statusContainer);
-
-      itemDiv.addEventListener('click', () => {
-        selectItem(item.index);
-      });
-
-      sectionDiv.appendChild(itemDiv);
-    });
-
-    leftPanel.appendChild(sectionDiv);
-  });
-
   updateProgress();
 }
 
 // 更新进度显示
 function updateProgress() {
-  const progressEl = document.getElementById('batchPlayProgress');
-  const totalEl = document.getElementById('batchPlayTotal');
-
-  progressEl.textContent = batchState.completed.size;
-  totalEl.textContent = batchState.items.length;
+  updateBatchProgress({
+    progressId: 'batchPlayProgress',
+    totalId: 'batchPlayTotal',
+    completedCount: batchState.completed.size,
+    totalCount: batchState.items.length,
+  });
 }
 
 // 更新播放按钮状态
@@ -196,38 +133,25 @@ function updateQueuePlayButton() {
 
 // 选择项目
 function selectItem(index) {
-  if (index < 0 || index >= batchState.items.length) return;
-
-  batchState.currentIndex = index;
-  renderLeftPanel();
-  updateCurrentInfo();
-
-  // 滚动到可视区域中间
-  setTimeout(() => {
-    const itemElement = document.querySelector(`.batch-record-item[data-index="${index}"]`);
-    if (itemElement) {
-      itemElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }
-  }, 50);
+  selectBatchIndex({
+    index,
+    itemsLength: batchState.items.length,
+    onSelected: (selectedIndex) => {
+      batchState.currentIndex = selectedIndex;
+      renderLeftPanel();
+      updateCurrentInfo();
+    },
+  });
 }
 
 // 更新当前内容信息
 function updateCurrentInfo() {
-  const currentTextEl = document.getElementById('batchPlayCurrentText');
-  const currentTypeEl = document.getElementById('batchPlayCurrentType');
-
-  if (batchState.items.length === 0) {
-    currentTextEl.textContent = '-';
-    currentTypeEl.textContent = '-';
-    return;
-  }
-
-  const item = batchState.items[batchState.currentIndex];
-  currentTextEl.textContent = item.text;
-  currentTypeEl.textContent = item.typeLabel;
+  updateBatchCurrentInfo({
+    items: batchState.items,
+    currentIndex: batchState.currentIndex,
+    textId: 'batchPlayCurrentText',
+    typeId: 'batchPlayCurrentType',
+  });
 }
 
 // 播放当前项目
@@ -377,22 +301,12 @@ function stopQueuePlay() {
 
 // 上一单元
 async function prevUnit() {
-  if (state.currentUnitIndex > 0) {
-    state.currentUnitIndex--;
-    loadBatchUnit();
-  } else {
-    showToast('已经是第一个单元', 'info');
-  }
+  moveBatchUnit(-1, loadBatchUnit, () => showToast('已经是第一个单元', 'info'));
 }
 
 // 下一单元
 async function nextUnit() {
-  if (state.currentUnitIndex < state.unitKeys.length - 1) {
-    state.currentUnitIndex++;
-    loadBatchUnit();
-  } else {
-    showToast('已经是最后一个单元', 'info');
-  }
+  moveBatchUnit(1, loadBatchUnit, () => showToast('已经是最后一个单元', 'info'));
 }
 
 // 加载当前单元的批量播放数据
@@ -425,30 +339,12 @@ function loadBatchUnit() {
 
 // 进入批量播放模式
 export function enterBatchPlay() {
-  const batchView = document.getElementById('batchPlayView');
-  const navbar = document.querySelector('.navbar');
-  const toolbar = document.querySelector('.toolbar');
-  const app = document.getElementById('app');
-
-  if (!batchView) return;
-
-  navbar.style.display = 'none';
-  toolbar.style.display = 'none';
-  app.style.display = 'none';
-  batchView.classList.add('active');
-
+  if (!showBatchView('batchPlayView')) return;
   loadBatchUnit();
 }
 
 // 退出批量播放模式
 export function exitBatchPlay() {
-  const batchView = document.getElementById('batchPlayView');
-  const navbar = document.querySelector('.navbar');
-  const toolbar = document.querySelector('.toolbar');
-  const app = document.getElementById('app');
-
-  if (!batchView) return;
-
   // 如果正在播放，先停止
   if (batchState.isPlaying) {
     audioManager.stopCurrentAudio().catch(err => showToast('停止播放失败: ' + (err?.message || err), 'error'));
@@ -458,14 +354,7 @@ export function exitBatchPlay() {
   if (batchState.isQueuePlaying) {
     batchState.isQueuePlaying = false;
   }
-
-  batchView.classList.remove('active');
-  navbar.style.display = 'flex';
-  toolbar.style.display = 'flex';
-  app.style.display = 'flex';
-
-  // 确保返回后显示的是当前单元
-  renderUnit();
+  hideBatchView('batchPlayView');
 }
 
 // 设置批量播放事件监听
@@ -486,47 +375,17 @@ export function setupBatchPlayEvents() {
   document.getElementById('batchPlayNextUnitBtn').addEventListener('click', nextUnit);
 
   // 键盘快捷键
-  document.addEventListener('keydown', (e) => {
-    // 只有在批量播放视图激活时才响应
-    if (!document.getElementById('batchPlayView').classList.contains('active')) {
-      return;
-    }
-
-    // 避免在输入框中触发
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      return;
-    }
-
-    switch (e.key) {
-      case ' ':
-        e.preventDefault();
-        playCurrent();
-        break;
-      case 'Enter':
-        e.preventDefault();
-        startQueuePlay();
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        prevItem();
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        nextItem();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        prevUnit();
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        nextUnit();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        exitBatchPlay();
-        break;
-    }
+  bindBatchKeyboard({
+    viewId: 'batchPlayView',
+    handlers: {
+      ' ': playCurrent,
+      Enter: startQueuePlay,
+      ArrowUp: prevItem,
+      ArrowDown: nextItem,
+      ArrowLeft: prevUnit,
+      ArrowRight: nextUnit,
+      Escape: exitBatchPlay,
+    },
   });
 }
 

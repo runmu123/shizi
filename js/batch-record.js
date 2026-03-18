@@ -1,9 +1,17 @@
 // 批量录音功能模块
 import { state } from './state.js';
 import { showToast } from './toast.js';
-import { showQuizToast } from './toast.js';
-import { USER_KEY } from './constants.js';
-import { escapeHtml, renderUnit } from './ui.js';
+import {
+  bindBatchKeyboard,
+  buildBatchItemsFromUnit,
+  hideBatchView,
+  moveBatchUnit,
+  renderBatchListPanel,
+  selectBatchIndex,
+  showBatchView,
+  updateBatchCurrentInfo,
+  updateBatchProgress,
+} from './batch-shared.js';
 
 // 批量录音状态
 const batchState = {
@@ -16,178 +24,85 @@ const batchState = {
 
 // 获取当前单元的录音项列表（按字分组）
 function getBatchItems() {
-  const items = [];
   const unitData = state.currentData[state.unitKeys[state.currentUnitIndex]];
-
-  if (!unitData) return items;
-
-  for (const [char, info] of Object.entries(unitData)) {
-    // 添加字
-    items.push({
-      char,
-      text: char,
+  return buildBatchItemsFromUnit(unitData, {
+    buildCharItem: (rootChar) => ({
+      char: rootChar,
+      text: rootChar,
       type: 'char',
       typeLabel: '字',
-      rootChar: char,
+      rootChar,
       index: null,
-      groupChar: char
-    });
-
-    // 添加词
-    if (info.词 && Array.isArray(info.词)) {
-      info.词.forEach((word, idx) => {
-        items.push({
-          char,
-          text: word,
-          type: 'word',
-          typeLabel: '词',
-          rootChar: char,
-          index: idx,
-          groupChar: char
-        });
-      });
-    }
-
-    // 添加句
-    if (info.句) {
-      items.push({
-        char,
-        text: info.句,
-        type: 'sentence',
-        typeLabel: '句',
-        rootChar: char,
-        index: null,
-        groupChar: char
-      });
-    }
-  }
-
-  return items;
+      groupChar: rootChar,
+    }),
+    buildWordItem: (rootChar, word, wordIndex) => ({
+      char: rootChar,
+      text: word,
+      type: 'word',
+      typeLabel: '词',
+      rootChar,
+      index: wordIndex,
+      groupChar: rootChar,
+    }),
+    buildSentenceItem: (rootChar, sentence) => ({
+      char: rootChar,
+      text: sentence,
+      type: 'sentence',
+      typeLabel: '句',
+      rootChar,
+      index: null,
+      groupChar: rootChar,
+    }),
+  });
 }
 
 // 渲染左侧列表（按字分组）
 function renderLeftPanel() {
-  const leftPanel = document.getElementById('batchRecordLeft');
-  if (!leftPanel) return;
-
-  leftPanel.innerHTML = '';
-
-  // 按字分组
-  const groups = {};
-  batchState.items.forEach((item, index) => {
-    const groupChar = item.groupChar;
-    if (!groups[groupChar]) {
-      groups[groupChar] = [];
-    }
-    groups[groupChar].push({ ...item, index });
+  renderBatchListPanel({
+    panelId: 'batchRecordLeft',
+    items: batchState.items,
+    currentIndex: batchState.currentIndex,
+    completedSet: batchState.completed,
+    getGroupKey: (item) => item.groupChar,
+    formatGroupTitle: (groupKey) => `「${groupKey}」`,
+    getPendingStatusText: () => '待录音',
+    onSelect: (index) => selectItem(index),
+    itemTextClass: 'batch-record-item-text',
   });
-
-  // 渲染每个字分组
-  for (const [groupChar, groupItems] of Object.entries(groups)) {
-    const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'batch-record-section';
-
-    const title = document.createElement('div');
-    title.className = 'batch-record-section-title';
-    title.textContent = `「${groupChar}」`;
-    sectionDiv.appendChild(title);
-
-    groupItems.forEach(item => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'batch-record-item';
-      itemDiv.dataset.index = item.index;
-
-      if (item.index === batchState.currentIndex) {
-        itemDiv.classList.add('active');
-      }
-
-      if (batchState.completed.has(item.index)) {
-        itemDiv.classList.add('completed');
-      }
-
-      const textSpan = document.createElement('span');
-      textSpan.className = 'batch-record-item-text';
-      textSpan.textContent = item.text;
-      itemDiv.appendChild(textSpan);
-
-      // 创建状态容器
-      const statusContainer = document.createElement('div');
-      statusContainer.style.display = 'flex';
-      statusContainer.style.alignItems = 'center';
-      
-      const typeSpan = document.createElement('span');
-      typeSpan.className = 'item-type';
-      typeSpan.textContent = item.typeLabel;
-      statusContainer.appendChild(typeSpan);
-
-      const statusSpan = document.createElement('span');
-      statusSpan.className = 'item-status';
-      if (batchState.completed.has(item.index)) {
-        statusSpan.textContent = '✓ 已完成';
-        statusSpan.classList.add('completed');
-      } else {
-        statusSpan.textContent = '待录音';
-      }
-      statusContainer.appendChild(statusSpan);
-      
-      itemDiv.appendChild(statusContainer);
-
-      itemDiv.addEventListener('click', () => {
-        selectItem(item.index);
-      });
-
-      sectionDiv.appendChild(itemDiv);
-    });
-
-    leftPanel.appendChild(sectionDiv);
-  }
-
   updateProgress();
 }
 
 // 选择指定索引的项
 function selectItem(index) {
-  if (index < 0 || index >= batchState.items.length) return;
-
-  batchState.currentIndex = index;
-  renderLeftPanel();
-  updateCurrentInfo();
-
-  // 滚动到可视区域中间
-  setTimeout(() => {
-    const itemElement = document.querySelector(`.batch-record-item[data-index="${index}"]`);
-    if (itemElement) {
-      itemElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }
-  }, 50);
+  selectBatchIndex({
+    index,
+    itemsLength: batchState.items.length,
+    onSelected: (selectedIndex) => {
+      batchState.currentIndex = selectedIndex;
+      renderLeftPanel();
+      updateCurrentInfo();
+    },
+  });
 }
 
 // 更新当前内容显示
 function updateCurrentInfo() {
-  const currentTextEl = document.getElementById('batchRecordCurrentText');
-  const currentTypeEl = document.getElementById('batchRecordCurrentType');
-
-  if (batchState.items.length === 0) {
-    currentTextEl.textContent = '-';
-    currentTypeEl.textContent = '-';
-    return;
-  }
-
-  const item = batchState.items[batchState.currentIndex];
-  currentTextEl.textContent = item.text;
-  currentTypeEl.textContent = item.typeLabel;
+  updateBatchCurrentInfo({
+    items: batchState.items,
+    currentIndex: batchState.currentIndex,
+    textId: 'batchRecordCurrentText',
+    typeId: 'batchRecordCurrentType',
+  });
 }
 
 // 更新进度显示
 function updateProgress() {
-  const progressEl = document.getElementById('batchRecordProgress');
-  const totalEl = document.getElementById('batchRecordTotal');
-
-  progressEl.textContent = batchState.completed.size;
-  totalEl.textContent = batchState.items.length;
+  updateBatchProgress({
+    progressId: 'batchRecordProgress',
+    totalId: 'batchRecordTotal',
+    completedCount: batchState.completed.size,
+    totalCount: batchState.items.length,
+  });
 }
 
 // 更新录音按钮状态
@@ -453,12 +368,7 @@ async function prevUnit() {
     }
   }
 
-  if (state.currentUnitIndex > 0) {
-    state.currentUnitIndex--;
-    loadBatchUnit();
-  } else {
-    showToast('已经是第一个单元', 'info');
-  }
+  moveBatchUnit(-1, loadBatchUnit, () => showToast('已经是第一个单元', 'info'));
 }
 
 // 下一单元
@@ -474,12 +384,7 @@ async function nextUnit() {
     }
   }
 
-  if (state.currentUnitIndex < state.unitKeys.length - 1) {
-    state.currentUnitIndex++;
-    loadBatchUnit();
-  } else {
-    showToast('已经是最后一个单元', 'info');
-  }
+  moveBatchUnit(1, loadBatchUnit, () => showToast('已经是最后一个单元', 'info'));
 }
 
 // 加载当前单元的批量录音数据
@@ -510,43 +415,18 @@ function loadBatchUnit() {
 
 // 进入批量录音模式
 export function enterBatchRecord() {
-  const batchView = document.getElementById('batchRecordView');
-  const navbar = document.querySelector('.navbar');
-  const toolbar = document.querySelector('.toolbar');
-  const app = document.getElementById('app');
-
-  if (!batchView) return;
-
-  navbar.style.display = 'none';
-  toolbar.style.display = 'none';
-  app.style.display = 'none';
-  batchView.classList.add('active');
-
+  if (!showBatchView('batchRecordView')) return;
   loadBatchUnit();
 }
 
 // 退出批量录音模式
 export function exitBatchRecord() {
-  const batchView = document.getElementById('batchRecordView');
-  const navbar = document.querySelector('.navbar');
-  const toolbar = document.querySelector('.toolbar');
-  const app = document.getElementById('app');
-
-  if (!batchView) return;
-
   // 如果正在录音，先停止
   if (batchState.isRecording) {
     audioManager.stopRecording().catch(err => showToast('停止录音失败: ' + (err?.message || err), 'error'));
     batchState.isRecording = false;
   }
-
-  batchView.classList.remove('active');
-  navbar.style.display = 'flex';
-  toolbar.style.display = 'flex';
-  app.style.display = 'flex';
-
-  // 确保返回后显示的是当前单元
-  renderUnit();
+  hideBatchView('batchRecordView');
 }
 
 // 设置批量录音事件监听
@@ -567,46 +447,16 @@ export function setupBatchRecordEvents() {
   document.getElementById('batchRecordNextUnitBtn').addEventListener('click', nextUnit);
 
   // 键盘快捷键
-  document.addEventListener('keydown', (e) => {
-    // 只有在批量录音视图激活时才响应
-    if (!document.getElementById('batchRecordView').classList.contains('active')) {
-      return;
-    }
-
-    // 避免在输入框中触发
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      return;
-    }
-
-    switch (e.key) {
-      case ' ':
-        e.preventDefault();
-        toggleRecording();
-        break;
-      case 'Enter':
-        e.preventDefault();
-        uploadAll();
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        prevItem();
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        nextItem();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        prevUnit();
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        nextUnit();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        exitBatchRecord();
-        break;
-    }
+  bindBatchKeyboard({
+    viewId: 'batchRecordView',
+    handlers: {
+      ' ': toggleRecording,
+      Enter: uploadAll,
+      ArrowUp: prevItem,
+      ArrowDown: nextItem,
+      ArrowLeft: prevUnit,
+      ArrowRight: nextUnit,
+      Escape: exitBatchRecord,
+    },
   });
 }
