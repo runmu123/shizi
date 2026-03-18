@@ -16,6 +16,7 @@ import { setupAudioInteractionEvents } from './events/audio-interaction-events.j
 import { setupNavigationEvents } from './events/navigation-events.js';
 import { setupCompletionModalEvents } from './events/completion-modal-events.js';
 import { createPracticeEngine } from './practice/practice-engine.js';
+import { createNotebookEngine } from './profile/notebook-engine.js';
 
 const learnBatchPlayback = {
   running: false,
@@ -1054,94 +1055,27 @@ function setNotebookLevelExpanded(mode, level, expanded) {
 }
 
 function navigateNotebookReviewCard(offset) {
-  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
-  const group = groups[state.notebook.reviewGroupIndex] || [];
-  const nextIndex = state.notebook.reviewCardIndex + offset;
-  if (nextIndex < 0 || nextIndex >= group.length) return;
-  state.notebook.reviewMotion = offset > 0 ? 'next' : 'prev';
-  state.notebook.reviewCardIndex = nextIndex;
-  renderUnit();
+  return notebookEngine.navigateNotebookReviewCard(offset);
 }
 
 function navigateNotebookReviewCardTo(targetIndex) {
-  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
-  const group = groups[state.notebook.reviewGroupIndex] || [];
-  if (!group.length) return;
-  const nextIndex = Math.max(0, Math.min(targetIndex, group.length - 1));
-  if (nextIndex === state.notebook.reviewCardIndex) return;
-  state.notebook.reviewMotion = nextIndex > state.notebook.reviewCardIndex ? 'next' : 'prev';
-  state.notebook.reviewCardIndex = nextIndex;
-  renderUnit();
+  return notebookEngine.navigateNotebookReviewCardTo(targetIndex);
 }
 
 function navigateNotebookReviewGroup(offset) {
-  const groups = (getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || []);
-  const nextGroup = state.notebook.reviewGroupIndex + offset;
-  if (nextGroup < 0 || nextGroup >= groups.length) return;
-  state.notebook.reviewGroupIndex = nextGroup;
-  state.notebook.reviewCardIndex = 0;
-  state.notebook.reviewMotion = 'none';
-  renderUnit();
+  return notebookEngine.navigateNotebookReviewGroup(offset);
 }
 
 function openNotebookReview(mode, level, groupIndex) {
-  state.profileView = 'notebookReview';
-  state.notebook.reviewMode = mode;
-  state.notebook.reviewLevel = level;
-  state.notebook.reviewGroupIndex = groupIndex;
-  state.notebook.reviewCardIndex = 0;
-  state.notebook.reviewMotion = 'none';
-  renderUnit();
-}
-
-function getNotebookPracticeSourceItems(mode, level, groupIndex) {
-  return (getNotebookGroupsByLevel(mode)[level] || [])[groupIndex] || [];
-}
-
-function collectNotebookPracticeChars(sourceItems) {
-  return Array.from(new Set(
-    (sourceItems || [])
-      .flatMap((item) => [item.char, ...normalizeWrongCharEntries(item.wrong_chars, item.level, item.unit).map((entry) => entry.char)])
-      .filter(Boolean),
-  ));
+  return notebookEngine.openNotebookReview(mode, level, groupIndex);
 }
 
 function initializeNotebookPracticeSession(mode, level, groupIndex, { allowRemoval = true } = {}) {
-  const sourceItems = getNotebookPracticeSourceItems(mode, level, groupIndex);
-  const chars = collectNotebookPracticeChars(sourceItems);
-
-  state.notebook.practice = {
-    mode,
-    level,
-    groupIndex,
-    allowRemoval,
-    title: `第${groupIndex + 1}组`,
-    sourceItems,
-    sequence: shuffleArray(chars),
-    questions: chars.map((char) => ({
-      char,
-      options: buildListenOptions(char),
-      selectedChar: '',
-      answered: false,
-      hadMistake: false,
-      countedCorrect: null,
-      wrongSelections: [],
-      wrongSelectionEntries: [],
-      revealedOptions: [],
-    })),
-    currentIndex: 0,
-    answeredChars: [],
-    currentMistaken: false,
-  };
+  return notebookEngine.initializeNotebookPracticeSession(mode, level, groupIndex, { allowRemoval });
 }
 
 function openNotebookPractice(mode, level, groupIndex) {
-  initializeNotebookPracticeSession(mode, level, groupIndex, { allowRemoval: true });
-  state.profileView = 'notebookPractice';
-  renderUnit();
-  if (mode === 'listen') {
-    setTimeout(() => playNotebookPracticeAudio(), 80);
-  }
+  return notebookEngine.openNotebookPractice(mode, level, groupIndex);
 }
 
 async function returnToNotebookList() {
@@ -1159,42 +1093,23 @@ async function returnToNotebookList() {
 }
 
 function getNotebookPracticeQuestion() {
-  return state.notebook.practice.questions[state.notebook.practice.currentIndex] || null;
+  return notebookEngine.getNotebookPracticeQuestion();
 }
 
 function findNotebookPracticeMistakeItem(char) {
-  if (!char) return null;
-  const sourceItems = state.notebook.practice.sourceItems || [];
-  const exact = sourceItems.find((item) => item.char === char);
-  if (exact) return exact;
-  return sourceItems.find((item) => !!findWrongCharEntry(item.wrong_chars, char, item.level, item.unit)) || null;
+  return notebookEngine.findNotebookPracticeMistakeItem(char);
 }
 
 function findExactNotebookPracticeMistakeItem(char) {
-  if (!char) return null;
-  const sourceItems = state.notebook.practice.sourceItems || [];
-  return sourceItems.find((item) => item.char === char) || null;
+  return notebookEngine.findExactNotebookPracticeMistakeItem(char);
 }
 
 function findPersistedNotebookMistakeItem({ char, level, unit, mistakeMode }) {
-  return (state.notebook.items || []).find((item) => (
-    item.char === char
-    && item.level === level
-    && item.unit === unit
-    && item.mistake_mode === mistakeMode
-  )) || null;
+  return notebookEngine.findPersistedNotebookMistakeItem({ char, level, unit, mistakeMode });
 }
 
 function getNotebookPracticeCharContext(char) {
-  const exact = state.notebook.practice.sourceItems.find((item) => item.char === char);
-  if (exact) return exact;
-  for (const item of (state.notebook.practice.sourceItems || [])) {
-    const relatedEntry = findWrongCharEntry(item.wrong_chars, char, item.level, item.unit);
-    if (relatedEntry) {
-      return relatedEntry;
-    }
-  }
-  return state.notebook.practice.sourceItems[0] || { level: state.currentLevel, unit: getCurrentUnitName(), char };
+  return notebookEngine.getNotebookPracticeCharContext(char);
 }
 
 function removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode }) {
@@ -1368,193 +1283,16 @@ function playNotebookPracticeAudio() {
   });
 }
 
-async function goToNextNotebookPracticeItem() {
-  stopActiveAudioPlayback();
-  const session = state.notebook.practice;
-  if (session.currentIndex >= session.sequence.length - 1) {
-    renderUnit();
-    await waitForNextFrame();
-    await flushNotebookMutations();
-    showNotebookPracticeCompletionModal();
-    return;
-  }
-  session.currentIndex += 1;
-  session.currentMistaken = false;
-  renderUnit();
-  if (session.mode === 'listen') {
-    setTimeout(() => playNotebookPracticeAudio(), 80);
-  }
-}
-
 async function handleNotebookListenPracticeAnswer(selectedChar) {
-  const session = state.notebook.practice;
-  if (state.profileView !== 'notebookPractice' || session.mode !== 'listen') return;
-  const question = getNotebookPracticeQuestion();
-  const currentChar = question?.char || '';
-  if (!question || !currentChar) return;
-
-  if (selectedChar === currentChar) {
-    if (!question.answered) {
-      markQuestionCorrect(question);
-      if (!session.answeredChars.includes(currentChar)) {
-        session.answeredChars.push(currentChar);
-      }
-      if (session.allowRemoval && !question.hadMistake) {
-        const exactMistakeItem = findExactNotebookPracticeMistakeItem(currentChar);
-        if (exactMistakeItem) {
-          trackNotebookMutation(removeUserMistakeRecord({
-            char: exactMistakeItem.char,
-            level: exactMistakeItem.level,
-            unit: exactMistakeItem.unit,
-            mistakeMode: exactMistakeItem.mistake_mode || session.mode,
-          }));
-        } else {
-          const ownerMistakeItem = findNotebookPracticeMistakeItem(currentChar);
-          const wrongEntry = findWrongCharEntry(
-            ownerMistakeItem?.wrong_chars,
-            currentChar,
-            ownerMistakeItem?.level,
-            ownerMistakeItem?.unit,
-          );
-          const persistedOwner = ownerMistakeItem
-            ? findPersistedNotebookMistakeItem({
-                char: ownerMistakeItem.char,
-                level: ownerMistakeItem.level,
-                unit: ownerMistakeItem.unit,
-                mistakeMode: ownerMistakeItem.mistake_mode || session.mode,
-              })
-            : null;
-          if (persistedOwner && wrongEntry) {
-            trackNotebookMutation(removeWrongCharEntryFromMistakeRecord({
-              ownerChar: persistedOwner.char,
-              ownerLevel: persistedOwner.level,
-              ownerUnit: persistedOwner.unit,
-              mistakeMode: persistedOwner.mistake_mode || session.mode,
-              wrongChar: wrongEntry.char,
-              wrongLevel: wrongEntry.level,
-              wrongUnit: wrongEntry.unit,
-            }));
-          }
-        }
-      }
-      showToast('选择正确', 'success');
-      setTimeout(() => goToNextNotebookPracticeItem(), 280);
-    }
-    return;
-  }
-
-  markQuestionMistaken(question, selectedChar);
-  const currentContext = getNotebookPracticeCharContext(currentChar);
-  const selectedContext = await resolveCharOrigin(
-    selectedChar,
-    currentContext?.level || session.level || state.currentLevel,
-  );
-  addNotebookWrongSelectionEntry(question, selectedContext);
-  trackNotebookMutation(updateUserMistakeRecord({
-    char: currentChar,
-    level: currentContext?.level || session.level || state.currentLevel,
-    unit: currentContext?.unit || getCurrentUnitName(),
-    mistakeMode: session.mode,
-    wrongChar: {
-      char: selectedChar,
-      level: selectedContext?.level || session.level || state.currentLevel,
-      unit: selectedContext?.unit || getCurrentUnitName(),
-    },
-  }));
-  showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
+  return notebookEngine.handleNotebookListenPracticeAnswer(selectedChar);
 }
 
 async function handleNotebookSeePracticeAnswer(selectedChar) {
-  const session = state.notebook.practice;
-  if (state.profileView !== 'notebookPractice' || session.mode !== 'see') return;
-  const question = getNotebookPracticeQuestion();
-  const currentChar = question?.char || '';
-  if (!question || !currentChar) return;
-
-  if (selectedChar === currentChar) {
-    if (!question.answered) {
-      markQuestionCorrect(question);
-      if (!session.answeredChars.includes(currentChar)) {
-        session.answeredChars.push(currentChar);
-      }
-      if (session.allowRemoval && !question.hadMistake) {
-        const exactMistakeItem = findExactNotebookPracticeMistakeItem(currentChar);
-        if (exactMistakeItem) {
-          trackNotebookMutation(removeUserMistakeRecord({
-            char: exactMistakeItem.char,
-            level: exactMistakeItem.level,
-            unit: exactMistakeItem.unit,
-            mistakeMode: exactMistakeItem.mistake_mode || session.mode,
-          }));
-        } else {
-          const ownerMistakeItem = findNotebookPracticeMistakeItem(currentChar);
-          const wrongEntry = findWrongCharEntry(
-            ownerMistakeItem?.wrong_chars,
-            currentChar,
-            ownerMistakeItem?.level,
-            ownerMistakeItem?.unit,
-          );
-          const persistedOwner = ownerMistakeItem
-            ? findPersistedNotebookMistakeItem({
-                char: ownerMistakeItem.char,
-                level: ownerMistakeItem.level,
-                unit: ownerMistakeItem.unit,
-                mistakeMode: ownerMistakeItem.mistake_mode || session.mode,
-              })
-            : null;
-          if (persistedOwner && wrongEntry) {
-            trackNotebookMutation(removeWrongCharEntryFromMistakeRecord({
-              ownerChar: persistedOwner.char,
-              ownerLevel: persistedOwner.level,
-              ownerUnit: persistedOwner.unit,
-              mistakeMode: persistedOwner.mistake_mode || session.mode,
-              wrongChar: wrongEntry.char,
-              wrongLevel: wrongEntry.level,
-              wrongUnit: wrongEntry.unit,
-            }));
-          }
-        }
-      }
-      renderUnit();
-      showToast('选择正确', 'success');
-      setTimeout(() => goToNextNotebookPracticeItem(), 280);
-    }
-    return;
-  }
-
-  markQuestionMistaken(question, selectedChar, { revealOption: true });
-  const currentContext = getNotebookPracticeCharContext(currentChar);
-  const selectedContext = await resolveCharOrigin(
-    selectedChar,
-    currentContext?.level || session.level || state.currentLevel,
-  );
-  addNotebookWrongSelectionEntry(question, selectedContext);
-  trackNotebookMutation(updateUserMistakeRecord({
-    char: currentChar,
-    level: currentContext?.level || session.level || state.currentLevel,
-    unit: currentContext?.unit || getCurrentUnitName(),
-    mistakeMode: session.mode,
-    wrongChar: {
-      char: selectedChar,
-      level: selectedContext?.level || session.level || state.currentLevel,
-      unit: selectedContext?.unit || getCurrentUnitName(),
-    },
-  }));
-  renderUnit();
-  showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar, { level: selectedContext?.level, unit: selectedContext?.unit });
+  return notebookEngine.handleNotebookSeePracticeAnswer(selectedChar);
 }
 
 function switchNotebookPracticeGroup(offset) {
-  const groups = (getNotebookGroupsByLevel(state.notebook.practice.mode)[state.notebook.practice.level] || []);
-  const nextGroup = state.notebook.practice.groupIndex + offset;
-  if (nextGroup < 0 || nextGroup >= groups.length) return;
-  initializeNotebookPracticeSession(state.notebook.practice.mode, state.notebook.practice.level, nextGroup);
-  renderUnit();
-  if (state.notebook.practice.mode === 'listen') {
-    setTimeout(() => playNotebookPracticeAudio(), 80);
-  }
+  return notebookEngine.switchNotebookPracticeGroup(offset);
 }
 
 function setProfileView(view) {
@@ -1753,6 +1491,31 @@ function showNotebookPracticeCompletionModal() {
   modal.classList.add('active');
 }
 
+const notebookEngine = createNotebookEngine({
+  state,
+  normalizeWrongCharEntries,
+  findWrongCharEntry,
+  getNotebookGroupsByLevel,
+  shuffleArray,
+  buildListenOptions,
+  renderUnit,
+  showToast,
+  playNotebookPracticeAudio,
+  stopActiveAudioPlayback,
+  waitForNextFrame,
+  flushNotebookMutations,
+  showNotebookPracticeCompletionModal,
+  getCurrentUnitName,
+  resolveCharOrigin,
+  updateUserMistakeRecord,
+  trackNotebookMutation,
+  removeUserMistakeRecord,
+  removeWrongCharEntryFromMistakeRecord,
+  currentLevel: () => state.currentLevel,
+  markQuestionCorrect,
+  markQuestionMistaken,
+});
+
 const practiceEngine = createPracticeEngine({
   state,
   getActivePracticeMode,
@@ -1777,92 +1540,11 @@ const practiceEngine = createPracticeEngine({
 });
 
 async function retryCurrentNotebookPracticeGroup() {
-  const session = state.notebook.practice;
-  const retryEntryMap = new Map();
-  const failedQuestions = session.questions.filter((question) => question.countedCorrect === false);
-
-  for (const question of failedQuestions) {
-    const currentContext = getNotebookPracticeCharContext(question.char);
-    if (question.char) {
-      const key = `${question.char}__${currentContext?.level || session.level || state.currentLevel}__${currentContext?.unit || getCurrentUnitName()}`;
-      retryEntryMap.set(key, {
-        char: question.char,
-        level: currentContext?.level || session.level || state.currentLevel,
-        unit: currentContext?.unit || getCurrentUnitName(),
-      });
-    }
-
-    for (const wrongChar of (question.wrongSelections || [])) {
-      const existingEntry = Array.isArray(question.wrongSelectionEntries)
-        ? question.wrongSelectionEntries.find((entry) => entry.char === wrongChar)
-        : null;
-      const resolvedEntry = existingEntry || await resolveCharOrigin(
-        wrongChar,
-        currentContext?.level || session.level || state.currentLevel,
-      );
-      const wrongKey = `${wrongChar}__${resolvedEntry?.level || session.level || state.currentLevel}__${resolvedEntry?.unit || getCurrentUnitName()}`;
-      retryEntryMap.set(wrongKey, {
-        char: wrongChar,
-        level: resolvedEntry?.level || session.level || state.currentLevel,
-        unit: resolvedEntry?.unit || getCurrentUnitName(),
-      });
-    }
-  }
-
-  const retryEntries = Array.from(retryEntryMap.values());
-  const retryChars = retryEntries.map((entry) => entry.char);
-
-  if (!retryChars.length) {
-    showToast('当前没有需要重新练的字', 'info');
-    return;
-  }
-
-  initializeNotebookPracticeSession(session.mode, session.level, session.groupIndex, { allowRemoval: false });
-  const retrySourceItems = retryEntries.map((entry) => {
-    const exactItem = (session.sourceItems || []).find((item) => item.char === entry.char);
-    return exactItem || {
-      char: entry.char,
-      level: entry.level,
-      unit: entry.unit,
-      wrong_chars: [],
-      mistake_mode: session.mode,
-    };
-  });
-  state.notebook.practice.sourceItems = retrySourceItems;
-  state.notebook.practice.sequence = shuffleArray(retryChars);
-  state.notebook.practice.questions = retryChars.map((char) => ({
-    char,
-    options: buildListenOptions(char),
-    selectedChar: '',
-    answered: false,
-    hadMistake: false,
-    countedCorrect: null,
-    wrongSelections: [],
-    wrongSelectionEntries: [],
-    revealedOptions: [],
-  }));
-  state.notebook.practice.currentIndex = 0;
-  state.notebook.practice.answeredChars = [];
-  state.notebook.practice.currentMistaken = false;
-  renderUnit();
-  if (session.mode === 'listen') {
-    setTimeout(() => playNotebookPracticeAudio(), 80);
-  }
+  return notebookEngine.retryCurrentNotebookPracticeGroup();
 }
 
 function moveToNextNotebookPracticeGroup() {
-  const session = state.notebook.practice;
-  const groups = (getNotebookGroupsByLevel(session.mode)[session.level] || []);
-  const nextGroup = session.groupIndex + 1;
-  if (nextGroup >= groups.length) {
-    showToast('已经是最后一组', 'info');
-    return;
-  }
-  initializeNotebookPracticeSession(session.mode, session.level, nextGroup, { allowRemoval: true });
-  renderUnit();
-  if (session.mode === 'listen') {
-    setTimeout(() => playNotebookPracticeAudio(), 80);
-  }
+  return notebookEngine.moveToNextNotebookPracticeGroup();
 }
 
 function retryWrongPracticeItems(mode = getActivePracticeMode()) {
@@ -1894,22 +1576,7 @@ function markQuestionMistaken(question, selectedChar, options = {}) {
 }
 
 function addNotebookWrongSelectionEntry(question, entry) {
-  if (!entry?.char) return;
-  if (!Array.isArray(question.wrongSelectionEntries)) {
-    question.wrongSelectionEntries = [];
-  }
-  const exists = question.wrongSelectionEntries.some((item) => (
-    item.char === entry.char
-    && item.level === entry.level
-    && item.unit === entry.unit
-  ));
-  if (!exists) {
-    question.wrongSelectionEntries.push({
-      char: entry.char,
-      level: entry.level,
-      unit: entry.unit,
-    });
-  }
+  return notebookEngine.addNotebookWrongSelectionEntry(question, entry);
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
