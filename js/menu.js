@@ -4,6 +4,7 @@ import { showToast } from './toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
 import { escapeHtml, renderUnit, updateAppShell } from './ui.js';
 import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin } from './app.js';
+import { loadLevelData } from './level-data-loader.js';
 
 export function setupMenuAndModals() {
   audioManager.init();
@@ -89,14 +90,11 @@ export function setupMenuAndModals() {
   // 加载 YAML 数据
   const loadLevelYamls = async (levels) => {
     await Promise.all(levels.map(async (lvl) => {
-      if (!state.levelDataCache[lvl]) {
-        try {
-          const res = await fetch(`yaml/contents_${lvl}.yaml${cacheSuffix}`);
-          if (res.ok) {
-            const text = await res.text();
-            state.levelDataCache[lvl] = jsyaml.load(text);
-          }
-        } catch (e) { console.warn('加载YAML失败', lvl); }
+      if (state.levelDataCache[lvl]) return;
+      try {
+        await loadLevelData(lvl);
+      } catch (e) {
+        console.warn('加载YAML失败', lvl, e);
       }
     }));
   };
@@ -459,15 +457,7 @@ export function setupMenuAndModals() {
     let totalChars = 0;
     for (const lvl of state.LEVELS) {
       try {
-        let data = state.levelDataCache[lvl];
-        if (!data) {
-          const res = await fetch(`yaml/contents_${lvl}.yaml${cacheSuffix}`);
-          if (res.ok) {
-            const text = await res.text();
-            data = jsyaml.load(text);
-            state.levelDataCache[lvl] = data;
-          }
-        }
+        const data = await loadLevelData(lvl);
         if (data) {
           Object.values(data).forEach(unitChars => {
             if (unitChars) totalChars += Object.keys(unitChars).length;

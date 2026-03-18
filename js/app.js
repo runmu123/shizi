@@ -1,5 +1,5 @@
 // 核心应用逻辑：初始化、级别加载、事件、导航
-import { state, cacheSuffix } from './state.js';
+import { state } from './state.js';
 import { TEACH_PASSWORD, USER_KEY } from './constants.js';
 import { showToast, showPersistentToast } from './toast.js';
 import { saveCurrentPosition } from './position.js';
@@ -8,6 +8,7 @@ import { enterLearning, exitLearning, updateLearningViewBtn } from './learning.j
 import { enterBatchRecord } from './batch-record.js';
 import { enterBatchPlay } from './batch-play.js';
 import { normalizeWrongCharEntries, findWrongCharEntry } from './mistake-utils.js';
+import { loadLevelData } from './level-data-loader.js';
 
 const learnBatchPlayback = {
   running: false,
@@ -74,17 +75,8 @@ export async function initLevels() {
   while (true) {
     const level = `L${i}`;
     try {
-      const res = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`, { method: 'GET' });
-      if (res.ok) {
-        const text = await res.text();
-        try {
-          if (window.jsyaml) {
-            state.levelDataCache[level] = jsyaml.load(text);
-          }
-        } catch (yamlErr) {
-          console.warn('解析 YAML 失败:', level, yamlErr);
-        }
-
+      const data = await loadLevelData(level);
+      if (data) {
         state.LEVELS.push(level);
         const btn = document.createElement('button');
         btn.className = 'level-option';
@@ -130,17 +122,7 @@ export async function loadLevel(level, savedPos = null) {
   appEl.innerHTML = '<div class="loading">正在加载数据...</div>';
 
   try {
-    let data = state.levelDataCache[level];
-    if (!data) {
-      const response = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`);
-      if (!response.ok) {
-        throw new Error(`HTTP 错误! 状态码: ${response.status}`);
-      }
-      const text = await response.text();
-      data = jsyaml.load(text);
-      if (!data) throw new Error('YAML 数据为空或无效');
-      state.levelDataCache[level] = data;
-    }
+    const data = await loadLevelData(level, { throwOnError: true });
 
     state.currentData = data;
     state.unitKeys = Object.keys(data);
@@ -196,19 +178,11 @@ async function searchChar(char) {
   let foundUnit = '';
 
   for (const level of state.LEVELS) {
-    let data = state.levelDataCache[level];
-
-    if (!data) {
-      try {
-        const response = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`);
-        if (response.ok) {
-          const text = await response.text();
-          data = jsyaml.load(text);
-          state.levelDataCache[level] = data;
-        }
-      } catch (e) {
-        console.error(`获取 ${level} 数据出错:`, e);
-      }
+    let data = null;
+    try {
+      data = await loadLevelData(level);
+    } catch (e) {
+      console.error(`获取 ${level} 数据出错:`, e);
     }
 
     if (data) {
@@ -561,15 +535,8 @@ function getCurrentListenChar() {
 async function ensureLevelDataAvailable(level) {
   if (!level) return null;
   if (level === state.currentLevel && state.currentData) return state.currentData;
-  if (state.levelDataCache[level]) return state.levelDataCache[level];
-
   try {
-    const res = await fetch(`yaml/contents_${level}.yaml${cacheSuffix}`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const text = await res.text();
-    const data = jsyaml.load(text);
-    state.levelDataCache[level] = data;
-    return data;
+    return await loadLevelData(level, { fetchOptions: { cache: 'no-store' } });
   } catch (error) {
     console.warn('加载等级数据失败:', level, error);
     return null;

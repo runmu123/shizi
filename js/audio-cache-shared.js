@@ -1,8 +1,12 @@
 (function initShiziAudioCache(global) {
   const DEFAULT_AUDIO_CACHE_NAME = 'shizi-audio-cache';
 
+  function getConfiguredDefaultCacheName() {
+    return global.ShiziConstants?.AUDIO_CACHE_NAME || DEFAULT_AUDIO_CACHE_NAME;
+  }
+
   function resolveCacheName(cacheName) {
-    return cacheName || DEFAULT_AUDIO_CACHE_NAME;
+    return cacheName || getConfiguredDefaultCacheName();
   }
 
   function buildRequestUrl(baseUrl, suffix = '') {
