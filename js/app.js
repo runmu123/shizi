@@ -18,6 +18,7 @@ import { setupCompletionModalEvents } from './events/completion-modal-events.js'
 import { createPracticeEngine } from './practice/practice-engine.js';
 import { createNotebookEngine } from './profile/notebook-engine.js';
 import { createNotebookSupport } from './profile/notebook-support.js';
+import { getNotebookGroupsByLevel as getNotebookGroupsByLevelShared } from './profile/notebook-grouping.js';
 
 const learnBatchPlayback = {
   running: false,
@@ -992,67 +993,8 @@ export function clearProfilePageDataAfterLogout() {
   }
 }
 
-function chunkNotebookItems(items, size = 5) {
-  const groups = [];
-  for (let i = 0; i < items.length; i += size) {
-    groups.push(items.slice(i, i + size));
-  }
-  return groups;
-}
-
-function getNotebookGroups(mode) {
-  const items = (state.notebook.items || [])
-    .filter((item) => item.mistake_mode === mode)
-    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
-
-  const grouped = {};
-  items.forEach((item) => {
-    const level = item.level || '未分级';
-    if (!grouped[level]) grouped[level] = [];
-    grouped[level].push(item);
-  });
-
-  const levels = Object.keys(grouped).sort((a, b) => {
-    const na = parseInt(String(a).replace(/\D/g, ''), 10) || 0;
-    const nb = parseInt(String(b).replace(/\D/g, ''), 10) || 0;
-    return nb - na;
-  });
-
-  return levels.flatMap((level) => chunkNotebookItems(grouped[level], 5));
-}
-
 function getNotebookGroupsByLevel(mode) {
-  const items = (state.notebook.items || [])
-    .filter((item) => item.mistake_mode === mode)
-    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
-
-  const grouped = {};
-  items.forEach((item) => {
-    const level = item.level || '未分级';
-    if (!grouped[level]) grouped[level] = [];
-    grouped[level].push(item);
-  });
-
-  const levels = Object.keys(grouped).sort((a, b) => {
-    const na = parseInt(String(a).replace(/\D/g, ''), 10) || 0;
-    const nb = parseInt(String(b).replace(/\D/g, ''), 10) || 0;
-    return nb - na;
-  });
-
-  return Object.fromEntries(levels.map((level) => [level, chunkNotebookItems(grouped[level], 5)]));
-}
-
-function setNotebookSectionExpanded(mode, expanded) {
-  state.notebook.expandedSections[mode] = expanded;
-  renderUnitPreservingScroll();
-}
-
-function setNotebookLevelExpanded(mode, level, expanded) {
-  if (!state.notebook.expandedLevels[mode]) {
-    state.notebook.expandedLevels[mode] = {};
-  }
-  state.notebook.expandedLevels[mode][level] = expanded;
-  renderUnitPreservingScroll();
+  return getNotebookGroupsByLevelShared(state.notebook.items, mode);
 }
 
 function navigateNotebookReviewCard(offset) {

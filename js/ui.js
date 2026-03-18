@@ -2,6 +2,7 @@
 import { state } from './state.js';
 import { USER_KEY } from './constants.js';
 import { normalizeWrongCharEntries } from './mistake-utils.js';
+import { getNotebookGroupsByLevel } from './profile/notebook-grouping.js';
 
 const UNIT_CHAR_BASE_REM = 1.9;
 const UNIT_CHAR_MIN_REM = 0.75;
@@ -208,46 +209,6 @@ function renderOtherSection(appEl) {
   `;
 }
 
-function splitIntoGroups(items, size = 5) {
-  const groups = [];
-  for (let i = 0; i < items.length; i += size) {
-    groups.push(items.slice(i, i + size));
-  }
-  return groups;
-}
-
-function getNotebookGroups(mode) {
-  const items = (state.notebook.items || [])
-    .filter((item) => item.mistake_mode === mode)
-    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
-
-  const grouped = {};
-  items.forEach((item) => {
-    const level = item.level || '未分级';
-    if (!grouped[level]) grouped[level] = [];
-    grouped[level].push(item);
-  });
-
-  return sortProgressLevels(Object.keys(grouped)).flatMap((level) => splitIntoGroups(grouped[level], 5));
-}
-
-function getNotebookGroupsByLevel(mode) {
-  const items = (state.notebook.items || [])
-    .filter((item) => item.mistake_mode === mode)
-    .sort((a, b) => new Date(a.created_at || a.last_wrong_at || 0) - new Date(b.created_at || b.last_wrong_at || 0));
-
-  const grouped = {};
-  items.forEach((item) => {
-    const level = item.level || '未分级';
-    if (!grouped[level]) grouped[level] = [];
-    grouped[level].push(item);
-  });
-
-  return Object.fromEntries(
-    sortProgressLevels(Object.keys(grouped)).map((level) => [level, splitIntoGroups(grouped[level], 5)]),
-  );
-}
-
 function getNotebookChevronIcon(expanded) {
   return expanded
     ? `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="m356-160-56-56 180-180 180 180-56 56-124-124-124 124Zm124-404L300-744l56-56 124 124 124-124 56 56-180 180Z"/></svg>`
@@ -342,7 +303,7 @@ function renderProfileProgressContent() {
 }
 
 function renderNotebookCollectionSection(mode, label) {
-  const groupedLevels = getNotebookGroupsByLevel(mode);
+  const groupedLevels = getNotebookGroupsByLevel(state.notebook.items, mode);
   const levels = sortProgressLevels(Object.keys(groupedLevels));
   const expanded = !!state.notebook.expandedSections?.[mode];
   const total = Object.values(groupedLevels).reduce(
@@ -412,7 +373,7 @@ function buildReviewMistakeRows(item) {
 }
 
 function renderNotebookReviewSection(appEl) {
-  const groups = getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
+  const groups = getNotebookGroupsByLevel(state.notebook.items, state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
   const safeGroupIndex = Math.min(Math.max(state.notebook.reviewGroupIndex, 0), Math.max(0, groups.length - 1));
   state.notebook.reviewGroupIndex = safeGroupIndex;
   const group = groups[safeGroupIndex] || [];
@@ -469,7 +430,7 @@ function renderNotebookPracticeSection(appEl) {
   const currentStep = Math.min(session.currentIndex + 1, Math.max(total, 1));
   const progressPercent = total === 0 ? 0 : Math.round((session.answeredChars.length / total) * 100);
   const titleText = `第${convertNumberToChinese(session.groupIndex + 1)}组`;
-  const groupCount = (getNotebookGroupsByLevel(session.mode)[session.level] || []).length;
+  const groupCount = (getNotebookGroupsByLevel(state.notebook.items, session.mode)[session.level] || []).length;
 
   appEl.classList.add('listen-layout', 'notebook-practice-layout');
   appEl.classList.remove('app-section-layout', 'home-stage-layout');
@@ -643,7 +604,7 @@ export function updateAppShell() {
   if (toolbarNotebookSwitcher) {
     if (showNotebookSwitcher) {
       if (state.profileView === 'notebookReview') {
-        const groups = getNotebookGroupsByLevel(state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
+        const groups = getNotebookGroupsByLevel(state.notebook.items, state.notebook.reviewMode)[state.notebook.reviewLevel] || [];
         const index = Math.min(Math.max(state.notebook.reviewGroupIndex, 0), Math.max(0, groups.length - 1));
         toolbarNotebookSwitcher.innerHTML = `
           <button class="nav-btn" type="button" data-notebook-review-nav="prev" ${index === 0 ? 'disabled' : ''}>&lt;</button>
@@ -651,7 +612,7 @@ export function updateAppShell() {
           <button class="nav-btn" type="button" data-notebook-review-nav="next" ${index >= groups.length - 1 ? 'disabled' : ''}>&gt;</button>
         `;
       } else {
-        const groups = getNotebookGroupsByLevel(state.notebook.practice.mode)[state.notebook.practice.level] || [];
+        const groups = getNotebookGroupsByLevel(state.notebook.items, state.notebook.practice.mode)[state.notebook.practice.level] || [];
         const index = Math.min(Math.max(state.notebook.practice.groupIndex, 0), Math.max(0, groups.length - 1));
         toolbarNotebookSwitcher.innerHTML = `
           <button class="nav-btn" type="button" data-notebook-practice-group="prev" ${index === 0 ? 'disabled' : ''}>&lt;</button>
