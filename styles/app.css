@@ -2050,6 +2050,12 @@
       color: #57534e;
       line-height: 1.6;
       margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .listen-result-summary-line {
+      display: block;
+      text-align: center;
     }
 
     .listen-result-group {

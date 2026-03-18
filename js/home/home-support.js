@@ -71,9 +71,12 @@ export function createHomeSupport({
     const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
     const hasRetryTargets = session.questions.some((question) => (question.wrongSelections || []).length > 0);
 
-    summary.textContent = wrongQuestions.length === 0
+    summary.innerHTML = wrongQuestions.length === 0
       ? '全部正确！'
-      : `本单元共 ${session.sequence.length} 个字，选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。`;
+      : `
+        <span class="listen-result-summary-line">本单元共 ${session.sequence.length} 个字</span>
+        <span class="listen-result-summary-line">选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。</span>
+      `;
 
     correctList.innerHTML = correctQuestions.length > 0
       ? correctQuestions.map((question) => `<span class="listen-result-char success">${escapeHtml(question.char)}</span>`).join('')
@@ -88,7 +91,7 @@ export function createHomeSupport({
 
     if (retryBtn) {
       retryBtn.style.display = hasRetryTargets ? 'inline-flex' : 'none';
-      retryBtn.textContent = mode === 'see' ? '重新练' : '重新听';
+      retryBtn.textContent = '重新练';
     }
 
     if (nextBtn) {
