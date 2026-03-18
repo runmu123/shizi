@@ -382,7 +382,7 @@ function getCurrentUnitName() {
   return state.unitKeys?.[state.currentUnitIndex] || '';
 }
 
-function createEmptyListenState(unitName = '') {
+function createEmptyPracticeState(unitName = '') {
   return {
     unitName,
     sequence: [],
@@ -396,18 +396,12 @@ function createEmptyListenState(unitName = '') {
   };
 }
 
+function createEmptyListenState(unitName = '') {
+  return createEmptyPracticeState(unitName);
+}
+
 function createEmptySeeState(unitName = '') {
-  return {
-    unitName,
-    sequence: [],
-    questions: [],
-    currentIndex: 0,
-    options: [],
-    mistakeChars: [],
-    firstTryCorrectChars: [],
-    answeredChars: [],
-    currentMistaken: false,
-  };
+  return createEmptyPracticeState(unitName);
 }
 
 function isPracticeMode(mode = state.mainViewMode) {
@@ -437,11 +431,8 @@ function buildListenOptions(correctChar) {
   return shuffleArray([correctChar, ...distractors]);
 }
 
-function initializeListenSession(chars, unitName = getCurrentUnitName()) {
-  const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
-  state.listenMode = createEmptyListenState(unitName);
-  state.listenMode.sequence = shuffleArray(normalizedChars);
-  state.listenMode.questions = state.listenMode.sequence.map((char) => ({
+function buildPracticeQuestion(char, mode) {
+  const question = {
     char,
     options: buildListenOptions(char),
     selectedChar: '',
@@ -449,25 +440,31 @@ function initializeListenSession(chars, unitName = getCurrentUnitName()) {
     hadMistake: false,
     countedCorrect: null,
     wrongSelections: [],
-  }));
-  state.listenMode.options = state.listenMode.questions[0]?.options ? [...state.listenMode.questions[0].options] : [];
+  };
+  if (mode === 'see') {
+    question.revealedOptions = [];
+  }
+  return question;
+}
+
+function initializePracticeSession(mode, chars, unitName = getCurrentUnitName()) {
+  const modeKey = mode === 'see' ? 'seeMode' : 'listenMode';
+  const createEmptyState = mode === 'see' ? createEmptySeeState : createEmptyListenState;
+  const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
+  state[modeKey] = createEmptyState(unitName);
+  state[modeKey].sequence = shuffleArray(normalizedChars);
+  state[modeKey].questions = state[modeKey].sequence.map((char) => buildPracticeQuestion(char, mode));
+  state[modeKey].options = state[modeKey].questions[0]?.options
+    ? [...state[modeKey].questions[0].options]
+    : [];
+}
+
+function initializeListenSession(chars, unitName = getCurrentUnitName()) {
+  initializePracticeSession('listen', chars, unitName);
 }
 
 function initializeSeeSession(chars, unitName = getCurrentUnitName()) {
-  const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
-  state.seeMode = createEmptySeeState(unitName);
-  state.seeMode.sequence = shuffleArray(normalizedChars);
-  state.seeMode.questions = state.seeMode.sequence.map((char) => ({
-    char,
-    options: buildListenOptions(char),
-    selectedChar: '',
-    answered: false,
-    hadMistake: false,
-    countedCorrect: null,
-    wrongSelections: [],
-    revealedOptions: [],
-  }));
-  state.seeMode.options = state.seeMode.questions[0]?.options ? [...state.seeMode.questions[0].options] : [];
+  initializePracticeSession('see', chars, unitName);
 }
 
 function getListenQuestion(index = state.listenMode.currentIndex) {
@@ -491,40 +488,32 @@ function findCharUnitInCurrentLevel(char) {
 }
 
 function ensureListenSession(forceReset = false) {
-  const unitName = getCurrentUnitName();
-  const unitData = unitName ? state.currentData?.[unitName] : null;
-  const unitChars = Object.keys(unitData || {});
-  const shouldReset =
-    forceReset ||
-    state.listenMode.unitName !== unitName ||
-    state.listenMode.sequence.length === 0;
-
-  if (shouldReset) {
-    initializeListenSession(unitChars, unitName);
-  }
-
-  const question = getListenQuestion();
-  const currentChar = question?.char || '';
-  state.listenMode.options = question ? [...question.options] : [];
-  return currentChar;
+  return ensurePracticeSession('listen', forceReset);
 }
 
 function ensureSeeSession(forceReset = false) {
+  return ensurePracticeSession('see', forceReset);
+}
+
+function ensurePracticeSession(mode, forceReset = false) {
+  const modeState = mode === 'see' ? state.seeMode : state.listenMode;
+  const initialize = mode === 'see' ? initializeSeeSession : initializeListenSession;
+  const getQuestion = mode === 'see' ? getSeeQuestion : getListenQuestion;
   const unitName = getCurrentUnitName();
   const unitData = unitName ? state.currentData?.[unitName] : null;
   const unitChars = Object.keys(unitData || {});
   const shouldReset =
     forceReset ||
-    state.seeMode.unitName !== unitName ||
-    state.seeMode.sequence.length === 0;
+    modeState.unitName !== unitName ||
+    modeState.sequence.length === 0;
 
   if (shouldReset) {
-    initializeSeeSession(unitChars, unitName);
+    initialize(unitChars, unitName);
   }
 
-  const question = getSeeQuestion();
+  const question = getQuestion();
   const currentChar = question?.char || '';
-  state.seeMode.options = question ? [...question.options] : [];
+  modeState.options = question ? [...question.options] : [];
   return currentChar;
 }
 
