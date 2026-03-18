@@ -15,6 +15,7 @@ import { setupProfileNotebookEvents } from './events/profile-notebook-events.js'
 import { setupAudioInteractionEvents } from './events/audio-interaction-events.js';
 import { setupNavigationEvents } from './events/navigation-events.js';
 import { setupCompletionModalEvents } from './events/completion-modal-events.js';
+import { createPracticeEngine } from './practice/practice-engine.js';
 
 const learnBatchPlayback = {
   running: false,
@@ -1752,6 +1753,29 @@ function showNotebookPracticeCompletionModal() {
   modal.classList.add('active');
 }
 
+const practiceEngine = createPracticeEngine({
+  state,
+  getActivePracticeMode,
+  getPracticeState,
+  initializeSeeSession,
+  initializeListenSession,
+  getCurrentUnitName,
+  renderUnit,
+  saveCurrentPosition,
+  scheduleListenModeAutoPlay,
+  stopActiveAudioPlayback,
+  showPracticeCompletionModal,
+  ensureListenSession,
+  ensureSeeSession,
+  getListenQuestion,
+  getSeeQuestion,
+  showToast,
+  playSpecificListenCharAudio,
+  updateUserMistakeRecord,
+  findCharUnitInCurrentLevel,
+  playCharAudio,
+});
+
 async function retryCurrentNotebookPracticeGroup() {
   const session = state.notebook.practice;
   const retryEntryMap = new Map();
@@ -1842,188 +1866,31 @@ function moveToNextNotebookPracticeGroup() {
 }
 
 function retryWrongPracticeItems(mode = getActivePracticeMode()) {
-  const session = getPracticeState(mode);
-  if (!session) return;
-
-  const wrongChars = Array.from(
-    new Set(
-      session.questions
-        .filter((question) => question.countedCorrect === false)
-        .flatMap((question) => [question.char, ...(question.wrongSelections || [])])
-        .filter(Boolean)
-    )
-  );
-
-  if (!wrongChars.length) {
-    showToast(mode === 'see' ? '当前没有需要重新练的字' : '当前没有需要重新听的字', 'info');
-    return;
-  }
-
-  if (mode === 'see') {
-    initializeSeeSession(wrongChars, getCurrentUnitName());
-  } else {
-    initializeListenSession(wrongChars, getCurrentUnitName());
-  }
-  renderUnit();
-  saveCurrentPosition();
-  if (mode === 'listen') {
-    scheduleListenModeAutoPlay();
-  }
-}
-
-function goToNextListenItem() {
-  stopActiveAudioPlayback();
-  if (state.listenMode.currentIndex >= state.listenMode.sequence.length - 1) {
-    renderUnit();
-    showPracticeCompletionModal('listen');
-    return;
-  }
-
-  state.listenMode.currentIndex += 1;
-  state.listenMode.currentMistaken = false;
-  ensureListenSession(false);
-  state.listenMode.options = getListenQuestion()?.options ? [...getListenQuestion().options] : [];
-  renderUnit();
-  saveCurrentPosition();
-  scheduleListenModeAutoPlay();
-}
-
-function goToNextSeeItem() {
-  stopActiveAudioPlayback();
-  if (state.seeMode.currentIndex >= state.seeMode.sequence.length - 1) {
-    renderUnit();
-    showPracticeCompletionModal('see');
-    return;
-  }
-
-  state.seeMode.currentIndex += 1;
-  state.seeMode.currentMistaken = false;
-  ensureSeeSession(false);
-  state.seeMode.options = getSeeQuestion()?.options ? [...getSeeQuestion().options] : [];
-  renderUnit();
-  saveCurrentPosition();
-}
-
-function handleListenModeAnswer(selectedChar) {
-  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
-
-  const question = getListenQuestion();
-  const currentChar = question?.char || '';
-  if (!currentChar || !question) return;
-
-  if (selectedChar === currentChar) {
-    question.selectedChar = selectedChar;
-    if (!question.answered) {
-      markQuestionCorrect(question);
-
-      if (!question.hadMistake && !state.listenMode.firstTryCorrectChars.includes(currentChar)) {
-        state.listenMode.firstTryCorrectChars.push(currentChar);
-      }
-      if (!state.listenMode.answeredChars.includes(currentChar)) {
-        state.listenMode.answeredChars.push(currentChar);
-      }
-
-      showToast('选择正确', 'success');
-      stopActiveAudioPlayback();
-      setTimeout(() => {
-        goToNextListenItem();
-      }, 280);
-    } else {
-      showToast('已切回正确答案', 'success');
-      setTimeout(() => {
-        navigateListenHistory('next');
-      }, 280);
-    }
-    return;
-  }
-
-  state.listenMode.currentMistaken = true;
-  question.selectedChar = selectedChar;
-  markQuestionMistaken(question, selectedChar);
-
-  if (!state.listenMode.mistakeChars.includes(currentChar)) {
-    state.listenMode.mistakeChars.push(currentChar);
-  }
-  updateUserMistakeRecord({
-    char: currentChar,
-    level: state.currentLevel,
-    unit: getCurrentUnitName(),
-    mistakeMode: 'listen',
-    wrongChar: {
-      char: selectedChar,
-      level: state.currentLevel,
-      unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
-    },
-  });
-  showToast('错误！请重新选择', 'error');
-  playSpecificListenCharAudio(selectedChar);
+  return practiceEngine.retryWrongPracticeItems(mode);
 }
 
 function navigateListenHistory(direction) {
-  if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
-
-  const maxNavigableIndex = Math.min(
-    state.listenMode.answeredChars.length,
-    Math.max(0, state.listenMode.sequence.length - 1),
-  );
-  if (maxNavigableIndex < 0) return;
-
-  if (direction === 'prev') {
-    if (state.listenMode.currentIndex <= 0) return;
-    state.listenMode.currentIndex -= 1;
-  } else if (direction === 'next') {
-    if (state.listenMode.currentIndex >= maxNavigableIndex) return;
-    state.listenMode.currentIndex += 1;
-  } else {
-    return;
-  }
-
-  state.listenMode.currentMistaken = !!getListenQuestion()?.hadMistake;
-  state.listenMode.options = getListenQuestion()?.options ? [...getListenQuestion().options] : [];
-  renderUnit();
-  playListenModeAudio();
+  return practiceEngine.navigateListenHistory(direction);
 }
 
 function navigateSeeHistory(direction) {
-  if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
+  return practiceEngine.navigateSeeHistory(direction);
+}
 
-  const maxNavigableIndex = Math.min(
-    state.seeMode.answeredChars.length,
-    Math.max(0, state.seeMode.sequence.length - 1),
-  );
-  if (maxNavigableIndex < 0) return;
+function handleListenModeAnswer(selectedChar) {
+  return practiceEngine.handleListenModeAnswer(selectedChar);
+}
 
-  if (direction === 'prev') {
-    if (state.seeMode.currentIndex <= 0) return;
-    state.seeMode.currentIndex -= 1;
-  } else if (direction === 'next') {
-    if (state.seeMode.currentIndex >= maxNavigableIndex) return;
-    state.seeMode.currentIndex += 1;
-  } else {
-    return;
-  }
-
-  state.seeMode.currentMistaken = !!getSeeQuestion()?.hadMistake;
-  state.seeMode.options = getSeeQuestion()?.options ? [...getSeeQuestion().options] : [];
-  renderUnit();
+function handleSeeModeAnswer(selectedChar) {
+  return practiceEngine.handleSeeModeAnswer(selectedChar);
 }
 
 function markQuestionCorrect(question) {
-  question.answered = true;
-  question.countedCorrect = question.hadMistake ? false : true;
+  return practiceEngine.markQuestionCorrect(question);
 }
 
-function markQuestionMistaken(question, selectedChar, { revealOption = false } = {}) {
-  question.hadMistake = true;
-  if (!question.wrongSelections.includes(selectedChar)) {
-    question.wrongSelections.push(selectedChar);
-  }
-  if (revealOption && !question.revealedOptions.includes(selectedChar)) {
-    question.revealedOptions.push(selectedChar);
-  }
-  if (question.countedCorrect === true || question.countedCorrect === null) {
-    question.countedCorrect = false;
-  }
+function markQuestionMistaken(question, selectedChar, options = {}) {
+  return practiceEngine.markQuestionMistaken(question, selectedChar, options);
 }
 
 function addNotebookWrongSelectionEntry(question, entry) {
@@ -2043,69 +1910,6 @@ function addNotebookWrongSelectionEntry(question, entry) {
       unit: entry.unit,
     });
   }
-}
-
-function handleSeeModeAnswer(selectedChar) {
-  if (state.mainViewMode !== 'see' || state.isTeachingMode) return;
-
-  const question = getSeeQuestion();
-  const currentChar = question?.char || '';
-  if (!currentChar || !question || !selectedChar) return;
-
-  if (selectedChar === currentChar) {
-    question.selectedChar = selectedChar;
-    if (!question.answered) {
-      question.answered = true;
-      question.countedCorrect = question.hadMistake ? false : true;
-
-      if (!question.hadMistake && !state.seeMode.firstTryCorrectChars.includes(currentChar)) {
-        state.seeMode.firstTryCorrectChars.push(currentChar);
-      }
-      if (!state.seeMode.answeredChars.includes(currentChar)) {
-        state.seeMode.answeredChars.push(currentChar);
-      }
-
-      renderUnit();
-      showToast('选择正确', 'success');
-      stopActiveAudioPlayback();
-      setTimeout(() => {
-        goToNextSeeItem();
-      }, 280);
-    } else {
-      renderUnit();
-      showToast('已切回正确答案', 'success');
-      setTimeout(() => {
-        navigateSeeHistory('next');
-      }, 280);
-    }
-    return;
-  }
-
-  state.seeMode.currentMistaken = true;
-  question.selectedChar = selectedChar;
-  markQuestionMistaken(question, selectedChar, { revealOption: true });
-
-  if (!state.seeMode.mistakeChars.includes(currentChar)) {
-    state.seeMode.mistakeChars.push(currentChar);
-  }
-
-  updateUserMistakeRecord({
-    char: currentChar,
-    level: state.currentLevel,
-    unit: getCurrentUnitName(),
-    mistakeMode: 'see',
-    wrongChar: {
-      char: selectedChar,
-      level: state.currentLevel,
-      unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
-    },
-  });
-  renderUnit();
-  showToast('错误！请重新选择', 'error');
-  playCharAudio(selectedChar, {
-    level: state.currentLevel,
-    unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
-  });
 }
 
 function setLearnBatchBtnState(btn, isPlaying) {
