@@ -654,13 +654,13 @@ export function setupMenuAndModals() {
     if (!input || !modal) return;
     const value = parseInt(input.value);
 
-    if (value && value >= 1 && value <= 100) {
+    if (value && value >= 1 && value <= 500) {
       batchSize = value;
       modal.classList.remove('active');
       unlockScroll();
       startDownload(window.selectedDownloadLevels);
     } else {
-      showToast('请输入1-100之间的数字', 'error');
+      showToast('请输入1-500之间的数字', 'error');
     }
   });
 
@@ -702,15 +702,6 @@ export function setupMenuAndModals() {
       const total = files.length;
       setTaskProgress({ title: '正在下载语音数据', percent: 3, status: `已找到 ${total} 个语音文件` });
 
-      let cache = null;
-      if ('caches' in window) {
-        try {
-          cache = await caches.open(AUDIO_CACHE_NAME);
-        } catch (e) {
-          console.warn('打开缓存失败:', e);
-        }
-      }
-
       // 分批下载，每批用户指定的数量
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
@@ -723,53 +714,22 @@ export function setupMenuAndModals() {
               .getPublicUrl(file.path);
 
             const baseUrl = data.publicUrl;
-
-            // 构造实际请求 URL（处理强制刷新后缀）
-            const suffix = cacheSuffix ? cacheSuffix.replace('?', '') : '';
-            const url = suffix
-              ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${suffix}`
+            const cacheApi = window.ShiziAudioCache;
+            const requestUrl = cacheApi?.buildRequestUrl
+              ? cacheApi.buildRequestUrl(baseUrl, cacheSuffix)
               : baseUrl;
+            const forceRefresh = !!cacheSuffix;
 
-            // 确保缓存对象存在
-            if (!cache && 'caches' in window) {
-              try {
-                cache = await caches.open(AUDIO_CACHE_NAME);
-              } catch (e) {
-                console.warn('打开缓存失败:', e);
-              }
-            }
-
-            if (cache) {
-              // 1. 检查是否存在有效缓存
-              // 如果设置了强制刷新后缀，则视为无效，需要重新下载
-              const matchReq = new Request(baseUrl);
-              const cachedRes = await cache.match(matchReq);
-
-              if (cachedRes && !cacheSuffix) {
-                // 有缓存且非强制刷新，跳过下载
-                return;
-              }
-
-              // 2. 强制刷新模式下，先清理旧缓存
-              if (cacheSuffix) {
-                await cache.delete(matchReq);
-              }
-
-              // 3. 执行网络请求下载
-              // cache: 'reload' 确保从网络获取，不读取 HTTP 缓存
-              const fetchOpts = { cache: 'reload' };
-              const res = await fetch(url, fetchOpts);
-
-              if (res.ok) {
-                // 4. 存入 Cache API
-                // 注意：这里使用 baseUrl (不带后缀) 作为 key，确保后续播放时能命中
-                // 响应必须 clone，因为 put 会消耗 body
-                await cache.put(matchReq, res.clone());
-              }
+            if (cacheApi?.ensureCachedResponse) {
+              await cacheApi.ensureCachedResponse({
+                cacheName: AUDIO_CACHE_NAME,
+                baseUrl,
+                requestUrl,
+                forceRefresh,
+                fetchOptions: { cache: forceRefresh ? 'reload' : 'no-store' },
+              });
             } else {
-              // 浏览器不支持缓存 API，仍然下载但不缓存（仅预热 HTTP 缓存）
-              const res = await fetch(url);
-              if (res.ok) await res.blob(); // 消耗流
+              await fetch(requestUrl, { cache: forceRefresh ? 'reload' : 'no-store' });
             }
           } catch (e) {
             console.warn('下载失败', file.path, e);
@@ -789,10 +749,10 @@ export function setupMenuAndModals() {
       setTaskProgress({
         title: '正在下载语音数据',
         percent: 100,
-        status: cache ? '下载完成，语音已写入缓存' : '下载完成',
+        status: '下载完成，语音已写入缓存',
       });
       hideTaskProgress(900);
-      showToast(cache ? '语音数据已下载至缓存' : '语音数据下载完成', 'success');
+      showToast('语音数据已下载至缓存', 'success');
     } catch (e) {
       console.error(e);
       setTaskProgress({ title: '正在下载语音数据', percent: 100, status: '下载失败，请稍后重试' });
@@ -807,50 +767,36 @@ export function setupMenuAndModals() {
       try {
         lockScroll();
         setCacheClearProgress({ percent: 3, status: '正在检查缓存项目...' });
+        const cacheApi = window.ShiziAudioCache;
+        const clearResult = cacheApi?.clearAudioCache
+          ? await cacheApi.clearAudioCache({
+            cacheName: AUDIO_CACHE_NAME,
+            onInspectProgress: ({ current, total, percent }) => {
+              setCacheClearProgress({
+                percent,
+                status: `正在统计缓存大小 ${current}/${total}`,
+              });
+            },
+            onClearProgress: ({ current, total, percent }) => {
+              setCacheClearProgress({
+                percent,
+                status: `正在清理缓存文件 ${current}/${total}`,
+              });
+            },
+          })
+          : { cleared: false, fileCount: 0, totalBytes: 0 };
 
-        const cache = await caches.open(AUDIO_CACHE_NAME);
-        const keys = await cache.keys();
-        if (keys.length === 0) {
+        if (!clearResult.fileCount) {
           setCacheClearProgress({ percent: 100, status: '未发现可清理的语音缓存' });
           hideCacheClearProgress();
           showToast('未发现语音缓存', 'info');
           return;
         }
 
-        let totalBytes = 0;
-        for (let i = 0; i < keys.length; i++) {
-          const req = keys[i];
-          const res = await cache.match(req);
-          if (res) {
-            const cl = res.headers.get('content-length');
-            if (cl) {
-              totalBytes += parseInt(cl, 10);
-            } else {
-              const buf = await res.arrayBuffer();
-              totalBytes += buf.byteLength;
-            }
-          }
-          const inspectPercent = 5 + (((i + 1) / keys.length) * 25);
-          setCacheClearProgress({
-            percent: inspectPercent,
-            status: `正在统计缓存大小 ${i + 1}/${keys.length}`,
-          });
-        }
-
-        for (let i = 0; i < keys.length; i++) {
-          await cache.delete(keys[i]);
-          const clearPercent = 30 + (((i + 1) / keys.length) * 70);
-          setCacheClearProgress({
-            percent: clearPercent,
-            status: `正在清理缓存文件 ${i + 1}/${keys.length}`,
-          });
-        }
-
-        await caches.delete(AUDIO_CACHE_NAME);
-        const mb = (totalBytes / 1024 / 1024).toFixed(2);
-        setCacheClearProgress({ percent: 100, status: `清理完成，共清理 ${keys.length} 个文件` });
+        const mb = (clearResult.totalBytes / 1024 / 1024).toFixed(2);
+        setCacheClearProgress({ percent: 100, status: `清理完成，共清理 ${clearResult.fileCount} 个文件` });
         hideCacheClearProgress(900);
-        showToast(`语音缓存已清理，共 ${keys.length} 个文件，${mb} MB`, 'success');
+        showToast(`语音缓存已清理，共 ${clearResult.fileCount} 个文件，${mb} MB`, 'success');
       } catch (e) {
         console.error(e);
         setCacheClearProgress({ percent: 100, status: '清理失败，请稍后重试' });

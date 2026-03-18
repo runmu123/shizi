@@ -299,37 +299,25 @@ class AudioManager {
     // 停止当前播放并触发回调
     this.stopCurrentAudio();
 
-    // 从缓存读取或从服务器获取
-    if ('caches' in window) {
-      try {
-        const cache = await caches.open('shizi-audio-cache');
-        const cached = await cache.match(baseUrl);
-        if (cached) {
-          const blob = await cached.blob();
+    // 从缓存读取或从服务器获取（共享缓存实现）
+    try {
+      const cacheApi = window.ShiziAudioCache;
+      if (cacheApi?.ensureCachedResponse) {
+        const cachedResult = await cacheApi.ensureCachedResponse({
+          baseUrl,
+          requestUrl: url,
+          fetchOptions: { cache: 'no-store' },
+        });
+        if (cachedResult?.response) {
+          const blob = await cachedResult.response.blob();
           playUrl = URL.createObjectURL(blob);
-          console.log('从缓存播放:', baseUrl);
-        } else {
-          const builtInLocalUrl = this.builtInAudioMap.get(baseUrl);
-          if (builtInLocalUrl) {
-            playUrl = builtInLocalUrl;
-            console.log('从内置音频播放:', builtInLocalUrl);
-          } else {
-            try {
-              // 使用 no-store 避免重复存储到 HTTP Cache
-              const fetched = await fetch(url, { cache: 'no-store' });
-              if (fetched.ok) {
-                await cache.put(baseUrl, fetched.clone());
-                const blob = await fetched.blob();
-                playUrl = URL.createObjectURL(blob);
-              }
-            } catch (fetchErr) {
-              console.warn('播放时缓存音频失败:', fetchErr);
-            }
+          if (cachedResult.fromCache) {
+            console.log('从缓存播放:', baseUrl);
           }
         }
-      } catch (e) {
-        console.warn('缓存操作失败:', e);
       }
+    } catch (e) {
+      console.warn('缓存操作失败:', e);
     }
 
     if (playUrl === url) {
