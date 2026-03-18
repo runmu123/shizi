@@ -56,6 +56,14 @@ async function flushNotebookMutations() {
   await Promise.allSettled(tasks);
 }
 
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+}
+
 // ===== 级别初始化 =====
 export async function initLevels() {
   const dropdown = document.getElementById('levelDropdown');
@@ -721,10 +729,21 @@ function playSpecificListenCharAudio(char) {
   playCharAudio(char);
 }
 
-function playSeeOptionAudio(char, btn = null) {
-  if (state.mainViewMode !== 'see' || state.isTeachingMode || !char) return;
+async function playSeeOptionAudio(char, btn = null) {
+  const inMainSeeMode = state.mainViewMode === 'see' && state.appSection === 'home';
+  const inNotebookSeePractice = state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'see';
+  if ((!inMainSeeMode && !inNotebookSeePractice) || state.isTeachingMode || !char) return;
   if (btn?.classList.contains('revealed')) return;
-  playCharAudio(char, { button: btn, setPauseIcon: true });
+  const preferredLevel = inNotebookSeePractice
+    ? state.notebook.practice.level
+    : state.currentLevel;
+  const context = await resolveCharOrigin(char, preferredLevel);
+  playCharAudio(char, {
+    button: btn,
+    setPauseIcon: true,
+    level: context?.level || preferredLevel,
+    unit: context?.unit || '',
+  });
 }
 
 function scheduleListenModeAutoPlay() {
@@ -1146,7 +1165,7 @@ function collectNotebookPracticeChars(sourceItems) {
   ));
 }
 
-function initializeNotebookPracticeSession(mode, level, groupIndex) {
+function initializeNotebookPracticeSession(mode, level, groupIndex, { allowRemoval = true } = {}) {
   const sourceItems = getNotebookPracticeSourceItems(mode, level, groupIndex);
   const chars = collectNotebookPracticeChars(sourceItems);
 
@@ -1154,6 +1173,7 @@ function initializeNotebookPracticeSession(mode, level, groupIndex) {
     mode,
     level,
     groupIndex,
+    allowRemoval,
     title: `第${groupIndex + 1}组`,
     sourceItems,
     sequence: shuffleArray(chars),
@@ -1165,6 +1185,7 @@ function initializeNotebookPracticeSession(mode, level, groupIndex) {
       hadMistake: false,
       countedCorrect: null,
       wrongSelections: [],
+      wrongSelectionEntries: [],
       revealedOptions: [],
     })),
     currentIndex: 0,
@@ -1174,7 +1195,7 @@ function initializeNotebookPracticeSession(mode, level, groupIndex) {
 }
 
 function openNotebookPractice(mode, level, groupIndex) {
-  initializeNotebookPracticeSession(mode, level, groupIndex);
+  initializeNotebookPracticeSession(mode, level, groupIndex, { allowRemoval: true });
   state.profileView = 'notebookPractice';
   renderUnit();
   if (mode === 'listen') {
@@ -1410,6 +1431,8 @@ async function goToNextNotebookPracticeItem() {
   stopActiveAudioPlayback();
   const session = state.notebook.practice;
   if (session.currentIndex >= session.sequence.length - 1) {
+    renderUnit();
+    await waitForNextFrame();
     await flushNotebookMutations();
     showNotebookPracticeCompletionModal();
     return;
@@ -1435,7 +1458,7 @@ async function handleNotebookListenPracticeAnswer(selectedChar) {
       if (!session.answeredChars.includes(currentChar)) {
         session.answeredChars.push(currentChar);
       }
-      if (!question.hadMistake) {
+      if (session.allowRemoval && !question.hadMistake) {
         const exactMistakeItem = findExactNotebookPracticeMistakeItem(currentChar);
         if (exactMistakeItem) {
           trackNotebookMutation(removeUserMistakeRecord({
@@ -1485,6 +1508,7 @@ async function handleNotebookListenPracticeAnswer(selectedChar) {
     selectedChar,
     currentContext?.level || session.level || state.currentLevel,
   );
+  addNotebookWrongSelectionEntry(question, selectedContext);
   trackNotebookMutation(updateUserMistakeRecord({
     char: currentChar,
     level: currentContext?.level || session.level || state.currentLevel,
@@ -1513,7 +1537,7 @@ async function handleNotebookSeePracticeAnswer(selectedChar) {
       if (!session.answeredChars.includes(currentChar)) {
         session.answeredChars.push(currentChar);
       }
-      if (!question.hadMistake) {
+      if (session.allowRemoval && !question.hadMistake) {
         const exactMistakeItem = findExactNotebookPracticeMistakeItem(currentChar);
         if (exactMistakeItem) {
           trackNotebookMutation(removeUserMistakeRecord({
@@ -1564,6 +1588,7 @@ async function handleNotebookSeePracticeAnswer(selectedChar) {
     selectedChar,
     currentContext?.level || session.level || state.currentLevel,
   );
+  addNotebookWrongSelectionEntry(question, selectedContext);
   trackNotebookMutation(updateUserMistakeRecord({
     char: currentChar,
     level: currentContext?.level || session.level || state.currentLevel,
@@ -1713,6 +1738,7 @@ function showPracticeCompletionModal(mode = getActivePracticeMode()) {
 
   const correctQuestions = session.questions.filter((question) => question.countedCorrect === true);
   const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
+  const hasRetryTargets = session.questions.some((question) => (question.wrongSelections || []).length > 0);
 
   summary.textContent = wrongQuestions.length === 0
     ? '全部正确！'
@@ -1730,7 +1756,7 @@ function showPracticeCompletionModal(mode = getActivePracticeMode()) {
     : '<span class="listen-result-empty">无，表现很棒</span>';
 
   if (retryBtn) {
-    retryBtn.style.display = wrongQuestions.length > 0 ? 'inline-flex' : 'none';
+    retryBtn.style.display = hasRetryTargets ? 'inline-flex' : 'none';
     retryBtn.textContent = mode === 'see' ? '重新练' : '重新听';
   }
 
@@ -1757,6 +1783,7 @@ function showNotebookPracticeCompletionModal() {
 
   const correctQuestions = session.questions.filter((question) => question.countedCorrect === true);
   const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
+  const hasRetryTargets = session.questions.some((question) => (question.wrongSelections || []).length > 0);
 
   summary.textContent = wrongQuestions.length === 0
     ? '本组全部正确！'
@@ -1774,7 +1801,7 @@ function showNotebookPracticeCompletionModal() {
     : '<span class="listen-result-empty">无，表现很棒</span>';
 
   if (retryBtn) {
-    retryBtn.style.display = 'inline-flex';
+    retryBtn.style.display = hasRetryTargets ? 'inline-flex' : 'none';
     retryBtn.textContent = '重新练';
   }
 
@@ -1785,9 +1812,74 @@ function showNotebookPracticeCompletionModal() {
   modal.classList.add('active');
 }
 
-function retryCurrentNotebookPracticeGroup() {
+async function retryCurrentNotebookPracticeGroup() {
   const session = state.notebook.practice;
-  initializeNotebookPracticeSession(session.mode, session.level, session.groupIndex);
+  const retryEntryMap = new Map();
+  const failedQuestions = session.questions.filter((question) => question.countedCorrect === false);
+
+  for (const question of failedQuestions) {
+    const currentContext = getNotebookPracticeCharContext(question.char);
+    if (question.char) {
+      const key = `${question.char}__${currentContext?.level || session.level || state.currentLevel}__${currentContext?.unit || getCurrentUnitName()}`;
+      retryEntryMap.set(key, {
+        char: question.char,
+        level: currentContext?.level || session.level || state.currentLevel,
+        unit: currentContext?.unit || getCurrentUnitName(),
+      });
+    }
+
+    for (const wrongChar of (question.wrongSelections || [])) {
+      const existingEntry = Array.isArray(question.wrongSelectionEntries)
+        ? question.wrongSelectionEntries.find((entry) => entry.char === wrongChar)
+        : null;
+      const resolvedEntry = existingEntry || await resolveCharOrigin(
+        wrongChar,
+        currentContext?.level || session.level || state.currentLevel,
+      );
+      const wrongKey = `${wrongChar}__${resolvedEntry?.level || session.level || state.currentLevel}__${resolvedEntry?.unit || getCurrentUnitName()}`;
+      retryEntryMap.set(wrongKey, {
+        char: wrongChar,
+        level: resolvedEntry?.level || session.level || state.currentLevel,
+        unit: resolvedEntry?.unit || getCurrentUnitName(),
+      });
+    }
+  }
+
+  const retryEntries = Array.from(retryEntryMap.values());
+  const retryChars = retryEntries.map((entry) => entry.char);
+
+  if (!retryChars.length) {
+    showToast('当前没有需要重新练的字', 'info');
+    return;
+  }
+
+  initializeNotebookPracticeSession(session.mode, session.level, session.groupIndex, { allowRemoval: false });
+  const retrySourceItems = retryEntries.map((entry) => {
+    const exactItem = (session.sourceItems || []).find((item) => item.char === entry.char);
+    return exactItem || {
+      char: entry.char,
+      level: entry.level,
+      unit: entry.unit,
+      wrong_chars: [],
+      mistake_mode: session.mode,
+    };
+  });
+  state.notebook.practice.sourceItems = retrySourceItems;
+  state.notebook.practice.sequence = shuffleArray(retryChars);
+  state.notebook.practice.questions = retryChars.map((char) => ({
+    char,
+    options: buildListenOptions(char),
+    selectedChar: '',
+    answered: false,
+    hadMistake: false,
+    countedCorrect: null,
+    wrongSelections: [],
+    wrongSelectionEntries: [],
+    revealedOptions: [],
+  }));
+  state.notebook.practice.currentIndex = 0;
+  state.notebook.practice.answeredChars = [];
+  state.notebook.practice.currentMistaken = false;
   renderUnit();
   if (session.mode === 'listen') {
     setTimeout(() => playNotebookPracticeAudio(), 80);
@@ -1802,7 +1894,7 @@ function moveToNextNotebookPracticeGroup() {
     showToast('已经是最后一组', 'info');
     return;
   }
-  initializeNotebookPracticeSession(session.mode, session.level, nextGroup);
+  initializeNotebookPracticeSession(session.mode, session.level, nextGroup, { allowRemoval: true });
   renderUnit();
   if (session.mode === 'listen') {
     setTimeout(() => playNotebookPracticeAudio(), 80);
@@ -1991,6 +2083,25 @@ function markQuestionMistaken(question, selectedChar, { revealOption = false } =
   }
   if (question.countedCorrect === true || question.countedCorrect === null) {
     question.countedCorrect = false;
+  }
+}
+
+function addNotebookWrongSelectionEntry(question, entry) {
+  if (!entry?.char) return;
+  if (!Array.isArray(question.wrongSelectionEntries)) {
+    question.wrongSelectionEntries = [];
+  }
+  const exists = question.wrongSelectionEntries.some((item) => (
+    item.char === entry.char
+    && item.level === entry.level
+    && item.unit === entry.unit
+  ));
+  if (!exists) {
+    question.wrongSelectionEntries.push({
+      char: entry.char,
+      level: entry.level,
+      unit: entry.unit,
+    });
   }
 }
 

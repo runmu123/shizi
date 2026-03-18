@@ -43,6 +43,7 @@ export const state = {
       mode: 'listen',
       level: '',
       groupIndex: 0,
+      allowRemoval: true,
       title: '',
       sourceItems: [],
       sequence: [],
