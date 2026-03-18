@@ -60,37 +60,10 @@ export function setupMenuAndModals() {
     element.addEventListener('click', handler);
   }
 
-  // 中文数字转换
+  // 中文单元号解析（统一走共享模块）
   const getCnNum = (str) => {
-    // 增加对阿拉伯数字的支持
-    const numMatch = str.match(/\d+/);
-    if (numMatch) return parseInt(numMatch[0], 10);
-
-    const m = str.match(/第(.+)单元/);
-    if (!m) return 0;
-
-    const s = m[1];
-    const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
-    const units = { '十': 10, '百': 100, '千': 1000 };
-
-    let result = 0;
-    let temp = 0;
-    let hasNum = false;
-
-    for (let i = 0; i < s.length; i++) {
-      const char = s[i];
-      if (map[char] !== undefined) {
-        temp = map[char];
-        hasNum = true;
-      } else if (units[char]) {
-        if (char === '十' && temp === 0 && result === 0) temp = 1;
-        result += temp * units[char];
-        temp = 0;
-        hasNum = true;
-      }
-    }
-    result += temp;
-    return hasNum ? result : 0;
+    const parsed = window.ShiziUnitNumber?.parseUnitNumber?.(str);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   // 格式化单元数字为3字符宽度

@@ -268,64 +268,20 @@ function sortProgressLevels(levels) {
   });
 }
 
+function parseProgressUnitNumber(unit) {
+  const parsed = window.ShiziUnitNumber?.parseUnitNumber?.(unit);
+  if (Number.isFinite(parsed)) return parsed;
+
+  const fallback = String(unit).match(/\d+/);
+  return fallback ? parseInt(fallback[0], 10) : 0;
+}
+
 function sortProgressUnits(units) {
-  const getCnNum = (str) => {
-    const numMatch = String(str).match(/\d+/);
-    if (numMatch) return parseInt(numMatch[0], 10);
-    const m = String(str).match(/第(.+)单元/);
-    if (!m) return 0;
-    const s = m[1];
-    const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
-    const units = { '十': 10, '百': 100, '千': 1000 };
-    let result = 0;
-    let temp = 0;
-    let hasNum = false;
-    for (let i = 0; i < s.length; i++) {
-      const char = s[i];
-      if (map[char] !== undefined) {
-        temp = map[char];
-        hasNum = true;
-      } else if (units[char]) {
-        if (char === '十' && temp === 0 && result === 0) temp = 1;
-        result += temp * units[char];
-        temp = 0;
-        hasNum = true;
-      }
-    }
-    result += temp;
-    return hasNum ? result : 0;
-  };
-  return [...units].sort((a, b) => getCnNum(b) - getCnNum(a));
+  return [...units].sort((a, b) => parseProgressUnitNumber(b) - parseProgressUnitNumber(a));
 }
 
 function formatProgressUnitName(unit) {
-  const getCnNum = (str) => {
-    const numMatch = String(str).match(/\d+/);
-    if (numMatch) return parseInt(numMatch[0], 10);
-    const m = String(str).match(/第(.+)单元/);
-    if (!m) return 0;
-    const s = m[1];
-    const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
-    const units = { '十': 10, '百': 100, '千': 1000 };
-    let result = 0;
-    let temp = 0;
-    let hasNum = false;
-    for (let i = 0; i < s.length; i++) {
-      const char = s[i];
-      if (map[char] !== undefined) {
-        temp = map[char];
-        hasNum = true;
-      } else if (units[char]) {
-        if (char === '十' && temp === 0 && result === 0) temp = 1;
-        result += temp * units[char];
-        temp = 0;
-        hasNum = true;
-      }
-    }
-    result += temp;
-    return hasNum ? result : 0;
-  };
-  const num = getCnNum(unit);
+  const num = parseProgressUnitNumber(unit);
   return num === 0 ? String(unit) : String(num);
 }
 
@@ -342,31 +298,11 @@ function formatAlignedIndex(value) {
 }
 
 function convertNumberToChinese(num) {
-  const value = parseInt(num, 10);
-  if (!Number.isFinite(value) || value <= 0) return String(num);
-  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-  const units = ['', '十', '百', '千'];
-  if (value < 10) return digits[value];
-  if (value < 10000) {
-    const chars = String(value).split('').map(Number);
-    let result = '';
-    for (let i = 0; i < chars.length; i++) {
-      const digit = chars[i];
-      const unitIndex = chars.length - i - 1;
-      if (digit === 0) {
-        if (!result.endsWith('零') && i < chars.length - 1 && chars.slice(i + 1).some((n) => n !== 0)) {
-          result += '零';
-        }
-        continue;
-      }
-      if (!(digit === 1 && unitIndex === 1 && result === '')) {
-        result += digits[digit];
-      }
-      result += units[unitIndex];
-    }
-    return result.replace(/零+$/g, '');
+  const sharedConverter = window.ShiziUnitNumber?.toChineseNumber;
+  if (typeof sharedConverter === 'function') {
+    return sharedConverter(num);
   }
-  return String(value);
+  return String(num);
 }
 
 function renderProfileProgressContent() {
