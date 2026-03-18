@@ -541,6 +541,32 @@ function setAppSection(section) {
   saveCurrentPosition();
 }
 
+function setPracticeEntryContext(mode, source, returnTo = {}) {
+  state.practiceEntryContext = {
+    mode,
+    source,
+    returnTo: {
+      appSection: returnTo.appSection || state.appSection || 'home',
+      mainViewMode: returnTo.mainViewMode || state.mainViewMode || 'study',
+      profileView: returnTo.profileView || state.profileView || 'main',
+    },
+  };
+}
+
+function returnFromMainPractice() {
+  const target = state.practiceEntryContext?.returnTo || {};
+
+  stopActiveAudioPlayback();
+  stopLearnBatchPlayback(true);
+
+  state.appSection = target.appSection || 'home';
+  state.profileView = target.profileView || 'main';
+  state.mainViewMode = target.mainViewMode || 'study';
+  updateEarStudyButtonForMode();
+  renderUnit();
+  saveCurrentPosition();
+}
+
 function invalidateNotebookCache() {
   state.notebook.loadedUser = '';
 }
@@ -915,6 +941,7 @@ export function setupEventListeners() {
     returnToHomeStudy: () => homeSupport.returnToHomeStudy(),
     setAppSection,
     setMainViewMode,
+    setPracticeEntryContext,
     switchTeachingMode,
     tryEnterTeachingMode,
     toggleInlineCollapse,
@@ -942,6 +969,8 @@ export function setupEventListeners() {
     navigateListenHistory: (direction) => practiceEngine.navigateListenHistory(direction),
     navigateNotebookReviewCard: (offset) => notebookEngine.navigateNotebookReviewCard(offset),
     setMainViewMode,
+    setPracticeEntryContext,
+    returnFromMainPractice,
     playListenModeAudio,
   });
 

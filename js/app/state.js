@@ -14,6 +14,15 @@ export const state = {
   currentUnitIndex: 0,
   appSection: 'home',
   profileView: 'main',
+  practiceEntryContext: {
+    mode: '',
+    source: '',
+    returnTo: {
+      appSection: 'home',
+      mainViewMode: 'study',
+      profileView: 'main',
+    },
+  },
   homeCardIndex: 0,
   homeCardMotion: 'none',
   notebook: {

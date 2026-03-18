@@ -446,23 +446,22 @@ function renderNotebookPracticeSection(appEl) {
     const question = session.questions[session.currentIndex] || null;
     const currentChar = question?.char || session.sequence[session.currentIndex] || '';
     const options = Array.isArray(question?.options) ? question.options : [];
-    appEl.innerHTML = `
-      <div class="notebook-group-header">
-        <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
-        <span class="notebook-group-title">${titleText}</span>
-      </div>
-      <div class="listen-progress-card">
-        <div class="listen-progress-header"><span>听音识字进度</span><span>${currentStep}/${total}</span></div>
-        <div class="progress-track listen-progress-track"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
-        <div class="listen-progress-caption">已完成 ${session.answeredChars.length} / ${total}</div>
-      </div>
-      <div class="listen-mode-panel" data-char="${escapeHtml(currentChar)}">
-        <button class="listen-audio-btn" id="notebookListenReplayBtn" title="播放读音">${getListenSpeakerIconHtml()}</button>
-        <div class="listen-options-grid">
-          ${options.map((option) => `<button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>`).join('')}
-        </div>
-      </div>
-    `;
+    renderPracticePageShell({
+      appEl,
+      titleText,
+      backActionAttr: 'data-notebook-action="back-to-notebook"',
+      progressTitle: '听音识字进度',
+      currentStep,
+      total,
+      progressPercent,
+      completedCount: session.answeredChars.length,
+      bodyHtml: renderListenPracticeBody({
+        currentChar,
+        options,
+        unitName: '',
+        replayButtonId: 'notebookListenReplayBtn',
+      }),
+    });
     return;
   }
 
@@ -470,26 +469,23 @@ function renderNotebookPracticeSection(appEl) {
   const currentChar = question?.char || session.sequence[session.currentIndex] || '';
   const options = Array.isArray(question?.options) ? question.options : [];
   const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
-  appEl.innerHTML = `
-    <div class="notebook-group-header">
-      <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
-      <span class="notebook-group-title">${titleText}</span>
-    </div>
-    <div class="listen-progress-card">
-      <div class="listen-progress-header"><span>看字识音进度</span><span>${currentStep}/${total}</span></div>
-      <div class="progress-track listen-progress-track"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
-      <div class="listen-progress-caption">已完成 ${session.answeredChars.length} / ${total}</div>
-    </div>
-    <div class="listen-mode-panel see-mode-panel" data-char="${escapeHtml(currentChar)}">
-      <div class="see-char-card" id="notebookSeePromptCard" data-char="${escapeHtml(currentChar)}">${escapeHtml(currentChar)}</div>
-      <div class="see-options-grid">
-        ${options.map((option) => {
-          const isRevealed = revealedOptions.includes(option);
-          return `<button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}</button>`;
-        }).join('')}
-      </div>
-    </div>
-  `;
+  renderPracticePageShell({
+    appEl,
+    titleText,
+    backActionAttr: 'data-notebook-action="back-to-notebook"',
+    progressTitle: '看字识音进度',
+    currentStep,
+    total,
+    progressPercent,
+    completedCount: session.answeredChars.length,
+    bodyHtml: renderSeePracticeBody({
+      currentChar,
+      options,
+      revealedOptions,
+      promptId: 'notebookSeePromptCard',
+      promptInteractive: false,
+    }),
+  });
 }
 
 function renderProfileSection(appEl) {
@@ -630,7 +626,7 @@ export function updateAppShell() {
   if (homeNavItem) {
     const iconEl = homeNavItem.querySelector('.bottom-nav-icon');
     const labelEl = homeNavItem.querySelector('.bottom-nav-label');
-    const shouldReturnHome = learningActive || (state.appSection === 'home' && state.mainViewMode !== 'study');
+    const shouldReturnHome = learningActive;
     if (iconEl) {
       iconEl.innerHTML = shouldReturnHome ? BACK_HOME_ICON : HOME_NAV_ICON;
     }
@@ -730,6 +726,77 @@ function renderPracticeEmptyState(appEl, unitName) {
   `;
 }
 
+function renderPracticeProgressCard({ progressTitle, currentStep, total, progressPercent, completedCount }) {
+  return `
+    <div class="listen-progress-card">
+      <div class="listen-progress-header">
+        <span>${progressTitle}</span>
+        <span>${currentStep}/${total}</span>
+      </div>
+      <div class="progress-track listen-progress-track">
+        <div class="progress-fill" style="width:${progressPercent}%"></div>
+      </div>
+      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
+    </div>
+  `;
+}
+
+function renderListenPracticeBody({ currentChar, options, unitName, replayButtonId = 'listenReplayBtn' }) {
+  return `
+    <div class="listen-mode-panel" data-char="${escapeHtml(currentChar)}">
+      <button class="listen-audio-btn" id="${escapeHtml(replayButtonId)}" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
+        ${getListenSpeakerIconHtml()}
+      </button>
+      <div class="listen-options-grid">
+        ${options.map((option) => `
+          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderSeePracticeBody({ currentChar, options, revealedOptions = [], promptId = 'seePromptCard', promptInteractive = true }) {
+  const promptAttrs = promptInteractive
+    ? `tabindex="0" role="button" aria-label="拖动汉字到正确读音"`
+    : '';
+
+  return `
+    <div class="listen-mode-panel see-mode-panel" data-char="${escapeHtml(currentChar)}">
+      <div class="see-char-card" id="${escapeHtml(promptId)}" data-char="${escapeHtml(currentChar)}" ${promptAttrs}>${escapeHtml(currentChar)}</div>
+      <div class="see-options-grid">
+        ${options.map((option) => {
+          const isRevealed = revealedOptions.includes(option);
+          return `<button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}</button>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderPracticePageShell({
+  appEl,
+  titleText,
+  backActionAttr,
+  progressTitle,
+  currentStep,
+  total,
+  progressPercent,
+  completedCount,
+  bodyHtml,
+  headerClassName = 'notebook-group-header',
+}) {
+  appEl.innerHTML = `
+    <div class="${headerClassName}">
+      <button class="back-inline-btn" type="button" ${backActionAttr}>返回</button>
+      <span class="notebook-group-title">${titleText}</span>
+    </div>
+    ${renderPracticeProgressCard({ progressTitle, currentStep, total, progressPercent, completedCount })}
+    ${bodyHtml}
+  `;
+  requestAnimationFrame(() => applyResponsiveLayout());
+}
+
 function renderPracticeMode(appEl, unitName, mode) {
   const isSeeMode = mode === 'see';
   const session = isSeeMode ? state.seeMode : state.listenMode;
@@ -747,55 +814,33 @@ function renderPracticeMode(appEl, unitName, mode) {
   const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
   const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
   const progressTitle = isSeeMode ? '看字识音进度' : '听音识字进度';
-  const panelClassName = isSeeMode ? 'listen-mode-panel see-mode-panel' : 'listen-mode-panel';
+  const bodyHtml = isSeeMode
+    ? renderSeePracticeBody({
+        currentChar,
+        options,
+        revealedOptions: Array.isArray(question?.revealedOptions) ? question.revealedOptions : [],
+        promptId: 'seePromptCard',
+        promptInteractive: true,
+      })
+    : renderListenPracticeBody({
+        currentChar,
+        options,
+        unitName,
+        replayButtonId: 'listenReplayBtn',
+      });
 
-  const panelHtml = isSeeMode
-    ? (() => {
-      const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
-      return `
-        <div class="see-char-card" id="seePromptCard" data-char="${escapeHtml(currentChar)}" tabindex="0" role="button" aria-label="拖动汉字到正确读音">
-          ${escapeHtml(currentChar)}
-        </div>
-        <div class="see-options-grid">
-          ${options.map((option) => {
-            const isRevealed = revealedOptions.includes(option);
-            return `
-              <button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">
-                ${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}
-              </button>
-            `;
-          }).join('')}
-        </div>
-      `;
-    })()
-    : `
-      <button class="listen-audio-btn" id="listenReplayBtn" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
-        ${getListenSpeakerIconHtml()}
-      </button>
-      <div class="listen-options-grid">
-        ${options.map((option) => `
-          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
-        `).join('')}
-      </div>
-    `;
-
-  appEl.innerHTML = `
-    ${getUnitTitleHtml(unitName, 'listen-unit-title')}
-    <div class="listen-progress-card">
-      <div class="listen-progress-header">
-        <span>${progressTitle}</span>
-        <span>${currentStep}/${total}</span>
-      </div>
-      <div class="progress-track listen-progress-track">
-        <div class="progress-fill" style="width:${progressPercent}%"></div>
-      </div>
-      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
-    </div>
-    <div class="${panelClassName}" data-char="${escapeHtml(currentChar)}">
-      ${panelHtml}
-    </div>
-  `;
-  requestAnimationFrame(() => applyResponsiveLayout());
+  renderPracticePageShell({
+    appEl,
+    titleText: unitName,
+    backActionAttr: 'data-practice-action="back-main-practice"',
+    progressTitle,
+    currentStep,
+    total,
+    progressPercent,
+    completedCount,
+    bodyHtml,
+    headerClassName: 'notebook-group-header',
+  });
 }
 
 function renderListenMode(appEl, unitName) {
@@ -816,10 +861,11 @@ export function renderUnit() {
 
   const isHomeSection = state.appSection === 'home';
   const isCenteredHomeStage = isHomeSection && state.mainViewMode === 'study' && !state.isTeachingMode;
+  const activeBottomSection = isHomeSection && state.mainViewMode !== 'study' ? '' : state.appSection;
   document.body.classList.toggle('home-lock-scroll', isCenteredHomeStage);
   resetAppLayoutClasses(appEl);
   bottomTabs.forEach((item) => {
-    item.classList.toggle('active', item.dataset.section === state.appSection);
+    item.classList.toggle('active', item.dataset.section === activeBottomSection);
   });
   updateAppShell();
 

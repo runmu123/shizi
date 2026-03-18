@@ -85,7 +85,7 @@ flowchart TD
 | `js/audio/` | 音频播放、缓存与资源访问 | `audio-manager.js` `audio-cache-shared.js` |
 | `js/events/` | DOM 事件绑定层 | `navigation-events.js` `practice-interaction-events.js` |
 | `js/practice/` | 主练习状态、判题、播放辅助 | `practice-engine.js` `practice-state-support.js` |
-| `js/profile/` | 我的页、错题本、查询与分组 | `notebook-engine.js` `profile-data-support.js` |
+| `js/profile/` | 我的页、错题本、查询、分组与本地缓存辅助 | `notebook-engine.js` `profile-data-support.js` `profile-cache-support.js` |
 | `js/home/` | 主页学习卡片与整单元朗读 | `home-support.js` `learn-batch-support.js` |
 | `js/batch/` | 批量录音/播放页面逻辑 | `batch-record.js` `batch-play.js` |
 | `js/ui/` | 页面渲染与图标辅助 | `ui.js` `ui-icon-support.js` |
@@ -139,6 +139,7 @@ js/
     notebook-support.js
     notebook-grouping.js
     profile-data-support.js
+    profile-cache-support.js
   ui/
     ui.js
     ui-icon-support.js
@@ -249,19 +250,21 @@ graph TD
 
 特殊规则：
 
-- 在学习态或练习态中，底部 `主页` 会变成 `回到主页`。
+- 笔顺学习页中，底部 `主页` 会变成 `回到主页`。
+- 主练习页（听音识字 / 看字识音）中，底部仍显示 `主页`，但不高亮。
+- 主练习页的返回操作由标题左侧的 `返回` 按钮承担。
 
 ### 2.3 页面清单与定位
 
 | 页面 | 状态标识 | 定位 | 主要功能 | 上下游关系 |
 | --- | --- | --- | --- | --- |
 | 主页-学习 | `appSection=home` + `mainViewMode=study` | 核心学习入口 | 识字卡片、单元字切换、字词句播放 | 可进入笔顺学习、听音识字、看字识音 |
-| 主页-听音识字 | `appSection=home` + `mainViewMode=listen` | 主练习页 | 播放题干、选字、统计结果 | 错误写入错题表 |
-| 主页-看字识音 | `appSection=home` + `mainViewMode=see` | 主练习页 | 看字选音、误选揭示、统计结果 | 错误写入错题表 |
+| 主页-听音识字 | `appSection=home` + `mainViewMode=listen` | 主练习页 | 播放题干、选字、统计结果、标题左侧返回 | 错误写入错题表；返回进入前页面 |
+| 主页-看字识音 | `appSection=home` + `mainViewMode=see` | 主练习页 | 看字选音、误选揭示、统计结果、标题左侧返回 | 错误写入错题表；返回进入前页面 |
 | 其他页 | `appSection=other` | 功能入口页 | 听音识字、看字识音、下载、清缓存、教学模式、刷新 | 导航到主页练习或批量功能 |
 | 我的主页 | `appSection=profile` + `profileView=main` | 用户数据中心 | 登录信息、学习进度、错题集 | 可进入复习页与错题练习页 |
 | 错题复习 | `profileView=notebookReview` | 错题回顾 | 卡片复习、误认字播放、组内切换 | 返回我的主页 |
-| 错题练习 | `profileView=notebookPractice` | 错题专项训练 | 听音/看字错题练习、统计、重新练、下一组 | 返回我的主页 |
+| 错题练习 | `profileView=notebookPractice` | 错题专项训练 | 听音/看字错题练习、统计、重新练、下一组、标题左侧返回 | 返回我的主页 |
 | 笔顺学习 | `learningView.active` | 深度单字学习 | 笔顺演示、书写测验、完成保存进度 | 从主页学习卡片进入 |
 | 批量录音 | `batchRecordView.active` | 教学录音辅助页 | 批量录音、预览、上传、切换项目/单元 | 从主页进入 |
 | 批量播放 | `batchPlayView.active` | 教学播放辅助页 | 单个播放、顺序播放、切换项目/单元 | 从主页进入 |
@@ -297,10 +300,21 @@ flowchart TB
 ```mermaid
 flowchart TB
     A["Toolbar"] --> B["登录卡片"]
-    B --> C["查询学习进度卡片"]
+    B --> C["显示学习进度卡片"]
     C --> D["听音识字错题集卡片"]
     D --> E["看字识音错题集卡片"]
     E --> F["BottomNav"]
+```
+
+#### 主练习布局（主页听音 / 主页看字）
+
+```mermaid
+flowchart TB
+    A["Toolbar + 等级/单元控件"] --> B["返回按钮 + 第N单元"]
+    B --> C["进度卡片"]
+    C --> D["练习面板"]
+    D --> E["听音：播放按钮 + 候选字"]
+    D --> F["看字：提示字 + 音频选项"]
 ```
 
 #### 错题复习布局
@@ -360,18 +374,19 @@ flowchart TB
 #### 主页听音识字模块
 
 - 功能
-  听音后从候选字中选择正确字。
+  听音后从候选字中选择正确字，使用主练习骨架渲染。
 - 交互
-  点击喇叭、点击候选字。
+  点击喇叭、点击候选字、点击标题左侧 `返回`。
 - 输出
   更新 `listenMode.questions`、`answeredChars`、`mistakeChars`，必要时写入错题表。
+  返回时依据 `practiceEntryContext` 回到进入前页面。
 
 #### 主页看字识音模块
 
 - 功能
-  根据提示字选择对应读音。
+  根据提示字选择对应读音，使用主练习骨架渲染。
 - 交互
-  点击音频按钮、拖拽/点击。
+  点击音频按钮、拖拽/点击、点击标题左侧 `返回`。
 - 输出
   更新 `seeMode.questions`、`revealedOptions`、`mistakeChars`，必要时写入错题表。
 
@@ -404,7 +419,7 @@ flowchart TB
 #### 学习进度卡片
 
 - 功能
-  查询并按等级/单元展示学习进度。
+  展示已缓存的学习进度，并按等级/单元分组。
 - 交互
   顶层卡片展开，等级行展开，内容行跳转复习。
 - 数据依赖
@@ -441,10 +456,20 @@ flowchart TB
 
 ### 3.5 错题练习模块
 
+当前版本中，主练习页与错题练习页已抽象出共用骨架，统一包含：
+
+- 左侧返回按钮
+- 标题区（单元 / 组）
+- 进度卡片
+- 题目区
+- 作答区
+
+差异通过数据源、标题、返回动作和数据库交互规则区分。
+
 #### 错题听音练习
 
 - 功能
-  以错题集为训练源重做听音识字。
+  以错题集为训练源重做听音识字，复用听音练习骨架。
 - 规则
   题目来源为：
   - 原错字
@@ -453,7 +478,7 @@ flowchart TB
 #### 错题看字练习
 
 - 功能
-  以错题集为训练源重做看字识音。
+  以错题集为训练源重做看字识音，复用看字练习骨架。
 - 规则
   同样使用原错字与误认字列表生成题目集合。
 
@@ -578,6 +603,12 @@ else:
     renderHomeStudyMode()
 ```
 
+说明：
+
+- `renderListenMode()` 与 `renderNotebookPracticeSection(mode=listen)` 共用练习页骨架。
+- `renderSeeMode()` 与 `renderNotebookPracticeSection(mode=see)` 共用练习页骨架。
+- 主练习页通过 `practiceEntryContext` 控制返回前页面。
+
 ### 4.3 听音识字实现逻辑
 
 #### 主练习
@@ -678,6 +709,25 @@ else:
 - `查询完毕！`
 
 形成串联式 toast 反馈。
+
+当前查询策略已收敛为：
+
+1. 登录成功后：
+   - 远程统一查询
+   - 查询学习进度与错题集
+   - 显示 toast
+2. 应用启动时（已登录）：
+   - 远程统一查询
+   - 查询学习进度与错题集
+   - 静默执行，不显示 toast
+3. 点击“其他”页 `刷新页面` 卡片：
+   - 在页面强刷前先执行一次静默统一查询
+4. 点击底部导航进入“我的”页：
+   - 不执行远程查询
+   - 直接展示当前缓存
+5. 从错题复习页 / 错题练习页返回“我的”主页：
+   - 不执行远程查询
+   - 直接展示当前缓存
 
 ### 4.7 批量录音与批量播放实现逻辑
 
@@ -835,6 +885,8 @@ flowchart TD
 - 写入表：`user_progress`
 - 方式：`upsert`
 - 唯一维度：`username + char + level + unit`
+- 写库成功后：
+  通过 `profile-cache-support.js` 直接增量更新 `state.profileProgress`
 
 #### 错题数据修改
 
@@ -843,6 +895,8 @@ flowchart TD
   - `upsert` 错误记录
   - `delete` 删除主错题
   - `update wrong_chars` 删除单个误认字项
+- 写库成功后：
+  通过 `profile-cache-support.js` 直接增量更新 `state.notebook.items`
 
 #### 权限控制
 
@@ -856,9 +910,11 @@ flowchart TD
 
 #### 数据同步机制
 
-- 登录后立即查询“我的”页数据
-- 返回我的页后可强制查询
+- 登录后立即远程统一查询“我的”页数据
+- 应用启动时若已登录，会静默统一查询“我的”页数据
+- 页面跳转不再默认触发远程查询，优先展示内存缓存
 - 错题练习中使用 mutation 队列等待数据库变更落库后再刷新页面
+- 本地缓存只在“写库成功后”执行增量同步
 
 ---
 
@@ -924,7 +980,8 @@ flowchart TD
 | `js/practice/practice-playback-support.js` | 主练习音频播放辅助 |
 | `js/profile/notebook-engine.js` | 错题复习/错题练习主流程 |
 | `js/profile/notebook-support.js` | 错题本页面辅助、错题删除、跳转、完成弹窗 |
-| `js/profile/profile-data-support.js` | 我的页数据查询与状态同步 |
+| `js/profile/profile-data-support.js` | 我的页数据远程查询与状态同步 |
+| `js/profile/profile-cache-support.js` | 学习进度 / 错题集本地缓存增量更新 |
 | `js/home/home-support.js` | 主页学习区导航与完成弹窗 |
 | `js/home/learn-batch-support.js` | 整单元朗读流程 |
 
@@ -1038,6 +1095,8 @@ L0/Unit_1/yuan/char.mp3
   可按规则删除
 - 错题练习 `重新练` 模式：
   不删除，只追加错误数据
+- 错题相关本地缓存：
+  只在数据库写入成功后更新 `state.notebook.items`
 
 ### 8.3 误认字规则
 
@@ -1047,8 +1106,10 @@ L0/Unit_1/yuan/char.mp3
 
 ### 8.4 查询提示规则
 
-- 若显示 `正在查询数据中...`
-- 查询完成后必须紧接 `查询完毕！`
+- 登录成功后的统一查询：
+  若显示 `正在查询数据中...`，查询完成后必须紧接 `查询完毕！`
+- 应用启动时与“刷新页面”卡片触发的统一查询：
+  静默执行，不显示查询 toast
 
 ---
 

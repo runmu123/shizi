@@ -19,6 +19,8 @@ export function setupPracticeInteractionEvents({
   navigateListenHistory,
   navigateNotebookReviewCard,
   setMainViewMode,
+  setPracticeEntryContext,
+  returnFromMainPractice,
   playListenModeAudio,
 }) {
   let listenTouchStartX = 0;
@@ -75,6 +77,13 @@ export function setupPracticeInteractionEvents({
       if (!Number.isNaN(nextIndex)) {
         navigateNotebookReviewCardTo(nextIndex);
       }
+      return;
+    }
+
+    const practiceActionBtn = e.target.closest('[data-practice-action]');
+    if (practiceActionBtn?.dataset.practiceAction === 'back-main-practice') {
+      e.stopPropagation();
+      returnFromMainPractice();
       return;
     }
 
@@ -285,6 +294,12 @@ export function setupPracticeInteractionEvents({
       searchInput.value = '';
       unitNavigator.style.visibility = 'visible';
     }
+    if (state.mainViewMode === 'study') {
+      setPracticeEntryContext('listen', 'home-unit', {
+        appSection: state.appSection,
+        mainViewMode: 'study',
+      });
+    }
     setMainViewMode(state.mainViewMode === 'listen' ? 'study' : 'listen', {
       resetListen: true,
       autoPlay: true,
@@ -298,6 +313,12 @@ export function setupPracticeInteractionEvents({
     if (searchInput.value) {
       searchInput.value = '';
       unitNavigator.style.visibility = 'visible';
+    }
+    if (state.mainViewMode === 'study') {
+      setPracticeEntryContext('see', 'home-unit', {
+        appSection: state.appSection,
+        mainViewMode: 'study',
+      });
     }
     setMainViewMode(state.mainViewMode === 'see' ? 'study' : 'see', {
       resetListen: true,

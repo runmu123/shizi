@@ -8,6 +8,7 @@ export function setupHomeSectionEvents({
   returnToHomeStudy,
   setAppSection,
   setMainViewMode,
+  setPracticeEntryContext,
   switchTeachingMode,
   tryEnterTeachingMode,
   toggleInlineCollapse,
@@ -45,12 +46,20 @@ export function setupHomeSectionEvents({
     if (!action) return;
 
     if (action === 'listen') {
+      setPracticeEntryContext('listen', 'other', {
+        appSection: state.appSection,
+        mainViewMode: 'study',
+      });
       setAppSection('home');
       setMainViewMode('listen', { resetListen: true, autoPlay: true });
       return;
     }
 
     if (action === 'see') {
+      setPracticeEntryContext('see', 'other', {
+        appSection: state.appSection,
+        mainViewMode: 'study',
+      });
       setAppSection('home');
       setMainViewMode('see', { resetListen: true, autoPlay: false });
       return;
