@@ -249,9 +249,6 @@ export function switchTeachingMode(enable) {
   const learnBatchBtn = document.getElementById('learnBatchPlayBtnMain');
   const earStudyBtn = document.getElementById('earStudyToggleBtnMain');
   const eyeStudyBtn = document.getElementById('eyeStudyToggleBtnMain');
-  const menuSwitchTeach = document.getElementById('menuSwitchTeach');
-  const menuSwitchLearn = document.getElementById('menuSwitchLearn');
-  const menuStats = document.getElementById('menuStats');
 
   // 控制批量按钮的显示/隐藏
   if (batchPlayBtn) {
@@ -272,16 +269,6 @@ export function switchTeachingMode(enable) {
   if (!state.isTeachingMode) {
     updateEarStudyButtonForMode();
   }
-  if (menuSwitchTeach) {
-    menuSwitchTeach.style.display = state.isTeachingMode ? 'none' : 'block';
-  }
-  if (menuSwitchLearn) {
-    menuSwitchLearn.style.display = state.isTeachingMode ? 'block' : 'none';
-  }
-  if (menuStats) {
-    menuStats.style.display = state.isTeachingMode ? 'block' : 'none';
-  }
-
   // 重新渲染
   renderUnit();
 
@@ -2454,9 +2441,6 @@ export function setupEventListeners() {
     window.scrollTo(0, scrollPosition);
   }
 
-  const menuDropdown = document.getElementById('menuDropdown');
-  const menuSwitchTeach = document.getElementById('menuSwitchTeach');
-  const menuSwitchLearn = document.getElementById('menuSwitchLearn');
   const currentLevelBtn = document.getElementById('currentLevelBtn');
   const levelDropdown = document.getElementById('levelDropdown');
   const searchInput = document.getElementById('searchInput');
@@ -2515,26 +2499,6 @@ export function setupEventListeners() {
       passwordInput.focus();
     }
   };
-
-  if (menuSwitchTeach) {
-    menuSwitchTeach.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (menuDropdown) menuDropdown.classList.remove('show');
-      if (!state.isTeachingMode) {
-        tryEnterTeachingMode();
-      }
-    });
-  }
-
-  if (menuSwitchLearn) {
-    menuSwitchLearn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (menuDropdown) menuDropdown.classList.remove('show');
-      if (state.isTeachingMode) {
-        switchTeachingMode(false);
-      }
-    });
-  }
 
   // ===== 密码弹窗 =====
   const handlePasswordSubmit = () => {
@@ -3215,34 +3179,37 @@ export function setupEventListeners() {
     }
 
     if (action === 'download') {
-      document.getElementById('menuDownload')?.click();
+      window.shiziActions?.openDownloadDialog?.();
       return;
     }
 
     if (action === 'clear-cache') {
-      document.getElementById('menuClearCache')?.click();
+      window.shiziActions?.clearAudioCache?.();
       return;
     }
 
     if (action === 'toggle-teaching') {
-      const targetId = state.isTeachingMode ? 'menuSwitchLearn' : 'menuSwitchTeach';
-      document.getElementById(targetId)?.click();
+      if (state.isTeachingMode) {
+        switchTeachingMode(false);
+      } else {
+        tryEnterTeachingMode();
+      }
       setAppSection('home');
       return;
     }
 
     if (action === 'refresh') {
-      document.getElementById('menuRefresh')?.click();
+      window.shiziActions?.hardRefresh?.();
       return;
     }
 
     if (action === 'stats') {
-      document.getElementById('menuStats')?.click();
+      window.shiziActions?.showStatsModal?.();
       return;
     }
 
     if (action === 'login') {
-      document.getElementById('menuLogin')?.click();
+      window.shiziActions?.toggleLogin?.();
       return;
     }
 

@@ -1,14 +1,9 @@
 // 共享可变状态
-const forceRefreshTokenKey = 'shizi_force_refresh_token';
-const urlToken = new URLSearchParams(window.location.search).get('t');
-const sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
-const refreshToken = urlToken || sessionToken || '';
+const refreshContext = window.ShiziRefresh?.getRefreshContext({ consumeSessionToken: true }) || {
+  cacheSuffix: '',
+};
 
-if (sessionToken) {
-  sessionStorage.removeItem(forceRefreshTokenKey);
-}
-
-export const cacheSuffix = refreshToken ? `?t=${encodeURIComponent(refreshToken)}` : '';
+export const cacheSuffix = refreshContext.cacheSuffix;
 
 export const state = {
   LEVELS: [],

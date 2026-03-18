@@ -42,8 +42,6 @@ export function setupMenuAndModals() {
     window.scrollTo(0, scrollPosition);
   }
 
-  const menuBtn = document.getElementById('menuBtn');
-  const menuDropdown = document.getElementById('menuDropdown');
   const loginReminder = document.getElementById('loginReminder');
   const loginModal = document.getElementById('loginModal');
   const loginInput = document.getElementById('loginInput');
@@ -55,6 +53,12 @@ export function setupMenuAndModals() {
   const confirmTitle = document.getElementById('confirmTitle');
   const confirmMessage = document.getElementById('confirmMessage');
   let confirmCallback = null;
+
+  function bindClick(id, handler) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.addEventListener('click', handler);
+  }
 
   // 中文数字转换
   const getCnNum = (str) => {
@@ -218,6 +222,10 @@ export function setupMenuAndModals() {
   };
 
   function showConfirm(title, message, callback) {
+    if (!confirmModal || !confirmTitle || !confirmMessage) {
+      callback?.();
+      return;
+    }
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
     confirmCallback = callback;
@@ -271,13 +279,15 @@ export function setupMenuAndModals() {
     }, delay);
   }
 
-  document.getElementById('cancelConfirm').addEventListener('click', () => {
+  bindClick('cancelConfirm', () => {
+    if (!confirmModal) return;
     confirmModal.classList.remove('active');
     confirmCallback = null;
     unlockScroll();
   });
 
-  document.getElementById('confirmConfirm').addEventListener('click', () => {
+  bindClick('confirmConfirm', () => {
+    if (!confirmModal) return;
     confirmModal.classList.remove('active');
     unlockScroll();
     if (confirmCallback) {
@@ -288,6 +298,7 @@ export function setupMenuAndModals() {
 
   // ===== 登录状态检测 =====
   function checkLoginStatus() {
+    if (!loginModal || !loginReminder) return;
     const user = localStorage.getItem(USER_KEY);
     if (!user) {
       if (!loginModal.classList.contains('active')) {
@@ -304,36 +315,31 @@ export function setupMenuAndModals() {
     }
   }
 
-  loginReminder.addEventListener('click', () => {
-    loginModal.classList.add('active');
-    lockScroll();
-    loginReminder.style.display = 'none';
-    loginInput.focus();
-  });
+  if (loginReminder) {
+    loginReminder.addEventListener('click', () => {
+      if (!loginModal) return;
+      loginModal.classList.add('active');
+      lockScroll();
+      loginReminder.style.display = 'none';
+      loginInput?.focus();
+    });
+  }
 
-  loginModal.addEventListener('click', (e) => {
-    if (e.target === loginModal) {
-      loginModal.classList.remove('active');
-      unlockScroll();
-      const user = localStorage.getItem(USER_KEY);
-      if (!user) {
-        loginReminder.style.display = 'flex';
+  if (loginModal) {
+    loginModal.addEventListener('click', (e) => {
+      if (e.target === loginModal) {
+        loginModal.classList.remove('active');
+        unlockScroll();
+        const user = localStorage.getItem(USER_KEY);
+        if (!user && loginReminder) {
+          loginReminder.style.display = 'flex';
+        }
       }
-    }
-  });
-
-  // ===== 菜单切换 =====
-  menuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    menuDropdown.classList.toggle('show');
-  });
-
-  document.addEventListener('click', () => {
-    menuDropdown.classList.remove('show');
-  });
+    });
+  }
 
   // ===== 登录/注销 =====
-  document.getElementById('menuLogin').addEventListener('click', () => {
+  const handleLoginToggle = () => {
     const user = localStorage.getItem(USER_KEY);
     if (user) {
       showConfirm('注销确认', `当前已登录为「${user}」\n确定要注销吗？`, () => {
@@ -345,23 +351,28 @@ export function setupMenuAndModals() {
         emitAuthStateChanged('');
       });
     } else {
+      if (!loginModal || !loginInput || !loginError) return;
       loginModal.classList.add('active');
       lockScroll();
       loginInput.value = '';
       loginError.style.display = 'none';
     }
-  });
+  };
 
-  document.getElementById('cancelLogin').addEventListener('click', () => {
+  bindClick('menuLogin', handleLoginToggle);
+
+  bindClick('cancelLogin', () => {
+    if (!loginModal) return;
     loginModal.classList.remove('active');
     unlockScroll();
     const user = localStorage.getItem(USER_KEY);
-    if (!user) {
+    if (!user && loginReminder) {
       loginReminder.style.display = 'flex';
     }
   });
 
   async function handleLogin() {
+    if (!loginInput || !loginError || !loginModal || !loginLoadingModal) return;
     const username = loginInput.value.trim();
     if (!username) {
       loginError.textContent = '请输入用户名';
@@ -419,19 +430,24 @@ export function setupMenuAndModals() {
     }
   }
 
-  loginInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLogin();
-    }
-  });
+  if (loginInput) {
+    loginInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleLogin();
+      }
+    });
+  }
 
-  document.getElementById('confirmLogin').addEventListener('click', handleLogin);
+  bindClick('confirmLogin', handleLogin);
 
   // 加载时更新登录菜单文字
   const currentUser = localStorage.getItem(USER_KEY);
   if (currentUser) {
-    document.getElementById('menuLogin').textContent = '注销 (' + currentUser + ')';
+    const menuLoginBtn = document.getElementById('menuLogin');
+    if (menuLoginBtn) {
+      menuLoginBtn.textContent = '注销 (' + currentUser + ')';
+    }
   }
 
   window.addEventListener('shizi-auth-changed', (event) => {
@@ -451,15 +467,18 @@ export function setupMenuAndModals() {
   const statsAudioListContainer = document.getElementById('statsAudioListContainer');
 
   // 统计列表交互
-  statsAudioListContainer.addEventListener('click', (e) => {
-    const header = e.target.closest('.progress-level-header');
-    if (header) {
-      header.classList.toggle('active');
-      header.nextElementSibling.classList.toggle('show');
-    }
-  });
+  if (statsAudioListContainer) {
+    statsAudioListContainer.addEventListener('click', (e) => {
+      const header = e.target.closest('.progress-level-header');
+      if (header) {
+        header.classList.toggle('active');
+        header.nextElementSibling.classList.toggle('show');
+      }
+    });
+  }
 
-  document.getElementById('menuStats').addEventListener('click', async () => {
+  const showStatsModal = async () => {
+    if (!statsModal || !statsAudioListContainer) return;
     statsModal.classList.add('active');
     lockScroll();
     statsAudioListContainer.innerHTML = '<div class="loading">加载中...</div>';
@@ -510,9 +529,12 @@ export function setupMenuAndModals() {
         statsAudioListContainer.innerHTML = '<div class="error-msg">加载失败</div>';
       }
     }
-  });
+  };
 
-  document.getElementById('closeStats').addEventListener('click', () => {
+  bindClick('menuStats', showStatsModal);
+
+  bindClick('closeStats', () => {
+    if (!statsModal) return;
     statsModal.classList.remove('active');
     unlockScroll();
   });
@@ -523,27 +545,30 @@ export function setupMenuAndModals() {
 
   // 使用事件委托处理进度面板交互
 
-  progressLevelsContainer.addEventListener('click', (e) => {
-    // 折叠/展开等级
-    const header = e.target.closest('.progress-level-header');
-    if (header) {
-      header.classList.toggle('active');
-      header.nextElementSibling.classList.toggle('show');
-      return;
-    }
-
-    // 导航到单元
-    const navBtn = e.target.closest('.progress-nav-btn');
-    if (navBtn) {
-      const level = navBtn.dataset.level;
-      const unit = navBtn.dataset.unit;
-      if (level && unit) {
-        navigateToUnit(level, unit);
+  if (progressLevelsContainer) {
+    progressLevelsContainer.addEventListener('click', (e) => {
+      // 折叠/展开等级
+      const header = e.target.closest('.progress-level-header');
+      if (header) {
+        header.classList.toggle('active');
+        header.nextElementSibling.classList.toggle('show');
+        return;
       }
-    }
-  });
 
-  document.getElementById('menuProgress').addEventListener('click', async () => {
+      // 导航到单元
+      const navBtn = e.target.closest('.progress-nav-btn');
+      if (navBtn) {
+        const level = navBtn.dataset.level;
+        const unit = navBtn.dataset.unit;
+        if (level && unit) {
+          navigateToUnit(level, unit);
+        }
+      }
+    });
+  }
+
+  const showProgressModal = async () => {
+    if (!progressModal || !progressLevelsContainer) return;
     const user = localStorage.getItem(USER_KEY);
     if (!user) {
       showToast('请先登录查看进度', 'info');
@@ -581,15 +606,18 @@ export function setupMenuAndModals() {
 
       await renderContentList(progressLevelsContainer, grouped, { showNav: true, emptyText: '暂无学习记录' });
     }
-  });
+  };
 
-  document.getElementById('closeProgress').addEventListener('click', () => {
+  bindClick('menuProgress', showProgressModal);
+
+  bindClick('closeProgress', () => {
+    if (!progressModal) return;
     progressModal.classList.remove('active');
     unlockScroll();
   });
 
   // ===== 下载语音数据 =====
-  document.getElementById('menuDownload').addEventListener('click', () => {
+  const openDownloadDialog = () => {
     // 显示等级选择弹窗
     const modal = document.getElementById('levelSelectModal');
     const levelCheckboxes = document.getElementById('levelCheckboxes');
@@ -608,10 +636,11 @@ export function setupMenuAndModals() {
       modal.classList.add('active');
       lockScroll();
     }
-  });
+  };
+  bindClick('menuDownload', openDownloadDialog);
 
   // ===== 等级选择弹窗事件 =====
-  document.getElementById('confirmLevelSelect').addEventListener('click', () => {
+  bindClick('confirmLevelSelect', () => {
     const modal = document.getElementById('levelSelectModal');
     const checkboxes = document.querySelectorAll('input[name="level"]:checked');
     const selectedLevels = Array.from(checkboxes).map(checkbox => checkbox.value);
@@ -638,16 +667,18 @@ export function setupMenuAndModals() {
     }
   });
 
-  document.getElementById('cancelLevelSelect').addEventListener('click', () => {
+  bindClick('cancelLevelSelect', () => {
     const modal = document.getElementById('levelSelectModal');
+    if (!modal) return;
     modal.classList.remove('active');
     unlockScroll();
   });
 
   // ===== 批次大小弹窗事件 =====
-  document.getElementById('confirmBatchSize').addEventListener('click', () => {
+  bindClick('confirmBatchSize', () => {
     const input = document.getElementById('batchSizeInput');
     const modal = document.getElementById('batchSizeModal');
+    if (!input || !modal) return;
     const value = parseInt(input.value);
 
     if (value && value >= 1 && value <= 100) {
@@ -660,8 +691,9 @@ export function setupMenuAndModals() {
     }
   });
 
-  document.getElementById('cancelBatchSize').addEventListener('click', () => {
+  bindClick('cancelBatchSize', () => {
     const modal = document.getElementById('batchSizeModal');
+    if (!modal) return;
     modal.classList.remove('active');
     unlockScroll();
 
@@ -797,7 +829,7 @@ export function setupMenuAndModals() {
   }
 
   // ===== 清除缓存 =====
-  document.getElementById('menuClearCache').addEventListener('click', async () => {
+  const clearAudioCache = async () => {
     if ('caches' in window) {
       try {
         lockScroll();
@@ -855,7 +887,8 @@ export function setupMenuAndModals() {
     } else {
       showToast('浏览器不支持缓存清理', 'error');
     }
-  });
+  };
+  bindClick('menuClearCache', clearAudioCache);
 
   // ===== 刷新页面 =====
   const handleHardRefresh = async () => {
@@ -870,15 +903,27 @@ export function setupMenuAndModals() {
 
       await new Promise(r => setTimeout(r, 200));
 
-      const token = Date.now().toString();
-      sessionStorage.setItem('shizi_force_refresh_token', token);
-      const nextUrl = `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
+      const token = window.ShiziRefresh?.createRefreshToken?.() || Date.now().toString();
+      if (window.ShiziRefresh?.storeRefreshToken) {
+        window.ShiziRefresh.storeRefreshToken(token);
+      } else {
+        const refreshTokenKey = window.ShiziRefresh?.FORCE_REFRESH_TOKEN_KEY || 'shizi_force_refresh_token';
+        sessionStorage.setItem(refreshTokenKey, token);
+      }
+      const nextUrl = window.ShiziRefresh?.buildHardRefreshUrl?.(token)
+        || `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
       window.location.replace(nextUrl);
     } catch (e) {
       console.error('刷新出错:', e);
-      const token = Date.now().toString();
-      sessionStorage.setItem('shizi_force_refresh_token', token);
-      const nextUrl = `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
+      const token = window.ShiziRefresh?.createRefreshToken?.() || Date.now().toString();
+      if (window.ShiziRefresh?.storeRefreshToken) {
+        window.ShiziRefresh.storeRefreshToken(token);
+      } else {
+        const refreshTokenKey = window.ShiziRefresh?.FORCE_REFRESH_TOKEN_KEY || 'shizi_force_refresh_token';
+        sessionStorage.setItem(refreshTokenKey, token);
+      }
+      const nextUrl = window.ShiziRefresh?.buildHardRefreshUrl?.(token)
+        || `${window.location.pathname}?t=${encodeURIComponent(token)}${window.location.hash || ''}`;
       window.location.replace(nextUrl);
     }
   };
@@ -890,4 +935,13 @@ export function setupMenuAndModals() {
       btn.addEventListener('click', handleHardRefresh);
     }
   });
+
+  window.shiziActions = {
+    toggleLogin: handleLoginToggle,
+    showStatsModal,
+    showProgressModal,
+    openDownloadDialog,
+    clearAudioCache,
+    hardRefresh: handleHardRefresh,
+  };
 }

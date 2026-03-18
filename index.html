@@ -14,19 +14,16 @@
   <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="js/refresh-context.js"></script>
   <script>
     (() => {
-      const forceRefreshTokenKey = 'shizi_force_refresh_token';
-      const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-      const urlToken = new URLSearchParams(window.location.search).get('t');
-      let sessionToken = sessionStorage.getItem(forceRefreshTokenKey);
-      if (!urlToken && !sessionToken && isLocalDev) {
-        sessionToken = `${Date.now()}`;
-        sessionStorage.setItem(forceRefreshTokenKey, sessionToken);
-      }
-      const refreshToken = urlToken || sessionToken || '';
-      const shouldForceRefresh = !!refreshToken;
-      const suffix = shouldForceRefresh ? `?t=${encodeURIComponent(refreshToken)}` : '';
+      const refreshContext = window.ShiziRefresh?.getRefreshContext({ ensureLocalDevToken: true }) || {
+        refreshToken: '',
+        shouldForceRefresh: false,
+        cacheSuffix: '',
+      };
+      const shouldForceRefresh = refreshContext.shouldForceRefresh;
+      const suffix = refreshContext.cacheSuffix;
       const modules = [
         'js/main.js', 'js/state.js', 'js/app.js', 'js/menu.js', 'js/learning.js',
         'js/ui.js', 'js/toast.js', 'js/constants.js', 'js/position.js',
@@ -2792,18 +2789,6 @@
     <div class="navbar-content">
       <div class="app-brand">识字</div>
     </div>
-
-    <!-- 菜单下拉 -->
-    <div class="menu-dropdown" id="menuDropdown">
-      <button class="menu-item" id="menuDownload">下载语音数据</button>
-      <button class="menu-item" id="menuClearCache">清理语音缓存</button>
-      <button class="menu-item" id="menuSwitchLearn" style="display:none;">切换学习模式</button>
-      <button class="menu-item" id="menuSwitchTeach">切换教学模式</button>
-      <button class="menu-item" id="menuStats" style="display:none;">显示录音进度</button>
-      <button class="menu-item" id="menuProgress">学习进度</button>
-      <button class="menu-item" id="menuRefresh">刷新页面</button>
-      <button class="menu-item" id="menuLogin">登录</button>
-    </div>
   </header>
 
   <div class="hidden-ui-controls" aria-hidden="true">
@@ -2823,7 +2808,6 @@
     <button class="play-btn" title="批量录音" id="batchRecordBtnMain" style="display:none;">
       <svg><use href="#icon-mic"></use></svg>
     </button>
-    <button class="menu-btn" id="menuBtn"></button>
   </div>
 
   <div class="toolbar">
