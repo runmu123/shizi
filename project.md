@@ -242,6 +242,11 @@ graph TD
   - 主页学习态：等级选择器 + 单元导航
   - 复习/练习态：组切换导航
 
+搜索结果页规则：
+
+- 搜索命中后，主容器显示 `等级 - 单元` 标题与结果卡片。
+- 搜索结果卡片会在标题下方保留额外垂直间距，避免卡片内容遮挡标题文字。
+
 #### 底部导航
 
 - `主页`
@@ -619,6 +624,7 @@ else:
 - `renderListenMode()` 与 `renderNotebookPracticeSection(mode=listen)` 共用练习页骨架。
 - `renderSeeMode()` 与 `renderNotebookPracticeSection(mode=see)` 共用练习页骨架。
 - 主练习页通过 `practiceEntryContext` 控制返回前页面。
+- `renderSearchResult()` 使用独立搜索结果布局，标题与结果卡片之间保留安全间距，避免视觉重叠。
 
 ### 4.3 听音识字实现逻辑
 

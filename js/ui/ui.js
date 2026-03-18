@@ -930,8 +930,8 @@ export function renderSearchResult(char, info, level, unit) {
   const sentenceHtml = highlightChar(sentence, char);
 
   appEl.innerHTML = `
-    <div class="unit-title">${escapeHtml(level)} - ${escapeHtml(unit)}</div>
-    <div class="card">
+    <div class="unit-title search-result-title">${escapeHtml(level)} - ${escapeHtml(unit)}</div>
+    <div class="card search-result-card">
       <div class="char-header-container">
         <div class="char-with-btn">
           <div class="char-box">
