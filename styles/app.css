@@ -808,11 +808,18 @@
       width: 24px;
       height: 24px;
       flex-shrink: 0;
+      color: #7c6a58;
     }
 
     .notebook-section-arrow svg {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
+      transition: transform 0.2s ease;
+      transform-origin: center;
+    }
+
+    .notebook-section-arrow.expanded svg {
+      transform: rotate(180deg);
     }
 
     .notebook-collapse {
