@@ -10,6 +10,7 @@ export function setupPracticeInteractionEvents({
   handleSeeModeAnswer,
   playSeeOptionAudio,
   stopActiveAudioPlayback,
+  isHomeStudyStage,
   navigateNotebookReviewCardTo,
   getCurrentUnitChars,
   navigateHomeCard,
@@ -90,7 +91,7 @@ export function setupPracticeInteractionEvents({
     const unitCharLink = e.target.closest('.unit-char-link');
     if (unitCharLink) {
       const targetChar = unitCharLink.dataset.char;
-      if (targetChar && state.appSection === 'home' && state.mainViewMode === 'study') {
+      if (targetChar && isHomeStudyStage()) {
         const chars = getCurrentUnitChars();
         const nextIndex = chars.indexOf(targetChar);
         if (nextIndex !== -1) {
@@ -135,7 +136,7 @@ export function setupPracticeInteractionEvents({
   }, { passive: true });
 
   appEl.addEventListener('touchstart', (e) => {
-    if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+    if (!isHomeStudyStage()) return;
     const stage = e.target.closest('.home-card-stage');
     if (!stage || e.touches.length !== 1) return;
     homeTouchStartX = e.touches[0].clientX;
@@ -165,7 +166,7 @@ export function setupPracticeInteractionEvents({
   }, { passive: true });
 
   appEl.addEventListener('touchend', (e) => {
-    if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+    if (!isHomeStudyStage()) return;
     const stage = e.target.closest('.home-card-stage');
     if (!stage || e.changedTouches.length !== 1) return;
 

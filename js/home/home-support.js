@@ -12,6 +12,10 @@ export function createHomeSupport({
   setSpeakerButtonPlaying,
   escapeHtml,
 }) {
+  function isHomeStudyStage() {
+    return state.appSection === 'home' && state.mainViewMode === 'study';
+  }
+
   function returnToHomeStudy() {
     state.appSection = 'home';
     if (state.mainViewMode !== 'study') {
@@ -28,7 +32,7 @@ export function createHomeSupport({
   }
 
   function navigateHomeCard(targetIndex, direction = 'next') {
-    if (state.appSection !== 'home' || state.mainViewMode !== 'study' || state.isTeachingMode) return;
+    if (!isHomeStudyStage()) return;
     const chars = getCurrentUnitChars();
     if (!chars.length) return;
     const nextIndex = Math.max(0, Math.min(targetIndex, chars.length - 1));
@@ -102,6 +106,7 @@ export function createHomeSupport({
   }
 
   return {
+    isHomeStudyStage,
     returnToHomeStudy,
     getCurrentUnitChars,
     navigateHomeCard,

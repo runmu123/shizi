@@ -21,6 +21,7 @@ export function setupNavigationEvents({
   updateEarStudyButtonForMode,
   refreshCurrentUnitView,
   stopLearnBatchPlayback,
+  isHomeStudyStage,
   navigateListenHistory,
   navigateSeeHistory,
   navigateHomeCardByOffset,
@@ -209,7 +210,7 @@ export function setupNavigationEvents({
       }
     }
 
-    if (state.appSection === 'home' && state.mainViewMode === 'study' && !state.isTeachingMode) {
+    if (isHomeStudyStage()) {
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         navigateHomeCardByOffset(-1);
