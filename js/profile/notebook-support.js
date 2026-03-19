@@ -1,3 +1,5 @@
+import { buildCompletionSummaryHtml } from '../common/completion-summary.js';
+
 export function createNotebookSupport({
   state,
   completionModalState,
@@ -233,9 +235,13 @@ export function createNotebookSupport({
     const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
     const hasRetryTargets = session.questions.some((question) => (question.wrongSelections || []).length > 0);
 
-    summary.textContent = wrongQuestions.length === 0
-      ? '本组全部正确！'
-      : `本组共 ${session.sequence.length} 个字，选对 ${correctQuestions.length} 个，未选对 ${wrongQuestions.length} 个。`;
+    summary.innerHTML = buildCompletionSummaryHtml({
+      scopeLabel: '本组',
+      totalCount: session.sequence.length,
+      correctCount: correctQuestions.length,
+      wrongCount: wrongQuestions.length,
+      allCorrectText: '本组全部正确！',
+    });
 
     correctList.innerHTML = correctQuestions.length > 0
       ? correctQuestions.map((question) => `<span class="listen-result-char success">${escapeHtml(question.char)}</span>`).join('')
