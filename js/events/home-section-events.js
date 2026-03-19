@@ -90,11 +90,6 @@ export function setupHomeSectionEvents({
       return;
     }
 
-    if (action === 'stats') {
-      window.shiziActions?.showStatsModal?.();
-      return;
-    }
-
     if (action === 'login') {
       window.shiziActions?.toggleLogin?.();
       return;
@@ -103,6 +98,12 @@ export function setupHomeSectionEvents({
     if (action === 'progress') {
       state.profileProgress.expanded = !state.profileProgress.expanded;
       toggleInlineCollapse(actionCard, state.profileProgress.expanded);
+      return;
+    }
+
+    if (action === 'audio-progress') {
+      state.audioProgress.expanded = !state.audioProgress.expanded;
+      toggleInlineCollapse(actionCard, state.audioProgress.expanded);
       return;
     }
 

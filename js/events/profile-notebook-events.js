@@ -34,6 +34,26 @@ export function setupProfileNotebookEvents({
       return;
     }
 
+    const audioProgressHeader = e.target.closest('[data-audio-progress-header]');
+    if (audioProgressHeader) {
+      audioProgressHeader.classList.toggle('active');
+      audioProgressHeader.nextElementSibling?.classList.toggle('show');
+      return;
+    }
+
+    const audioProgressViewBtn = e.target.closest('[data-audio-progress-view]');
+    if (audioProgressViewBtn) {
+      const [level, unit] = (audioProgressViewBtn.dataset.audioProgressView || '').split('|');
+      if (level && unit) {
+        state.appSection = 'home';
+        if (state.mainViewMode !== 'study') {
+          state.mainViewMode = 'study';
+        }
+        navigateToUnit(level, unit);
+      }
+      return;
+    }
+
     const toggle = e.target.closest('[data-notebook-section]');
     if (!toggle) return;
     const mode = toggle.dataset.notebookSection;

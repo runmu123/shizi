@@ -433,75 +433,6 @@ export function setupMenuAndModals() {
 
   checkLoginStatus();
 
-  // ===== 统计弹窗 =====
-  const statsModal = document.getElementById('statsModal');
-  const statsAudioListContainer = document.getElementById('statsAudioListContainer');
-
-  // 统计列表交互
-  if (statsAudioListContainer) {
-    statsAudioListContainer.addEventListener('click', (e) => {
-      const header = e.target.closest('.progress-level-header');
-      if (header) {
-        header.classList.toggle('active');
-        header.nextElementSibling.classList.toggle('show');
-      }
-    });
-  }
-
-  const showStatsModal = async () => {
-    if (!statsModal || !statsAudioListContainer) return;
-    statsModal.classList.add('active');
-    lockScroll();
-    statsAudioListContainer.innerHTML = '<div class="loading">加载中...</div>';
-
-    let totalChars = 0;
-    for (const lvl of state.LEVELS) {
-      try {
-        const data = await loadLevelData(lvl);
-        if (data) {
-          Object.values(data).forEach(unitChars => {
-            if (unitChars) totalChars += Object.keys(unitChars).length;
-          });
-        }
-      } catch (e) { console.warn('统计汉字数量出错:', lvl); }
-    }
-    document.getElementById('statsTotalChars').textContent = totalChars;
-
-    if (audioManager) {
-      try {
-        const records = await audioManager.getAllAudioRecords();
-
-        // 统计去重后的字数
-        const uniqueChars = new Set(records.map(r => `${r.level}-${r.unit}-${r.char}`));
-        document.getElementById('statsAudioCount').textContent = uniqueChars.size;
-
-        // 分组
-        const grouped = {};
-        records.forEach(r => {
-          const lvl = r.level || '未知等级';
-          const unit = r.unit || '未知单元';
-          if (!grouped[lvl]) grouped[lvl] = {};
-          if (!grouped[lvl][unit]) grouped[lvl][unit] = new Set();
-          grouped[lvl][unit].add(r.char);
-        });
-
-        await renderContentList(statsAudioListContainer, grouped, { emptyText: '暂无录音记录' });
-
-      } catch (e) {
-        console.error(e);
-        statsAudioListContainer.innerHTML = '<div class="error-msg">加载失败</div>';
-      }
-    }
-  };
-
-  bindClick('menuStats', showStatsModal);
-
-  bindClick('closeStats', () => {
-    if (!statsModal) return;
-    statsModal.classList.remove('active');
-    unlockScroll();
-  });
-
   // ===== 学习进度弹窗 =====
   const progressModal = document.getElementById('progressModal');
   const progressLevelsContainer = document.getElementById('progressLevelsContainer');
@@ -849,7 +780,6 @@ export function setupMenuAndModals() {
 
   window.shiziActions = {
     toggleLogin: handleLoginToggle,
-    showStatsModal,
     showProgressModal,
     openDownloadDialog,
     clearAudioCache,

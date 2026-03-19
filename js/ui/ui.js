@@ -57,10 +57,6 @@ function getOtherPageItems() {
     },
   ];
 
-  if (state.isTeachingMode) {
-    items.push({ action: 'stats', label: '显示录音进度', icon: SECTION_ICONS.stats });
-  }
-
   items.push({ action: 'refresh', label: '刷新页面', icon: SECTION_ICONS.refresh });
   return items;
 }
@@ -298,6 +294,58 @@ function renderProfileProgressContent() {
   }).join('');
 }
 
+function renderAudioProgressContent() {
+  const grouped = state.audioProgress.grouped || {};
+  const levels = sortProgressLevels(Object.keys(grouped));
+  if (!levels.length) return '';
+
+  return levels.map((level, index) => {
+    const expanded = index === 0;
+    const units = sortProgressUnits(Object.keys(grouped[level] || {}));
+    return `
+      <div class="progress-level-item">
+        <div class="progress-level-header${expanded ? ' active' : ''}" data-audio-progress-header="${escapeHtml(level)}">
+          <span>${escapeHtml(level)}</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="progress-level-content${expanded ? ' show' : ''}">
+          <div class="progress-level-scroll">
+            ${units.map((unit) => `
+              <div class="progress-unit-row">
+                <div class="progress-unit-info">
+                  <span class="progress-unit-name">
+                    <span class="progress-unit-number">${escapeHtml(formatProgressUnitDisplay(unit))}</span><span class="progress-unit-colon"> :</span>
+                  </span>
+                  <span class="progress-char-list">
+                    ${(grouped[level][unit] || []).map((char) => `<span class="progress-char learned">${escapeHtml(char)}</span>`).join('，')}
+                  </span>
+                </div>
+                <button class="modal-btn confirm progress-review-btn" type="button" data-audio-progress-view="${escapeHtml(level)}|${escapeHtml(unit)}" title="查看该单元录音详情">查看</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderProfileCollectionCard({ toggleAttrs, icon, label, count, expanded, bodyHtml }) {
+  return `
+    <div class="profile-progress-card-wrap">
+      <button class="section-action-card profile-progress-toggle" type="button" ${toggleAttrs}>
+        <span class="section-action-icon">${icon}</span>
+        <span class="section-action-label">${label}</span>
+        <span class="section-action-count">${count}</span>
+        <span class="notebook-section-arrow${expanded ? ' expanded' : ''}">${getProgressChevronIcon(expanded)}</span>
+      </button>
+      <div class="notebook-collapse${expanded ? ' expanded' : ''}">
+        ${bodyHtml}
+      </div>
+    </div>
+  `;
+}
+
 function renderNotebookCollectionSection(mode, label) {
   const groupedLevels = getNotebookGroupsByLevel(state.notebook.items, mode);
   const levels = sortProgressLevels(Object.keys(groupedLevels));
@@ -306,16 +354,13 @@ function renderNotebookCollectionSection(mode, label) {
     (sum, groups) => sum + groups.reduce((groupSum, group) => groupSum + group.length, 0),
     0,
   );
-  return `
-    <div class="notebook-section-card">
-      <button class="section-action-card notebook-section-toggle" type="button" data-notebook-section="${mode}">
-        <span class="section-action-icon">${mode === 'listen' ? SECTION_ICONS.listen : SECTION_ICONS.see}</span>
-        <span class="section-action-label">${label}</span>
-        <span class="section-action-count">${total}</span>
-        <span class="notebook-section-arrow${expanded ? ' expanded' : ''}">${getNotebookChevronIcon(expanded)}</span>
-      </button>
-      <div class="notebook-collapse${expanded ? ' expanded' : ''}">
-        ${levels.length ? levels.map((level) => {
+  return renderProfileCollectionCard({
+    toggleAttrs: `data-notebook-section="${mode}"`,
+    icon: mode === 'listen' ? SECTION_ICONS.listen : SECTION_ICONS.see,
+    label,
+    count: total,
+    expanded,
+    bodyHtml: levels.length ? levels.map((level) => {
           const levelExpanded = !!state.notebook.expandedLevels?.[mode]?.[level];
           const groups = groupedLevels[level] || [];
           return `
@@ -344,10 +389,8 @@ function renderNotebookCollectionSection(mode, label) {
               </div>
             </div>
           `;
-        }).join('') : '<div class="loading">祝贺您！没有错题啦</div>'}
-      </div>
-    </div>
-  `;
+        }).join('') : '<div class="loading">祝贺您！没有错题啦</div>',
+  });
 }
 
 function buildReviewMistakeRows(item) {
@@ -517,21 +560,30 @@ function renderProfileSection(appEl) {
           </span>
           <span class="section-action-arrow">›</span>
         </button>
-        <div class="profile-progress-card-wrap">
-          <button class="section-action-card profile-progress-toggle" type="button" data-action="progress">
-            <span class="section-action-icon">${SECTION_ICONS.progress}</span>
-            <span class="section-action-label">显示学习进度</span>
-            <span class="section-action-count">${state.profileProgress.total}</span>
-            <span class="notebook-section-arrow${state.profileProgress.expanded ? ' expanded' : ''}">${getProgressChevronIcon(state.profileProgress.expanded)}</span>
-          </button>
-          <div class="notebook-collapse${state.profileProgress.expanded ? ' expanded' : ''}">
-            ${state.profileProgress.loading ? `
-              <div class="loading">正在加载学习进度...</div>
-            ` : state.profileProgress.error ? `
-              <div class="error-msg">${escapeHtml(state.profileProgress.error)}</div>
-            ` : renderProfileProgressContent()}
-          </div>
-        </div>
+        ${renderProfileCollectionCard({
+          toggleAttrs: 'data-action="progress"',
+          icon: SECTION_ICONS.progress,
+          label: '显示学习进度',
+          count: state.profileProgress.total,
+          expanded: state.profileProgress.expanded,
+          bodyHtml: state.profileProgress.loading
+            ? '<div class="loading">正在加载学习进度...</div>'
+            : (state.profileProgress.error
+                ? `<div class="error-msg">${escapeHtml(state.profileProgress.error)}</div>`
+                : renderProfileProgressContent()),
+        })}
+        ${state.isTeachingMode ? renderProfileCollectionCard({
+          toggleAttrs: 'data-action="audio-progress"',
+          icon: SECTION_ICONS.stats,
+          label: '显示录音进度',
+          count: state.audioProgress.total,
+          expanded: state.audioProgress.expanded,
+          bodyHtml: state.audioProgress.loading
+            ? '<div class="loading">正在加载录音进度...</div>'
+            : (state.audioProgress.error
+                ? `<div class="error-msg">${escapeHtml(state.audioProgress.error)}</div>`
+                : renderAudioProgressContent()),
+        }) : ''}
         <div class="section-card-list notebook-list">
           ${renderNotebookCollectionSection('listen', '听音识字错题集')}
           ${renderNotebookCollectionSection('see', '看字识音错题集')}

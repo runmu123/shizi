@@ -125,3 +125,34 @@ export function upsertProgressEntryInState(state, {
   state.profileProgress.loadedUser = username;
   state.profileProgress.error = '';
 }
+
+export function upsertAudioProgressEntryInState(state, {
+  level,
+  unit,
+  char,
+}) {
+  if (!state?.audioProgress || !level || !unit || !char) return;
+
+  if (!state.audioProgress.grouped[level]) {
+    state.audioProgress.grouped[level] = {};
+  }
+  if (!Array.isArray(state.audioProgress.grouped[level][unit])) {
+    state.audioProgress.grouped[level][unit] = [];
+  }
+
+  const chars = state.audioProgress.grouped[level][unit];
+  if (!chars.includes(char)) {
+    chars.push(char);
+  }
+
+  const uniqueChars = new Set();
+  Object.entries(state.audioProgress.grouped || {}).forEach(([groupLevel, units]) => {
+    Object.entries(units || {}).forEach(([groupUnit, unitChars]) => {
+      (unitChars || []).forEach((itemChar) => uniqueChars.add(`${groupLevel}__${groupUnit}__${itemChar}`));
+    });
+  });
+
+  state.audioProgress.total = uniqueChars.size;
+  state.audioProgress.loaded = true;
+  state.audioProgress.error = '';
+}

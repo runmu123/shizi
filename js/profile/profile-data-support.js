@@ -140,16 +140,75 @@ export function createProfileDataSupport({
     }
   }
 
+  async function loadAudioProgressData(force = false) {
+    if (!force && state.audioProgress.loaded && Object.keys(state.audioProgress.grouped || {}).length > 0) {
+      return;
+    }
+
+    state.audioProgress.loading = true;
+    state.audioProgress.error = '';
+    renderProfileShell();
+
+    if (!window.audioManager?.supabase) {
+      state.audioProgress.grouped = {};
+      state.audioProgress.total = 0;
+      state.audioProgress.loading = false;
+      state.audioProgress.error = '数据库未连接';
+      state.audioProgress.loaded = true;
+      renderProfileShell();
+      return;
+    }
+
+    try {
+      const records = await audioManager.getAllAudioRecords();
+      const grouped = {};
+      const uniqueChars = new Set();
+
+      (records || []).forEach((record) => {
+        const level = record.level || '未知等级';
+        const unit = record.unit || '未知单元';
+        const char = record.char || '';
+
+        if (!grouped[level]) grouped[level] = {};
+        if (!grouped[level][unit]) grouped[level][unit] = [];
+        if (char && !grouped[level][unit].includes(char)) {
+          grouped[level][unit].push(char);
+        }
+        if (char) {
+          uniqueChars.add(`${level}__${unit}__${char}`);
+        }
+      });
+
+      state.audioProgress.grouped = grouped;
+      state.audioProgress.total = uniqueChars.size;
+      state.audioProgress.loaded = true;
+      state.audioProgress.error = '';
+    } catch (error) {
+      console.error('加载录音进度失败:', error);
+      state.audioProgress.grouped = {};
+      state.audioProgress.total = 0;
+      state.audioProgress.error = '录音进度加载失败';
+      state.audioProgress.loaded = true;
+    } finally {
+      state.audioProgress.loading = false;
+      renderProfileShell();
+    }
+  }
+
   async function loadProfilePageData(force = false, { showQueryToasts = true } = {}) {
     const dismissToast = showQueryToasts
       ? showPersistentToast('正在查询数据中...', 'info')
       : () => {};
     const queryToastStart = showQueryToasts ? Date.now() : 0;
     try {
-      await Promise.all([
+      const tasks = [
         loadNotebookData(force),
         loadProfileProgressData(force),
-      ]);
+      ];
+      if (state.isTeachingMode) {
+        tasks.push(loadAudioProgressData(force));
+      }
+      await Promise.all(tasks);
     } finally {
       if (showQueryToasts) {
         const elapsed = Date.now() - queryToastStart;
@@ -173,6 +232,13 @@ export function createProfileDataSupport({
     state.profileProgress.total = 0;
     state.profileProgress.grouped = {};
 
+    state.audioProgress.expanded = false;
+    state.audioProgress.loading = false;
+    state.audioProgress.error = '';
+    state.audioProgress.loaded = false;
+    state.audioProgress.total = 0;
+    state.audioProgress.grouped = {};
+
     state.notebook.loading = false;
     state.notebook.error = '';
     state.notebook.loadedUser = '';
@@ -186,6 +252,7 @@ export function createProfileDataSupport({
   return {
     loadNotebookData,
     loadProfileProgressData,
+    loadAudioProgressData,
     loadProfilePageData,
     resetProfilePageData,
   };

@@ -22,7 +22,7 @@ import { createNotebookEngine } from '../profile/notebook-engine.js';
 import { createNotebookSupport } from '../profile/notebook-support.js';
 import { getNotebookGroupsByLevel as getNotebookGroupsByLevelShared } from '../profile/notebook-grouping.js';
 import { createProfileDataSupport } from '../profile/profile-data-support.js';
-import { upsertNotebookItemInState } from '../profile/profile-cache-support.js';
+import { upsertAudioProgressEntryInState, upsertNotebookItemInState } from '../profile/profile-cache-support.js';
 import { createHomeSupport } from '../home/home-support.js';
 import { createLearnBatchSupport } from '../home/learn-batch-support.js';
 import {
@@ -599,7 +599,7 @@ export async function refreshProfilePageDataAfterLogin() {
 
 export async function refreshProfilePageDataOnStartup() {
   const user = localStorage.getItem(USER_KEY) || '';
-  if (!user) return;
+  if (!user && !state.isTeachingMode) return;
   await profileDataSupport.loadProfilePageData(true, { showQueryToasts: false });
 }
 
@@ -888,6 +888,19 @@ export function setupEventListeners() {
   window.addEventListener('shizi-auth-changed', () => {
     invalidateNotebookCache();
     invalidateProfileProgressCache();
+  });
+
+  window.addEventListener('shizi-audio-recorded', (event) => {
+    const detail = event.detail || {};
+    upsertAudioProgressEntryInState(state, {
+      level: detail.level,
+      unit: detail.unit,
+      char: detail.char,
+    });
+
+    if (state.appSection === 'profile' && state.profileView === 'main') {
+      renderUnitPreservingScroll();
+    }
   });
 
   window.addEventListener('resize', () => {

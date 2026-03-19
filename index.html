@@ -247,37 +247,6 @@
     </div>
   </div>
 
-  <!-- 统计弹窗 -->
-  <div class="modal-overlay" id="statsModal">
-    <div class="modal-box" style="max-width: 600px; width: 90%;">
-      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>语音数据统计</span>
-        <button class="menu-btn" id="closeStats" style="padding:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg></button>
-      </div>
-      <div id="statsContent">
-        <div class="stats-row">
-          <span class="stats-label">待学习字总数</span>
-          <span class="stats-value" id="statsTotalChars">0</span>
-        </div>
-        <div class="stats-row">
-          <span class="stats-label">已配置语音(字)</span>
-          <span class="stats-value" id="statsAudioCount">0</span>
-        </div>
-        <div class="stats-row"
-          style="border-bottom:none; margin-top:10px; padding-bottom:8px; justify-content: flex-start;">
-          <span class="stats-label" style="font-weight:600; color:#374151;">已录制语音详情</span>
-        </div>
-        <div id="statsAudioListContainer" style="max-height: 50vh; overflow-y: auto; text-align: left;">
-          <div class="loading">加载中...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 确认弹窗 -->
   <div class="modal-overlay" id="confirmModal">
     <div class="modal-box">

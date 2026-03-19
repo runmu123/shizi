@@ -73,7 +73,7 @@ flowchart TD
 - `js/ui/ui.js`
   主页面和练习页面渲染入口。
 - `js/app/menu.js`
-  登录、下载、清缓存、刷新、统计与弹窗控制器。
+  登录、下载、清缓存、刷新与弹窗控制器。
 - `js/audio/audio-manager.js`
   Supabase 音频播放、录音上传、缓存与内置音频映射预热。
 
@@ -269,7 +269,7 @@ graph TD
 | 主页-听音识字 | `appSection=home` + `mainViewMode=listen` | 主练习页 | 播放题干、选字、统计结果、标题左侧返回 | 错误写入错题表；返回进入前页面 |
 | 主页-看字识音 | `appSection=home` + `mainViewMode=see` | 主练习页 | 看字选音、误选揭示、统计结果、标题左侧返回 | 错误写入错题表；返回进入前页面 |
 | 其他页 | `appSection=other` | 功能入口页 | 听音识字、看字识音、下载、清缓存、教学模式、刷新 | 导航到主页练习或批量功能 |
-| 我的主页 | `appSection=profile` + `profileView=main` | 用户数据中心 | 登录信息、学习进度、错题集 | 可进入复习页与错题练习页 |
+| 我的主页 | `appSection=profile` + `profileView=main` | 用户数据中心 | 登录信息、学习进度、录音进度、错题集 | 可进入复习页与错题练习页 |
 | 错题复习 | `profileView=notebookReview` | 错题回顾 | 卡片复习、误认字播放、组内切换 | 返回我的主页 |
 | 错题练习 | `profileView=notebookPractice` | 错题专项训练 | 听音/看字错题练习、统计、重新练、下一组、标题左侧返回 | 返回我的主页 |
 | 笔顺学习 | `learningView.active` | 深度单字学习 | 笔顺演示、书写测验、完成保存进度 | 从主页学习卡片进入 |
@@ -308,9 +308,10 @@ flowchart TB
 flowchart TB
     A["Toolbar"] --> B["登录卡片"]
     B --> C["显示学习进度卡片"]
-    C --> D["听音识字错题集卡片"]
-    D --> E["看字识音错题集卡片"]
-    E --> F["BottomNav"]
+    C --> D["显示录音进度卡片(教学模式)"]
+    D --> E["听音识字错题集卡片"]
+    E --> F["看字识音错题集卡片"]
+    F --> G["BottomNav"]
 ```
 
 #### 主练习布局（主页听音 / 主页看字）
@@ -417,7 +418,6 @@ flowchart TB
 - `下载语音数据`
 - `清理语音缓存`
 - `切换教学/学习模式`
-- `显示录音进度`
 - `刷新页面`
 
 #### 依赖关系
@@ -442,6 +442,16 @@ flowchart TB
   顶层卡片展开，等级行展开，内容行跳转复习。
 - 数据依赖
   `state.profileProgress.*`
+
+#### 录音进度卡片
+
+- 功能
+  在教学模式下展示已录音汉字进度，并按等级/单元分组。
+- 交互
+  顶层卡片展开，等级行展开，内容行右侧显示 `查看` 按钮。
+  点击 `查看` 后直接跳转到对应等级和单元，不再弹出统计弹窗。
+- 数据依赖
+  `state.audioProgress.*`
 
 #### 错题集卡片
 
@@ -563,7 +573,6 @@ flowchart TB
 - 等级选择弹窗
 - 批次大小弹窗
 - 进度查询弹窗
-- 统计弹窗
 - 确认弹窗
 - 缓存清理进度弹窗
 - 通用任务进度弹窗
@@ -627,6 +636,7 @@ else:
 - `renderSeeMode()` 与 `renderNotebookPracticeSection(mode=see)` 共用练习页骨架。
 - 主练习页通过 `practiceEntryContext` 控制返回前页面。
 - `renderSearchResult()` 使用独立搜索结果布局，标题与结果卡片之间保留安全间距，避免视觉重叠。
+- “显示学习进度 / 显示录音进度 / 错题集”三类顶层卡片共用同一套分组折叠卡片壳，差异通过图标、标题、数量、内容区与行动按钮配置控制。
 
 ### 4.3 听音识字实现逻辑
 
@@ -721,6 +731,7 @@ else:
 
 - `loadNotebookData()`
 - `loadProfileProgressData()`
+- 教学模式下追加：`loadAudioProgressData()`
 
 并通过：
 
@@ -733,14 +744,17 @@ else:
 
 1. 登录成功后：
    - 远程统一查询
-   - 查询学习进度与错题集
+   - 查询学习进度、错题集
+   - 教学模式下额外查询录音进度
    - 显示 toast
 2. 应用启动时（已登录）：
    - 远程统一查询
-   - 查询学习进度与错题集
+   - 查询学习进度、错题集
+   - 教学模式下额外查询录音进度
    - 静默执行，不显示 toast
 3. 点击“其他”页 `刷新页面` 卡片：
    - 在页面强刷前先执行一次静默统一查询
+   - 教学模式下包含录音进度查询
 4. 点击底部导航进入“我的”页：
    - 不执行远程查询
    - 直接展示当前缓存
@@ -934,6 +948,7 @@ flowchart TD
 
 - 登录后立即远程统一查询“我的”页数据
 - 应用启动时若已登录，会静默统一查询“我的”页数据
+- 教学模式下统一查询会额外包含录音进度
 - 页面跳转不再默认触发远程查询，优先展示内存缓存
 - 错题练习中使用 mutation 队列等待数据库变更落库后再刷新页面
 - 本地缓存只在“写库成功后”执行增量同步
@@ -972,7 +987,7 @@ flowchart TD
 
 | 接口 | 说明 |
 | --- | --- |
-| `setupMenuAndModals()` | 初始化菜单、登录、下载、清缓存、统计、弹窗 |
+| `setupMenuAndModals()` | 初始化菜单、登录、下载、清缓存、刷新与弹窗 |
 
 #### `js/learning/learning.js`
 
@@ -1004,6 +1019,7 @@ flowchart TD
 | `js/profile/notebook-support.js` | 错题本页面辅助、错题删除、跳转、完成弹窗 |
 | `js/profile/profile-data-support.js` | 我的页数据远程查询与状态同步 |
 | `js/profile/profile-cache-support.js` | 学习进度 / 错题集本地缓存增量更新 |
+| `state.audioProgress` | 教学模式下录音进度分组缓存与展开状态 |
 | `js/home/home-support.js` | 主页学习区导航与完成弹窗 |
 | `js/home/learn-batch-support.js` | 整单元朗读流程 |
 
