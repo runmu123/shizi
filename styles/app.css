@@ -1834,10 +1834,24 @@
     }
 
     .listen-result-list.column {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 10px;
+      display: block;
+      max-height: 290px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .listen-result-list.column::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    .listen-result-list.column .listen-result-row + .listen-result-row {
+      margin-top: 10px;
     }
 
     .listen-result-char {
@@ -1868,8 +1882,11 @@
     }
 
     .listen-result-row {
-      display: block;
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
       width: 100%;
+      min-height: 44px;
       padding: 10px 12px;
       border-radius: 12px;
       font-family: 'KaiTi', 'STKaiti', serif;
