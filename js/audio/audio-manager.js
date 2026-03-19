@@ -307,36 +307,35 @@ class AudioManager {
     // 添加时间戳绕过 CDN 缓存
     const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     let playUrl = url;
+    const builtInLocalUrl = this.builtInAudioMap.get(baseUrl);
 
     // 停止当前播放并触发回调
     this.stopCurrentAudio();
 
-    // 从缓存读取或从服务器获取（共享缓存实现）
-    try {
-      const cacheApi = window.ShiziAudioCache;
-      if (cacheApi?.ensureCachedResponse) {
-        const cachedResult = await cacheApi.ensureCachedResponse({
-          baseUrl,
-          requestUrl: url,
-          fetchOptions: { cache: 'no-store' },
-        });
-        if (cachedResult?.response) {
-          const blob = await cachedResult.response.blob();
-          playUrl = URL.createObjectURL(blob);
-          if (cachedResult.fromCache) {
-            console.log('从缓存播放:', baseUrl);
+    // APK 内置音频优先；只有未命中内置音频时才走缓存/网络。
+    if (builtInLocalUrl) {
+      playUrl = builtInLocalUrl;
+      console.log('从内置音频播放(优先):', builtInLocalUrl);
+    } else {
+      // 从缓存读取或从服务器获取（共享缓存实现）
+      try {
+        const cacheApi = window.ShiziAudioCache;
+        if (cacheApi?.ensureCachedResponse) {
+          const cachedResult = await cacheApi.ensureCachedResponse({
+            baseUrl,
+            requestUrl: url,
+            fetchOptions: { cache: 'no-store' },
+          });
+          if (cachedResult?.response) {
+            const blob = await cachedResult.response.blob();
+            playUrl = URL.createObjectURL(blob);
+            if (cachedResult.fromCache) {
+              console.log('从缓存播放:', baseUrl);
+            }
           }
         }
-      }
-    } catch (e) {
-      console.warn('缓存操作失败:', e);
-    }
-
-    if (playUrl === url) {
-      const builtInLocalUrl = this.builtInAudioMap.get(baseUrl);
-      if (builtInLocalUrl) {
-        playUrl = builtInLocalUrl;
-        console.log('从内置音频播放(缓存不可用或未命中):', builtInLocalUrl);
+      } catch (e) {
+        console.warn('缓存操作失败:', e);
       }
     }
 
