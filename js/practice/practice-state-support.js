@@ -93,12 +93,9 @@ export function createPracticeStateSupport({
   }
 
   return {
-    createEmptyPracticeState,
     createEmptyListenState,
     createEmptySeeState,
     buildListenOptions,
-    buildPracticeQuestion,
-    initializePracticeSession,
     initializeListenSession,
     initializeSeeSession,
     ensurePracticeSession,

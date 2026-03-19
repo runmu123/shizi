@@ -251,8 +251,6 @@ export function createProfileDataSupport({
 
   return {
     loadNotebookData,
-    loadProfileProgressData,
-    loadAudioProgressData,
     loadProfilePageData,
     resetProfilePageData,
   };
