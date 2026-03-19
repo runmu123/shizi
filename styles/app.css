@@ -341,11 +341,10 @@
     }
 
     .unit-navigator {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       font-family: system-ui, sans-serif;
-      font-weight: 600;
       color: #4b5563;
     }
 
@@ -355,7 +354,7 @@
       font-size: 1.2rem;
       cursor: pointer;
       color: #6b7280;
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
     }
 
@@ -372,18 +371,20 @@
     .unit-indicator {
       position: relative;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #e7d3b0;
-      background: #fff1d5;
-      min-width: 80px;
+      padding: 0;
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      min-width: 56px;
       text-align: center;
       user-select: none;
+      font-weight: 700;
+      color: #6f3d10;
+      font-size: 0.98rem;
     }
 
     .unit-indicator:hover {
-      background: #ffe9be;
-      border-color: #d7be93;
+      color: #92400e;
     }
 
     /* 搜索栏 */
@@ -2189,6 +2190,15 @@
       }
 
       .toolbar-notebook-switcher-label {
+        min-width: 46px;
+        font-size: 0.9rem;
+      }
+
+      .unit-navigator {
+        gap: 6px;
+      }
+
+      .unit-indicator {
         min-width: 46px;
         font-size: 0.9rem;
       }
