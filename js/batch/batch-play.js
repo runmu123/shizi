@@ -4,11 +4,12 @@ import { showToast } from '../utils/toast.js';
 import {
   bindBatchKeyboard,
   buildBatchItemsFromUnit,
-  hideBatchView,
-  moveBatchUnit,
+  enterBatchMode,
+  exitBatchMode,
+  loadBatchUnitView,
   renderBatchListPanel,
   selectBatchIndex,
-  showBatchView,
+  switchBatchUnit,
   updateBatchCurrentInfo,
   updateBatchProgress,
 } from './batch-shared.js';
@@ -301,60 +302,66 @@ function stopQueuePlay() {
 
 // 上一单元
 async function prevUnit() {
-  moveBatchUnit(-1, loadBatchUnit, () => showToast('已经是第一个单元', 'info'));
+  await switchBatchUnit({
+    delta: -1,
+    onMoved: loadBatchUnit,
+    onBoundary: () => showToast('已经是第一个单元', 'info'),
+  });
 }
 
 // 下一单元
 async function nextUnit() {
-  moveBatchUnit(1, loadBatchUnit, () => showToast('已经是最后一个单元', 'info'));
+  await switchBatchUnit({
+    delta: 1,
+    onMoved: loadBatchUnit,
+    onBoundary: () => showToast('已经是最后一个单元', 'info'),
+  });
 }
 
 // 加载当前单元的批量播放数据
 function loadBatchUnit() {
-  batchState.items = getBatchItems();
-  batchState.currentIndex = 0;
-  batchState.completed.clear();
-  batchState.isPlaying = false;
-  batchState.isQueuePlaying = false;
-  batchState.queueIndex = 0;
-
-  renderLeftPanel();
-  updateCurrentInfo();
-  updatePlayButton();
-  updateQueuePlayButton();
-
-  // 更新单元标题
-  const unitTitle = document.getElementById('batchPlayUnitTitle');
-  if (unitTitle) {
-    const unitName = state.unitKeys[state.currentUnitIndex];
-    unitTitle.textContent = `(${unitName})`;
-  }
-
-  // 滚动到顶部
-  const leftPanel = document.getElementById('batchPlayLeft');
-  if (leftPanel) {
-    leftPanel.scrollTop = 0;
-  }
+  loadBatchUnitView({
+    batchState,
+    getItems: getBatchItems,
+    resetState: () => {
+      batchState.completed.clear();
+      batchState.isPlaying = false;
+      batchState.isQueuePlaying = false;
+      batchState.queueIndex = 0;
+    },
+    renderLeftPanel,
+    updateCurrentInfo,
+    updateControls: () => {
+      updatePlayButton();
+      updateQueuePlayButton();
+    },
+    unitTitleId: 'batchPlayUnitTitle',
+    leftPanelId: 'batchPlayLeft',
+  });
 }
 
 // 进入批量播放模式
 export function enterBatchPlay() {
-  if (!showBatchView('batchPlayView')) return;
-  loadBatchUnit();
+  enterBatchMode({
+    viewId: 'batchPlayView',
+    loadBatchUnit,
+  });
 }
 
 // 退出批量播放模式
-export function exitBatchPlay() {
-  // 如果正在播放，先停止
-  if (batchState.isPlaying) {
-    audioManager.stopCurrentAudio().catch(err => showToast('停止播放失败: ' + (err?.message || err), 'error'));
-    batchState.isPlaying = false;
-  }
-
-  if (batchState.isQueuePlaying) {
-    batchState.isQueuePlaying = false;
-  }
-  hideBatchView('batchPlayView');
+export async function exitBatchPlay() {
+  await exitBatchMode({
+    viewId: 'batchPlayView',
+    beforeHide: async () => {
+      if (batchState.isPlaying) {
+        audioManager.stopCurrentAudio().catch(err => showToast('停止播放失败: ' + (err?.message || err), 'error'));
+        batchState.isPlaying = false;
+      }
+      if (batchState.isQueuePlaying) {
+        batchState.isQueuePlaying = false;
+      }
+    },
+  });
 }
 
 // 设置批量播放事件监听
@@ -389,11 +396,3 @@ export function setupBatchPlayEvents() {
   });
 }
 
-// 批量播放按钮点击事件
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('#batchPlayBtnMain');
-  if (btn) {
-    e.stopPropagation();
-    enterBatchPlay();
-  }
-});

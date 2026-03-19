@@ -178,6 +178,19 @@ export function hideBatchView(viewId) {
   return true;
 }
 
+export function enterBatchMode({ viewId, loadBatchUnit }) {
+  if (!showBatchView(viewId)) return false;
+  loadBatchUnit();
+  return true;
+}
+
+export async function exitBatchMode({ viewId, beforeHide }) {
+  if (typeof beforeHide === 'function') {
+    await beforeHide();
+  }
+  return hideBatchView(viewId);
+}
+
 export function bindBatchKeyboard({ viewId, handlers }) {
   document.addEventListener('keydown', (e) => {
     const view = document.getElementById(viewId);
@@ -200,4 +213,47 @@ export function moveBatchUnit(delta, onMoved, onBoundary) {
   state.currentUnitIndex = nextIndex;
   onMoved?.();
   return true;
+}
+
+export async function switchBatchUnit({
+  delta,
+  beforeMove,
+  onMoved,
+  onBoundary,
+}) {
+  if (typeof beforeMove === 'function') {
+    const shouldContinue = await beforeMove(delta);
+    if (shouldContinue === false) return false;
+  }
+  return moveBatchUnit(delta, onMoved, onBoundary);
+}
+
+export function loadBatchUnitView({
+  batchState,
+  getItems,
+  resetState,
+  renderLeftPanel,
+  updateCurrentInfo,
+  updateControls,
+  unitTitleId,
+  leftPanelId,
+}) {
+  batchState.items = getItems();
+  batchState.currentIndex = 0;
+  resetState?.();
+
+  renderLeftPanel();
+  updateCurrentInfo();
+  updateControls?.();
+
+  const unitTitle = document.getElementById(unitTitleId);
+  if (unitTitle) {
+    const unitName = state.unitKeys[state.currentUnitIndex];
+    unitTitle.textContent = `(${unitName})`;
+  }
+
+  const leftPanel = document.getElementById(leftPanelId);
+  if (leftPanel) {
+    leftPanel.scrollTop = 0;
+  }
 }

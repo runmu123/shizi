@@ -1,4 +1,18 @@
-export function setupProfileNotebookEvents({
+function toggleLevelSection(header, expanded) {
+  header.classList.toggle('active', expanded);
+  header.nextElementSibling?.classList.toggle('show', expanded);
+}
+
+function navigateProfileUnit(state, navigateToUnit, level, unit) {
+  if (!level || !unit) return;
+  state.appSection = 'home';
+  if (state.mainViewMode !== 'study') {
+    state.mainViewMode = 'study';
+  }
+  navigateToUnit(level, unit);
+}
+
+export function setupProfileSectionEvents({
   appEl,
   toolbarNotebookSwitcher,
   state,
@@ -14,69 +28,74 @@ export function setupProfileNotebookEvents({
   playNotebookPracticeAudio,
 }) {
   appEl.addEventListener('click', (e) => {
+    if (state.appSection !== 'profile') return;
+
+    const actionCard = e.target.closest('.section-action-card');
+    if (actionCard?.dataset.action === 'login') {
+      window.shiziActions?.toggleLogin?.();
+      return;
+    }
+
+    if (actionCard?.dataset.action === 'progress') {
+      state.profileProgress.expanded = !state.profileProgress.expanded;
+      toggleInlineCollapse(actionCard, state.profileProgress.expanded);
+      return;
+    }
+
+    if (actionCard?.dataset.action === 'audio-progress') {
+      state.audioProgress.expanded = !state.audioProgress.expanded;
+      toggleInlineCollapse(actionCard, state.audioProgress.expanded);
+      return;
+    }
+
     const progressHeader = e.target.closest('[data-profile-progress-header]');
     if (progressHeader) {
-      progressHeader.classList.toggle('active');
-      progressHeader.nextElementSibling?.classList.toggle('show');
+      toggleLevelSection(progressHeader, !progressHeader.classList.contains('active'));
       return;
     }
 
     const progressNavBtn = e.target.closest('[data-profile-progress-nav]');
     if (progressNavBtn) {
       const [level, unit] = (progressNavBtn.dataset.profileProgressNav || '').split('|');
-      if (level && unit) {
-        state.appSection = 'home';
-        if (state.mainViewMode !== 'study') {
-          state.mainViewMode = 'study';
-        }
-        navigateToUnit(level, unit);
-      }
+      navigateProfileUnit(state, navigateToUnit, level, unit);
       return;
     }
 
     const audioProgressHeader = e.target.closest('[data-audio-progress-header]');
     if (audioProgressHeader) {
-      audioProgressHeader.classList.toggle('active');
-      audioProgressHeader.nextElementSibling?.classList.toggle('show');
+      toggleLevelSection(audioProgressHeader, !audioProgressHeader.classList.contains('active'));
       return;
     }
 
     const audioProgressViewBtn = e.target.closest('[data-audio-progress-view]');
     if (audioProgressViewBtn) {
       const [level, unit] = (audioProgressViewBtn.dataset.audioProgressView || '').split('|');
-      if (level && unit) {
-        state.appSection = 'home';
-        if (state.mainViewMode !== 'study') {
-          state.mainViewMode = 'study';
-        }
-        navigateToUnit(level, unit);
-      }
+      navigateProfileUnit(state, navigateToUnit, level, unit);
       return;
     }
 
-    const toggle = e.target.closest('[data-notebook-section]');
-    if (!toggle) return;
-    const mode = toggle.dataset.notebookSection;
-    const expanded = !state.notebook.expandedSections[mode];
-    state.notebook.expandedSections[mode] = expanded;
-    toggleInlineCollapse(toggle, expanded);
-  });
-
-  appEl.addEventListener('click', (e) => {
-    const notebookLevelHeader = e.target.closest('[data-notebook-level-header]');
-    if (!notebookLevelHeader) return;
-    const [mode, level] = (notebookLevelHeader.dataset.notebookLevelHeader || '').split('|');
-    if (!mode || !level) return;
-    const expanded = !(!!state.notebook.expandedLevels?.[mode]?.[level]);
-    if (!state.notebook.expandedLevels[mode]) {
-      state.notebook.expandedLevels[mode] = {};
+    const notebookToggle = e.target.closest('[data-notebook-section]');
+    if (notebookToggle) {
+      const mode = notebookToggle.dataset.notebookSection;
+      const expanded = !state.notebook.expandedSections[mode];
+      state.notebook.expandedSections[mode] = expanded;
+      toggleInlineCollapse(notebookToggle, expanded);
+      return;
     }
-    state.notebook.expandedLevels[mode][level] = expanded;
-    notebookLevelHeader.classList.toggle('active', expanded);
-    notebookLevelHeader.nextElementSibling?.classList.toggle('show', expanded);
-  });
 
-  appEl.addEventListener('click', (e) => {
+    const notebookLevelHeader = e.target.closest('[data-notebook-level-header]');
+    if (notebookLevelHeader) {
+      const [mode, level] = (notebookLevelHeader.dataset.notebookLevelHeader || '').split('|');
+      if (!mode || !level) return;
+      if (!state.notebook.expandedLevels[mode]) {
+        state.notebook.expandedLevels[mode] = {};
+      }
+      const expanded = !(!!state.notebook.expandedLevels[mode][level]);
+      state.notebook.expandedLevels[mode][level] = expanded;
+      toggleLevelSection(notebookLevelHeader, expanded);
+      return;
+    }
+
     const notebookActionBtn = e.target.closest('[data-notebook-action], [data-notebook-review-nav], [data-notebook-review-card], [data-notebook-practice-group]');
     if (!notebookActionBtn) return;
     e.stopPropagation();
@@ -125,6 +144,11 @@ export function setupProfileNotebookEvents({
 
     if (notebookActionBtn.dataset.notebookPracticeGroup) {
       switchNotebookPracticeGroup(notebookActionBtn.dataset.notebookPracticeGroup === 'next' ? 1 : -1);
+      return;
+    }
+
+    if (state.profileView === 'notebookPractice' && notebookActionBtn.id === 'notebookListenReplayBtn') {
+      playNotebookPracticeAudio();
     }
   });
 
@@ -146,9 +170,8 @@ export function setupProfileNotebookEvents({
   appEl.addEventListener('click', (e) => {
     if (state.profileView !== 'notebookPractice') return;
     const replayBtn = e.target.closest('#notebookListenReplayBtn');
-    if (replayBtn) {
-      e.stopPropagation();
-      playNotebookPracticeAudio();
-    }
+    if (!replayBtn) return;
+    e.stopPropagation();
+    playNotebookPracticeAudio();
   });
 }

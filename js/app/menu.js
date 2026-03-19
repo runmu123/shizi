@@ -4,11 +4,11 @@ import { showToast } from '../utils/toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
 import { renderUnit, updateAppShell } from '../ui/ui.js';
 import { clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin, refreshProfilePageDataOnStartup } from './app.js';
+import { lockScroll, unlockScroll } from '../common/scroll-lock.js';
 
 export function setupMenuAndModals() {
   audioManager.init();
 
-  let scrollPosition = 0;
   let batchSize = 100; // 默认批次大小
 
   function emitAuthStateChanged(user) {
@@ -24,22 +24,6 @@ export function setupMenuAndModals() {
     }
     renderUnit();
     updateAppShell();
-  }
-
-  function lockScroll() {
-    scrollPosition = window.scrollY;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollPosition}px`;
-    document.body.style.width = '100%';
-  }
-
-  function unlockScroll() {
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, scrollPosition);
   }
 
   const loginReminder = document.getElementById('loginReminder');

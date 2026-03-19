@@ -39,6 +39,7 @@ export function setupHomeSectionEvents({
   }
 
   appEl.addEventListener('click', (e) => {
+    if (state.appSection === 'profile') return;
     const actionCard = e.target.closest('.section-action-card');
     if (!actionCard) return;
     const action = actionCard.dataset.action;
@@ -86,23 +87,6 @@ export function setupHomeSectionEvents({
 
     if (action === 'refresh') {
       window.shiziActions?.hardRefresh?.();
-      return;
-    }
-
-    if (action === 'login') {
-      window.shiziActions?.toggleLogin?.();
-      return;
-    }
-
-    if (action === 'progress') {
-      state.profileProgress.expanded = !state.profileProgress.expanded;
-      toggleInlineCollapse(actionCard, state.profileProgress.expanded);
-      return;
-    }
-
-    if (action === 'audio-progress') {
-      state.audioProgress.expanded = !state.audioProgress.expanded;
-      toggleInlineCollapse(actionCard, state.audioProgress.expanded);
       return;
     }
 

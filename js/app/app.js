@@ -11,7 +11,7 @@ import { normalizeWrongCharEntries, findWrongCharEntry } from '../utils/mistake-
 import { loadLevelData } from './level-data-loader.js';
 import { setupHomeSectionEvents } from '../events/home-section-events.js';
 import { setupPracticeInteractionEvents } from '../events/practice-interaction-events.js';
-import { setupProfileNotebookEvents } from '../events/profile-notebook-events.js';
+import { setupProfileSectionEvents } from '../events/profile-section-events.js';
 import { setupAudioInteractionEvents } from '../events/audio-interaction-events.js';
 import { setupNavigationEvents } from '../events/navigation-events.js';
 import { setupCompletionModalEvents } from '../events/completion-modal-events.js';
@@ -25,6 +25,7 @@ import { createProfileDataSupport } from '../profile/profile-data-support.js';
 import { upsertAudioProgressEntryInState, upsertNotebookItemInState } from '../profile/profile-cache-support.js';
 import { createHomeSupport } from '../home/home-support.js';
 import { createLearnBatchSupport } from '../home/learn-batch-support.js';
+import { lockScroll, unlockScroll } from '../common/scroll-lock.js';
 import {
   getPauseIconHtml,
   getPlayIconHtml,
@@ -785,7 +786,6 @@ function stopLearnBatchPlayback(resetQueue = true) {
 // ===== 事件绑定 =====
 export function setupEventListeners() {
   let resizeFrame = 0;
-  let scrollPosition = 0;
   const toolbarNotebookSwitcher = document.getElementById('toolbarNotebookSwitcher');
 
   function toggleInlineCollapse(toggleEl, expanded) {
@@ -836,22 +836,6 @@ export function setupEventListeners() {
     };
     panel._collapseCleanup = cleanup;
     panel.addEventListener('transitionend', cleanup);
-  }
-
-  function lockScroll() {
-    scrollPosition = window.scrollY;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollPosition}px`;
-    document.body.style.width = '100%';
-  }
-
-  function unlockScroll() {
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, scrollPosition);
   }
 
   const currentLevelBtn = document.getElementById('currentLevelBtn');
@@ -977,7 +961,7 @@ export function setupEventListeners() {
     playListenModeAudio,
   });
 
-  setupProfileNotebookEvents({
+  setupProfileSectionEvents({
     appEl,
     toolbarNotebookSwitcher,
     state,

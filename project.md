@@ -86,8 +86,8 @@ flowchart TD
 | --- | --- | --- |
 | `js/app/` | 启动入口、全局状态、主编排、菜单与基础配置 | `main.js` `app.js` `state.js` `menu.js` |
 | `js/audio/` | 音频播放、缓存与资源访问 | `audio-manager.js` `audio-cache-shared.js` |
-| `js/common/` | 公共页面壳、公共 renderer、公共导航 helper | `card-stage-shell.js` `practice-shell.js` `grouped-level-sections.js` |
-| `js/events/` | DOM 事件绑定层 | `navigation-events.js` `practice-interaction-events.js` |
+| `js/common/` | 公共页面壳、公共 renderer、公共导航 helper、滚动锁工具 | `card-stage-shell.js` `practice-shell.js` `grouped-level-sections.js` `scroll-lock.js` |
+| `js/events/` | DOM 事件绑定层 | `navigation-events.js` `practice-interaction-events.js` `profile-section-events.js` |
 | `js/practice/` | 主练习状态、判题、播放辅助 | `practice-engine.js` `practice-state-support.js` |
 | `js/profile/` | 我的页、错题本、查询、分组与本地缓存辅助 | `notebook-engine.js` `profile-data-support.js` `profile-cache-support.js` |
 | `js/home/` | 主页学习卡片与整单元朗读 | `home-support.js` `learn-batch-support.js` |
@@ -129,6 +129,7 @@ js/
     grouped-level-sections.js
     grouped-row-renderers.js
     detail-card-shell.js
+    scroll-lock.js
   batch/
     batch-record.js
     batch-play.js
@@ -139,7 +140,7 @@ js/
     home-section-events.js
     navigation-events.js
     practice-interaction-events.js
-    profile-notebook-events.js
+    profile-section-events.js
   home/
     home-support.js
     learn-batch-support.js
@@ -1064,6 +1065,7 @@ flowchart TD
 | `js/common/grouped-level-sections.js` | 我的页等级折叠公共 renderer |
 | `js/common/grouped-row-renderers.js` | 学习进度 / 录音进度 / 错题组行 renderer |
 | `js/common/detail-card-shell.js` | 搜索结果页单卡详情壳 |
+| `js/common/scroll-lock.js` | 全局滚动锁定 / 解锁工具，供菜单与密码弹窗复用 |
 | `js/practice/practice-engine.js` | 主练习判题、重试、历史导航 |
 | `js/practice/practice-state-support.js` | listen / see 会话初始化与状态辅助 |
 | `js/practice/practice-playback-support.js` | 主练习音频播放辅助 |
@@ -1071,6 +1073,8 @@ flowchart TD
 | `js/profile/notebook-support.js` | 错题本页面辅助、错题删除、跳转、完成弹窗 |
 | `js/profile/profile-data-support.js` | 我的页数据远程查询与状态同步 |
 | `js/profile/profile-cache-support.js` | 学习进度 / 错题集本地缓存增量更新 |
+| `js/events/profile-section-events.js` | 我的页登录卡、进度卡、错题集、错题练习页内交互统一事件入口 |
+| `js/batch/batch-shared.js` | 批量录音 / 批量播放共享列表、键盘、切单元、进入/退出控制层 |
 | `state.audioProgress` | 教学模式下录音进度分组缓存与展开状态 |
 | `js/home/home-support.js` | 主页学习区导航与完成弹窗 |
 | `js/home/learn-batch-support.js` | 整单元朗读流程 |
@@ -1088,6 +1092,11 @@ flowchart TD
 | `.play-btn` | 全局播放/录音按钮 |
 | `.listen-option-btn` | 听音识字候选项 |
 | `.see-audio-option` | 看字识音候选项 |
+
+说明：
+
+- “我的”页相关交互已从原先按 notebook 命名的事件模块中收敛到 `profile-section-events.js`。
+- 该模块当前统一处理登录卡、学习进度、录音进度、错题集顶层折叠、错题等级折叠、复习/练习/返回、错题练习组切换与重播按钮。
 
 ### 6.3 外部系统接口
 
@@ -1126,6 +1135,10 @@ L0/Unit_1/yuan/char.mp3
 | 保存位置损坏 | `loadSavedPosition()` 捕获异常并忽略 |
 | 页面切换时滚动异常 | 通过 `renderUnitPreservingScroll()` 保持滚动位置 |
 | 折叠动画跳动 | 顶层卡片使用真实高度动画或原地切 class |
+
+补充：
+
+- 菜单、登录、密码等弹窗的页面滚动锁定已收敛到 `js/common/scroll-lock.js`，避免多处各自维护滚动位置和 body 样式。
 
 ### 7.2 数据加载异常
 
@@ -1213,6 +1226,8 @@ L0/Unit_1/yuan/char.mp3
    当前已补一轮 Playwright 浏览器级回归，覆盖 `gpt` 登录、主页跳卡、练习返回、我的页三类折叠和错题练习入口；建议后续固化为可重复执行脚本。
 4. 为 `project.md` 建立“变更日志”段落
    每次规则调整同步更新文档。
+5. 批量录音 / 批量播放继续收敛业务状态机
+   当前进入/退出、切单元、装载单元视图已下沉到 `batch-shared.js`，但录音上传策略和播放队列策略仍各自保留，后续可继续按风险分层抽取。
 
 ---
 
@@ -1240,10 +1255,12 @@ L0/Unit_1/yuan/char.mp3
 - `js/common/grouped-level-sections.js`
 - `js/common/grouped-row-renderers.js`
 - `js/common/detail-card-shell.js`
+- `js/common/scroll-lock.js`
 - `js/learning/learning.js`
 - `js/batch/batch-record.js`
 - `js/batch/batch-play.js`
 - `js/batch/batch-shared.js`
+- `js/events/profile-section-events.js`
 - `js/practice/practice-engine.js`
 - `js/practice/practice-state-support.js`
 - `js/practice/practice-playback-support.js`

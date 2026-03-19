@@ -11,14 +11,14 @@
         'js/ui/ui.js', 'js/utils/toast.js', 'js/app/constants.js', 'js/app/position.js',
         'js/batch/batch-record.js', 'js/batch/batch-play.js', 'js/app/level-data-loader.js',
         'js/batch/batch-shared.js', 'js/events/home-section-events.js',
-        'js/events/practice-interaction-events.js', 'js/events/profile-notebook-events.js',
+        'js/events/practice-interaction-events.js', 'js/events/profile-section-events.js',
         'js/events/audio-interaction-events.js', 'js/events/navigation-events.js',
         'js/events/completion-modal-events.js', 'js/practice/practice-engine.js',
         'js/profile/notebook-engine.js', 'js/profile/notebook-support.js',
         'js/profile/notebook-grouping.js', 'js/profile/profile-data-support.js',
         'js/home/home-support.js',
         'js/practice/practice-state-support.js', 'js/practice/practice-playback-support.js',
-        'js/ui/ui-icon-support.js',
+        'js/ui/ui-icon-support.js', 'js/common/scroll-lock.js',
         'js/home/learn-batch-support.js'
       ];
 
@@ -45,7 +45,7 @@
         imports['../utils/mistake-utils.js'] = `./js/utils/mistake-utils.js${suffix}`;
         imports['../events/home-section-events.js'] = `./js/events/home-section-events.js${suffix}`;
         imports['../events/practice-interaction-events.js'] = `./js/events/practice-interaction-events.js${suffix}`;
-        imports['../events/profile-notebook-events.js'] = `./js/events/profile-notebook-events.js${suffix}`;
+        imports['../events/profile-section-events.js'] = `./js/events/profile-section-events.js${suffix}`;
         imports['../events/audio-interaction-events.js'] = `./js/events/audio-interaction-events.js${suffix}`;
         imports['../events/navigation-events.js'] = `./js/events/navigation-events.js${suffix}`;
         imports['../events/completion-modal-events.js'] = `./js/events/completion-modal-events.js${suffix}`;
@@ -59,6 +59,7 @@
         imports['../home/home-support.js'] = `./js/home/home-support.js${suffix}`;
         imports['../home/learn-batch-support.js'] = `./js/home/learn-batch-support.js${suffix}`;
         imports['../ui/ui-icon-support.js'] = `./js/ui/ui-icon-support.js${suffix}`;
+        imports['../common/scroll-lock.js'] = `./js/common/scroll-lock.js${suffix}`;
         imports['../app/state.js'] = `./js/app/state.js${suffix}`;
         imports['../app/constants.js'] = `./js/app/constants.js${suffix}`;
         imports['../app/app.js'] = `./js/app/app.js${suffix}`;

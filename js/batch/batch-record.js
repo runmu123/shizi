@@ -4,11 +4,12 @@ import { showToast } from '../utils/toast.js';
 import {
   bindBatchKeyboard,
   buildBatchItemsFromUnit,
-  hideBatchView,
-  moveBatchUnit,
+  enterBatchMode,
+  exitBatchMode,
+  loadBatchUnitView,
   renderBatchListPanel,
   selectBatchIndex,
-  showBatchView,
+  switchBatchUnit,
   updateBatchCurrentInfo,
   updateBatchProgress,
 } from './batch-shared.js';
@@ -357,76 +358,72 @@ async function uploadAll() {
 
 // 上一单元
 async function prevUnit() {
-  // 检查是否有缓存的录音
-  const cacheKeys = Object.keys(batchState.audioCache);
-  if (cacheKeys.length > 0) {
-    const result = await uploadCachedAudio();
-    if (!result.success) {
-      // 如果有失败，询问用户是否继续切换
-      const confirmSwitch = confirm(`部分录音上传失败，是否继续切换单元？\n成功：${result.uploaded}，失败：${result.failed}`);
-      if (!confirmSwitch) return;
-    }
-  }
-
-  moveBatchUnit(-1, loadBatchUnit, () => showToast('已经是第一个单元', 'info'));
+  await switchBatchUnit({
+    delta: -1,
+    beforeMove: async () => {
+      const cacheKeys = Object.keys(batchState.audioCache);
+      if (cacheKeys.length === 0) return true;
+      const result = await uploadCachedAudio();
+      if (result.success) return true;
+      return confirm(`部分录音上传失败，是否继续切换单元？\n成功：${result.uploaded}，失败：${result.failed}`);
+    },
+    onMoved: loadBatchUnit,
+    onBoundary: () => showToast('已经是第一个单元', 'info'),
+  });
 }
 
 // 下一单元
 async function nextUnit() {
-  // 检查是否有缓存的录音
-  const cacheKeys = Object.keys(batchState.audioCache);
-  if (cacheKeys.length > 0) {
-    const result = await uploadCachedAudio();
-    if (!result.success) {
-      // 如果有失败，询问用户是否继续切换
-      const confirmSwitch = confirm(`部分录音上传失败，是否继续切换单元？\n成功：${result.uploaded}，失败：${result.failed}`);
-      if (!confirmSwitch) return;
-    }
-  }
-
-  moveBatchUnit(1, loadBatchUnit, () => showToast('已经是最后一个单元', 'info'));
+  await switchBatchUnit({
+    delta: 1,
+    beforeMove: async () => {
+      const cacheKeys = Object.keys(batchState.audioCache);
+      if (cacheKeys.length === 0) return true;
+      const result = await uploadCachedAudio();
+      if (result.success) return true;
+      return confirm(`部分录音上传失败，是否继续切换单元？\n成功：${result.uploaded}，失败：${result.failed}`);
+    },
+    onMoved: loadBatchUnit,
+    onBoundary: () => showToast('已经是最后一个单元', 'info'),
+  });
 }
 
 // 加载当前单元的批量录音数据
 function loadBatchUnit() {
-  batchState.items = getBatchItems();
-  batchState.currentIndex = 0;
-  batchState.completed.clear();
-  batchState.audioCache = {};
-  batchState.isRecording = false;
-
-  renderLeftPanel();
-  updateCurrentInfo();
-  updateRecordButton();
-
-  // 更新单元标题
-  const unitTitle = document.getElementById('batchRecordUnitTitle');
-  if (unitTitle) {
-    const unitName = state.unitKeys[state.currentUnitIndex];
-    unitTitle.textContent = `(${unitName})`;
-  }
-
-  // 滚动到顶部
-  const leftPanel = document.getElementById('batchRecordLeft');
-  if (leftPanel) {
-    leftPanel.scrollTop = 0;
-  }
+  loadBatchUnitView({
+    batchState,
+    getItems: getBatchItems,
+    resetState: () => {
+      batchState.completed.clear();
+      batchState.audioCache = {};
+      batchState.isRecording = false;
+    },
+    renderLeftPanel,
+    updateCurrentInfo,
+    updateControls: updateRecordButton,
+    unitTitleId: 'batchRecordUnitTitle',
+    leftPanelId: 'batchRecordLeft',
+  });
 }
 
 // 进入批量录音模式
 export function enterBatchRecord() {
-  if (!showBatchView('batchRecordView')) return;
-  loadBatchUnit();
+  enterBatchMode({
+    viewId: 'batchRecordView',
+    loadBatchUnit,
+  });
 }
 
 // 退出批量录音模式
-export function exitBatchRecord() {
-  // 如果正在录音，先停止
-  if (batchState.isRecording) {
-    audioManager.stopRecording().catch(err => showToast('停止录音失败: ' + (err?.message || err), 'error'));
-    batchState.isRecording = false;
-  }
-  hideBatchView('batchRecordView');
+export async function exitBatchRecord() {
+  await exitBatchMode({
+    viewId: 'batchRecordView',
+    beforeHide: async () => {
+      if (!batchState.isRecording) return;
+      audioManager.stopRecording().catch(err => showToast('停止录音失败: ' + (err?.message || err), 'error'));
+      batchState.isRecording = false;
+    },
+  });
 }
 
 // 设置批量录音事件监听
