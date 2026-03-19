@@ -7,11 +7,8 @@ export function createNotebookSupport({
   escapeHtml,
   renderUnitPreservingScroll,
   renderUnit,
-  saveCurrentPosition,
-  loadNotebookData,
   stopActiveAudioPlayback,
   flushNotebookMutations,
-  loadProfilePageData,
   navigateToUnit,
   getCurrentUnitChars,
   setMainViewMode,
@@ -21,7 +18,6 @@ export function createNotebookSupport({
   setSpeakerButtonPlaying,
   showToast,
   getUserKey,
-  invalidateNotebookCache,
 }) {
   function removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode }) {
     state.notebook.items = (state.notebook.items || []).filter((item) => !(
@@ -184,15 +180,6 @@ export function createNotebookSupport({
     });
   }
 
-  function setProfileView(view) {
-    state.profileView = view;
-    renderUnit();
-    saveCurrentPosition();
-    if (view === 'notebook') {
-      loadNotebookData();
-    }
-  }
-
   async function returnToNotebookList() {
     stopActiveAudioPlayback();
     await flushNotebookMutations();
@@ -270,7 +257,6 @@ export function createNotebookSupport({
     removeUserMistakeRecord,
     removeWrongCharEntryFromMistakeRecord,
     playNotebookPracticeAudio,
-    setProfileView,
     returnToNotebookList,
     jumpToNotebookOrigin,
     showNotebookPracticeCompletionModal,

@@ -2,9 +2,8 @@
 import { state, cacheSuffix } from './state.js';
 import { showToast } from '../utils/toast.js';
 import { USER_KEY, AUDIO_CACHE_NAME } from './constants.js';
-import { escapeHtml, renderUnit, updateAppShell } from '../ui/ui.js';
-import { navigateToUnit, clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin, refreshProfilePageDataOnStartup } from './app.js';
-import { loadLevelData } from './level-data-loader.js';
+import { renderUnit, updateAppShell } from '../ui/ui.js';
+import { clearProfilePageDataAfterLogout, refreshProfilePageDataAfterLogin, refreshProfilePageDataOnStartup } from './app.js';
 
 export function setupMenuAndModals() {
   audioManager.init();
@@ -60,137 +59,6 @@ export function setupMenuAndModals() {
     if (!element) return;
     element.addEventListener('click', handler);
   }
-
-  // 中文单元号解析（统一走共享模块）
-  const getCnNum = (str) => {
-    const parsed = window.ShiziUnitNumber?.parseUnitNumber?.(str);
-    return Number.isFinite(parsed) ? parsed : 0;
-  };
-
-  // 格式化单元数字为3字符宽度
-  const formatUnitNumber = (unit) => {
-    const num = getCnNum(unit);
-    if (num === 0) return unit;
-
-    // 一位数前后各加空格，两位数后加空格
-    return num < 10 ? ` ${num} ` : `${num} `;
-  };
-
-  // 排序辅助函数
-  const sortLevels = (levels) => {
-    return levels.sort((a, b) => {
-      const na = parseInt(a.replace(/\D/g, '')) || 0;
-      const nb = parseInt(b.replace(/\D/g, '')) || 0;
-      return nb - na;
-    });
-  };
-
-  const sortUnits = (units) => units.sort((a, b) => getCnNum(b) - getCnNum(a));
-
-  // 加载 YAML 数据
-  const loadLevelYamls = async (levels) => {
-    await Promise.all(levels.map(async (lvl) => {
-      if (state.levelDataCache[lvl]) return;
-      try {
-        await loadLevelData(lvl);
-      } catch (e) {
-        console.warn('加载YAML失败', lvl, e);
-      }
-    }));
-  };
-
-  // 对汉字进行排序
-  const sortChars = (lvl, unit, chars) => {
-    if (state.levelDataCache[lvl] && state.levelDataCache[lvl][unit]) {
-      const standardOrder = Object.keys(state.levelDataCache[lvl][unit]);
-      // 按标准顺序排序已学习的汉字，保留重复项
-      const sorted = [];
-      const charCount = {};
-      chars.forEach(c => {
-        charCount[c] = (charCount[c] || 0) + 1;
-      });
-      standardOrder.forEach(c => {
-        if (charCount[c]) {
-          for (let i = 0; i < charCount[c]; i++) {
-            sorted.push(c);
-          }
-          delete charCount[c];
-        }
-      });
-      // 追加未在标准顺序中的字符
-      Object.keys(charCount).forEach(c => {
-        for (let i = 0; i < charCount[c]; i++) {
-          sorted.push(c);
-        }
-      });
-      return sorted;
-    }
-    return chars;
-  };
-
-  // 通用列表渲染函数
-  const renderContentList = async (container, groupedData, options = {}) => {
-    const { showNav = false, emptyText = '暂无记录' } = options;
-    const levels = sortLevels(Object.keys(groupedData));
-
-    if (levels.length === 0) {
-      container.innerHTML = `<div style="text-align:center; padding:20px; color:#6b7280;">${emptyText}</div>`;
-      return;
-    }
-
-    // 确保 YAML 加载用于排序
-    await loadLevelYamls(levels);
-
-    let html = '';
-    levels.forEach((lvl, index) => {
-      const isExpanded = index === 0;
-      const headerClass = isExpanded ? 'progress-level-header active' : 'progress-level-header';
-      const contentClass = isExpanded ? 'progress-level-content show' : 'progress-level-content';
-
-      html += `
-        <div class="progress-level-item">
-          <div class="${headerClass}">
-            <span>${escapeHtml(lvl)}</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </div>
-          <div class="${contentClass}">
-      `;
-
-      const units = sortUnits(Object.keys(groupedData[lvl]));
-
-      units.forEach(unit => {
-        let displayChars = Array.from(groupedData[lvl][unit]);
-        displayChars = sortChars(lvl, unit, displayChars);
-
-        const navBtnHtml = showNav ? `
-          <button class="progress-nav-btn" data-level="${escapeHtml(lvl)}" data-unit="${escapeHtml(unit)}" title="前往该单元">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>` : '';
-
-        // 格式化单元名称
-        const formattedUnit = unit.replace(/第(.+)单元/, (match, p1) => {
-          const num = getCnNum(unit);
-          const formattedNum = formatUnitNumber(unit);
-          return `第${formattedNum}单元`;
-        });
-
-        html += `
-          <div class="progress-unit-row">
-            <div class="progress-unit-info">
-              <span class="progress-unit-name">${escapeHtml(formattedUnit)}:</span>
-              <span class="progress-char-list">
-                ${displayChars.map(c => `<span class="progress-char learned">${escapeHtml(c)}</span>`).join(',')}
-              </span>
-            </div>
-            ${navBtnHtml}
-          </div>
-        `;
-      });
-      html += `</div></div>`;
-    });
-
-    container.innerHTML = html;
-  };
 
   function showConfirm(title, message, callback) {
     if (!confirmModal || !confirmTitle || !confirmMessage) {
@@ -432,83 +300,6 @@ export function setupMenuAndModals() {
   });
 
   checkLoginStatus();
-
-  // ===== 学习进度弹窗 =====
-  const progressModal = document.getElementById('progressModal');
-  const progressLevelsContainer = document.getElementById('progressLevelsContainer');
-
-  // 使用事件委托处理进度面板交互
-
-  if (progressLevelsContainer) {
-    progressLevelsContainer.addEventListener('click', (e) => {
-      // 折叠/展开等级
-      const header = e.target.closest('.progress-level-header');
-      if (header) {
-        header.classList.toggle('active');
-        header.nextElementSibling.classList.toggle('show');
-        return;
-      }
-
-      // 导航到单元
-      const navBtn = e.target.closest('.progress-nav-btn');
-      if (navBtn) {
-        const level = navBtn.dataset.level;
-        const unit = navBtn.dataset.unit;
-        if (level && unit) {
-          navigateToUnit(level, unit);
-        }
-      }
-    });
-  }
-
-  const showProgressModal = async () => {
-    if (!progressModal || !progressLevelsContainer) return;
-    const user = localStorage.getItem(USER_KEY);
-    if (!user) {
-      showToast('请先登录查看进度', 'info');
-      return;
-    }
-
-    progressModal.classList.add('active');
-    lockScroll();
-    progressLevelsContainer.innerHTML = '<div class="loading">加载中...</div>';
-
-    if (audioManager.supabase) {
-      const { data: records, error } = await audioManager.supabase
-        .from('user_progress')
-        .select('*')
-        .eq('username', user);
-
-      if (error) {
-        progressLevelsContainer.innerHTML = '<div class="error-msg">加载失败</div>';
-        return;
-      }
-
-      // 获取所有去重的汉字数量用于统计
-      const uniqueChars = new Set(records.map(r => r.char));
-      document.getElementById('progressTotalCount').textContent = uniqueChars.size;
-
-      // 按级别和单元分组（不去重）
-      const grouped = {};
-      records.forEach(r => {
-        const lvl = r.level || '未知等级';
-        const unit = r.unit || '未知单元';
-        if (!grouped[lvl]) grouped[lvl] = {};
-        if (!grouped[lvl][unit]) grouped[lvl][unit] = [];
-        grouped[lvl][unit].push(r.char);
-      });
-
-      await renderContentList(progressLevelsContainer, grouped, { showNav: true, emptyText: '暂无学习记录' });
-    }
-  };
-
-  bindClick('menuProgress', showProgressModal);
-
-  bindClick('closeProgress', () => {
-    if (!progressModal) return;
-    progressModal.classList.remove('active');
-    unlockScroll();
-  });
 
   // ===== 下载语音数据 =====
   const openDownloadDialog = () => {
@@ -780,7 +571,6 @@ export function setupMenuAndModals() {
 
   window.shiziActions = {
     toggleLogin: handleLoginToggle,
-    showProgressModal,
     openDownloadDialog,
     clearAudioCache,
     hardRefresh: handleHardRefresh,

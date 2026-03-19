@@ -44,14 +44,15 @@ flowchart TD
     E --> J["js/practice/* 主练习状态机与播放支持"]
     E --> K["js/profile/* 我的页/错题本/查询支持"]
     E --> L["js/home/* 主页学习与整单元朗读支持"]
-    E --> M["js/ui/* 页面渲染与图标辅助"]
-    E --> N["js/utils/* 通用工具"]
-    E --> O["yaml/contents_L*.yaml 课程数据"]
-    F --> P["Supabase 表: app_users/user_progress/user_mistakes/audio_records"]
-    Q["js/audio/audio-manager.js"] --> R["Supabase Storage 音频存储桶"]
-    Q --> S["CacheStorage: shizi-audio-cache"]
-    T["build.py"] --> U["android_build/www"]
-    U --> V["Capacitor Android 工程"]
+    E --> M["js/common/* 公共壳层/renderer/helper"]
+    E --> N["js/ui/* 页面编排与渲染入口"]
+    E --> O["js/utils/* 通用工具"]
+    E --> P["yaml/contents_L*.yaml 课程数据"]
+    F --> Q["Supabase 表: app_users/user_progress/user_mistakes/audio_records"]
+    R["js/audio/audio-manager.js"] --> S["Supabase Storage 音频存储桶"]
+    R --> T["CacheStorage: shizi-audio-cache"]
+    U["build.py"] --> V["android_build/www"]
+    V --> W["Capacitor Android 工程"]
 ```
 
 ### 1.4 运行时组成
@@ -70,10 +71,12 @@ flowchart TD
   当前已收敛为“编排层”，负责组装各类 support / engine / events 模块，并导出少量核心入口。
 - `js/app/state.js`
   全局共享状态中心。
+- `js/common/*`
+  页面公共壳层、分组 renderer、练习 view model、主页卡片导航 helper。
 - `js/ui/ui.js`
-  主页面和练习页面渲染入口。
+  主页面和练习页面渲染编排入口，负责把业务状态映射到 `js/common/*` 公共壳层。
 - `js/app/menu.js`
-  登录、下载、清缓存、刷新与弹窗控制器。
+  登录、下载、清缓存、刷新与通用弹窗控制器。
 - `js/audio/audio-manager.js`
   Supabase 音频播放、录音上传、缓存与内置音频映射预热。
 
@@ -83,6 +86,7 @@ flowchart TD
 | --- | --- | --- |
 | `js/app/` | 启动入口、全局状态、主编排、菜单与基础配置 | `main.js` `app.js` `state.js` `menu.js` |
 | `js/audio/` | 音频播放、缓存与资源访问 | `audio-manager.js` `audio-cache-shared.js` |
+| `js/common/` | 公共页面壳、公共 renderer、公共导航 helper | `card-stage-shell.js` `practice-shell.js` `grouped-level-sections.js` |
 | `js/events/` | DOM 事件绑定层 | `navigation-events.js` `practice-interaction-events.js` |
 | `js/practice/` | 主练习状态、判题、播放辅助 | `practice-engine.js` `practice-state-support.js` |
 | `js/profile/` | 我的页、错题本、查询、分组与本地缓存辅助 | `notebook-engine.js` `profile-data-support.js` `profile-cache-support.js` |
@@ -114,6 +118,17 @@ js/
   audio/
     audio-manager.js
     audio-cache-shared.js
+  common/
+    card-stage-shell.js
+    home-stage-navigation.js
+    practice-shell.js
+    practice-progress-card.js
+    practice-bodies.js
+    practice-view-model.js
+    collection-shell.js
+    grouped-level-sections.js
+    grouped-row-renderers.js
+    detail-card-shell.js
   batch/
     batch-record.js
     batch-play.js
@@ -284,7 +299,7 @@ graph TD
 flowchart TB
     A["Toolbar"] --> B["单元标题区"]
     B --> C["单元字排列 strip"]
-    C --> D["卡片区：上一字 / 当前卡 / 下一字"]
+    C --> D["CardStageShell：上一字 / 当前卡 / 下一字"]
     D --> E["BottomNav"]
 ```
 
@@ -307,10 +322,10 @@ flowchart TB
 ```mermaid
 flowchart TB
     A["Toolbar"] --> B["登录卡片"]
-    B --> C["显示学习进度卡片"]
-    C --> D["显示录音进度卡片(教学模式)"]
-    D --> E["听音识字错题集卡片"]
-    E --> F["看字识音错题集卡片"]
+    B --> C["CollectionShell：显示学习进度"]
+    C --> D["CollectionShell：显示录音进度(教学模式)"]
+    D --> E["CollectionShell：听音识字错题集"]
+    E --> F["CollectionShell：看字识音错题集"]
     F --> G["BottomNav"]
 ```
 
@@ -319,7 +334,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     A["Toolbar + 等级/单元控件"] --> B["返回按钮 + 第N单元"]
-    B --> C["进度卡片"]
+    B --> C["PracticeShell + ProgressCard"]
     C --> D["练习面板"]
     D --> E["听音：播放按钮 + 候选字"]
     D --> F["看字：提示字 + 音频选项"]
@@ -331,7 +346,7 @@ flowchart TB
 flowchart TB
     A["Toolbar + 组切换"] --> B["返回按钮 + 第N组"]
     B --> C["错题字排列"]
-    C --> D["卡片区：上一卡 / 当前错题卡 / 下一卡"]
+    C --> D["CardStageShell：上一卡 / 当前错题卡 / 下一卡"]
 ```
 
 #### 错题练习布局
@@ -339,7 +354,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     A["Toolbar + 组切换"] --> B["返回按钮 + 第N组"]
-    B --> C["进度卡片"]
+    B --> C["PracticeShell + ProgressCard"]
     C --> D["练习面板"]
     D --> E["听音：播放按钮 + 候选字"]
     D --> F["看字：提示字 + 音频选项"]
@@ -379,6 +394,8 @@ flowchart TB
 - 交互
   左右卡片按钮、键盘方向键、触摸滑动、点击单元字排列定位。
   学习模式与教学模式下均支持单元内卡片导航。
+- 实现
+  `renderHomeStudyMode()` 与错题复习页 `renderNotebookReviewSection()` 共用 `js/common/card-stage-shell.js` 中的 `renderCardStageShell(...)`。
 - 数据依赖
   `state.currentData[unitName]`、`state.homeCardIndex`、`state.homeCardMotion`。
 
@@ -443,6 +460,8 @@ flowchart TB
   展示已缓存的学习进度，并按等级/单元分组。
 - 交互
   顶层卡片展开，等级行展开，内容行跳转复习。
+- 实现
+  顶层卡片使用 `js/common/collection-shell.js`，等级分组使用 `js/common/grouped-level-sections.js`，内容行使用 `js/common/grouped-row-renderers.js`。
 - 数据依赖
   `state.profileProgress.*`
 
@@ -453,6 +472,8 @@ flowchart TB
 - 交互
   顶层卡片展开，等级行展开，内容行右侧显示 `查看` 按钮。
   点击 `查看` 后直接跳转到对应等级和单元，不再弹出统计弹窗。
+- 实现
+  图标常量已统一命名为 `SECTION_ICONS.audioProgress`，不再使用旧的 `SECTION_ICONS.stats`。
 - 数据依赖
   `state.audioProgress.*`
 
@@ -462,6 +483,8 @@ flowchart TB
   展示听音识字与看字识音错题。
 - 交互
   顶层卡片展开，等级展开，组行操作 `复习 / 练习`。
+- 实现
+  顶层卡片与学习/录音进度卡片共用 `CollectionShell`，等级分组与组行渲染复用公共 renderer。
 - 数据依赖
   `state.notebook.*`
 
@@ -496,6 +519,15 @@ flowchart TB
 - 作答区
 
 差异通过数据源、标题、返回动作和数据库交互规则区分。
+
+当前公共落点为：
+
+- `js/common/practice-shell.js`
+- `js/common/practice-progress-card.js`
+- `js/common/practice-bodies.js`
+- `js/common/practice-view-model.js`
+
+其中 `buildPracticeViewModel(...)` 统一负责把主练习与错题练习状态转换为渲染输入。
 
 #### 错题听音练习
 
@@ -575,11 +607,15 @@ flowchart TB
 - 密码弹窗
 - 等级选择弹窗
 - 批次大小弹窗
-- 进度查询弹窗
 - 确认弹窗
 - 缓存清理进度弹窗
 - 通用任务进度弹窗
 - 听音/看字完成统计弹窗
+
+说明：
+
+- 旧的“学习进度查询弹窗”链路已移除。
+- 学习进度、录音进度、错题集统一收敛到“我的”页内嵌卡片，不再通过 `menu.js` 单独弹出。
 
 ---
 
@@ -637,8 +673,9 @@ else:
 
 - `renderListenMode()` 与 `renderNotebookPracticeSection(mode=listen)` 共用练习页骨架。
 - `renderSeeMode()` 与 `renderNotebookPracticeSection(mode=see)` 共用练习页骨架。
+- `renderHomeStudyMode()` 与 `renderNotebookReviewSection()` 共用 `CardStageShell`。
 - 主练习页通过 `practiceEntryContext` 控制返回前页面。
-- `renderSearchResult()` 使用独立搜索结果布局，标题与结果卡片之间保留安全间距，避免视觉重叠。
+- `renderSearchResult()` 已拆为“标题 + `DetailCardShell` + 结果卡片内容”的组合布局。
 - “显示学习进度 / 显示录音进度 / 错题集”三类顶层卡片共用同一套分组折叠卡片壳，差异通过图标、标题、数量、内容区与行动按钮配置控制。
 - 主页学习页的学习模式与教学模式共用同一套卡片浏览逻辑；教学模式不再屏蔽单元字点击跳卡、左右键切卡与滑动切卡。
 
@@ -728,6 +765,7 @@ else:
 - 顶层卡片支持折叠
 - 每个等级下内容区域为固定可视高度 + 隐藏滚动条
 - 行按钮支持跳转到对应单元学习页
+- 查询结果直接渲染到“我的”页卡片，不再进入单独进度弹窗
 
 #### 我的页加载
 
@@ -1016,6 +1054,16 @@ flowchart TD
 
 | 模块 | 说明 |
 | --- | --- |
+| `js/common/card-stage-shell.js` | 主页学习页 / 错题复习页公共舞台壳 |
+| `js/common/home-stage-navigation.js` | 主页跳卡点击、键盘、滑动公共 helper |
+| `js/common/practice-shell.js` | 主练习 / 错题练习公共外层壳 |
+| `js/common/practice-progress-card.js` | 练习进度卡片公共 renderer |
+| `js/common/practice-bodies.js` | 听音 / 看字练习面板公共 renderer |
+| `js/common/practice-view-model.js` | 主练习 / 错题练习统一 view model builder |
+| `js/common/collection-shell.js` | 我的页顶层数据卡片公共壳 |
+| `js/common/grouped-level-sections.js` | 我的页等级折叠公共 renderer |
+| `js/common/grouped-row-renderers.js` | 学习进度 / 录音进度 / 错题组行 renderer |
+| `js/common/detail-card-shell.js` | 搜索结果页单卡详情壳 |
 | `js/practice/practice-engine.js` | 主练习判题、重试、历史导航 |
 | `js/practice/practice-state-support.js` | listen / see 会话初始化与状态辅助 |
 | `js/practice/practice-playback-support.js` | 主练习音频播放辅助 |
@@ -1101,7 +1149,7 @@ L0/Unit_1/yuan/char.mp3
 
 | 场景 | 处理策略 |
 | --- | --- |
-| 未登录查看进度 | 提示 `请先登录查看进度` |
+| 未登录进入“我的”页 | 允许进入页面，登录卡片负责引导登录，数据区保持空态或提示 |
 | 批次大小非法 | 提示输入 1-100 |
 | 已到最后一单元/最后一组 | 弹 info toast |
 | 无需重新练 | 隐藏重试按钮或提示当前没有需要重新练的字 |
@@ -1162,7 +1210,7 @@ L0/Unit_1/yuan/char.mp3
 2. 将错题数据操作上移为统一 service 层
    便于后续引入事务和回滚。
 3. 为错题练习、重新练、误认字播放补自动化回归用例
-   当前该区域业务规则复杂且容易回归。
+   当前已补一轮 Playwright 浏览器级回归，覆盖 `gpt` 登录、主页跳卡、练习返回、我的页三类折叠和错题练习入口；建议后续固化为可重复执行脚本。
 4. 为 `project.md` 建立“变更日志”段落
    每次规则调整同步更新文档。
 
@@ -1182,6 +1230,16 @@ L0/Unit_1/yuan/char.mp3
 - `js/app/menu.js`
 - `js/audio/audio-manager.js`
 - `js/audio/audio-cache-shared.js`
+- `js/common/card-stage-shell.js`
+- `js/common/home-stage-navigation.js`
+- `js/common/practice-shell.js`
+- `js/common/practice-progress-card.js`
+- `js/common/practice-bodies.js`
+- `js/common/practice-view-model.js`
+- `js/common/collection-shell.js`
+- `js/common/grouped-level-sections.js`
+- `js/common/grouped-row-renderers.js`
+- `js/common/detail-card-shell.js`
 - `js/learning/learning.js`
 - `js/batch/batch-record.js`
 - `js/batch/batch-play.js`

@@ -1,8 +1,27 @@
-﻿// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
+// UI 渲染：卡片、搜索结果、听音识字视图、HTML 工具函数
 import { state } from '../app/state.js';
 import { USER_KEY } from '../app/constants.js';
 import { normalizeWrongCharEntries } from '../utils/mistake-utils.js';
 import { getNotebookGroupsByLevel } from '../profile/notebook-grouping.js';
+import { renderCardStageShell } from '../common/card-stage-shell.js';
+import { renderPracticePageShell as renderPracticePageShellMarkup } from '../common/practice-shell.js';
+import {
+  renderListenPracticeBody as renderListenPracticeBodyMarkup,
+  renderSeePracticeBody as renderSeePracticeBodyMarkup,
+} from '../common/practice-bodies.js';
+import { buildPracticeViewModel } from '../common/practice-view-model.js';
+import { renderCollectionShell } from '../common/collection-shell.js';
+import {
+  sortProgressLevels as sortGroupedLevels,
+  sortProgressUnits as sortGroupedUnits,
+  renderGroupedLevelSections as renderGroupedLevelSectionsMarkup,
+} from '../common/grouped-level-sections.js';
+import {
+  renderProgressRow as renderProgressRowMarkup,
+  renderAudioProgressRow as renderAudioProgressRowMarkup,
+  renderNotebookGroupRow as renderNotebookGroupRowMarkup,
+} from '../common/grouped-row-renderers.js';
+import { renderDetailCardShell } from '../common/detail-card-shell.js';
 
 const UNIT_CHAR_BASE_REM = 1.9;
 const UNIT_CHAR_MIN_REM = 0.75;
@@ -40,7 +59,7 @@ const SECTION_ICONS = {
   clear: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M600-240v-80h160v80H600Zm0-320v-80h280v80H600Zm0 160v-80h240v80H600ZM120-640H80v-80h160v-60h160v60h160v80h-40v360q0 33-23.5 56.5T440-200H200q-33 0-56.5-23.5T120-280v-360Zm80 0v360h240v-360H200Zm0 0v360-360Z"/></svg>`,
   teaching: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M280-120 80-320l200-200 57 56-104 104h607v80H233l104 104-57 56Zm400-320-57-56 104-104H120v-80h607L623-784l57-56 200 200-200 200Z"/></svg>`,
   refresh: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg>`,
-  stats: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M400-320q100 0 170-70t70-170q0-100-70-170t-170-70q-100 0-170 70t-70 170q0 100 70 170t170 70Zm-40-120v-280h80v280h-80Zm-140 0v-200h80v200h-80Zm280 0v-160h80v160h-80ZM824-80 597-307q-41 32-91 49.5T400-240q-134 0-227-93T80-560q0-134 93-227t227-93q134 0 227 93t93 227q0 56-17.5 106T653-363l227 227-56 56Z"/></svg>`,
+  audioProgress: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M400-320q100 0 170-70t70-170q0-100-70-170t-170-70q-100 0-170 70t-70 170q0 100 70 170t170 70Zm-40-120v-280h80v280h-80Zm-140 0v-200h80v200h-80Zm280 0v-160h80v160h-80ZM824-80 597-307q-41 32-91 49.5T400-240q-134 0-227-93T80-560q0-134 93-227t227-93q134 0 227 93t93 227q0 56-17.5 106T653-363l227 227-56 56Z"/></svg>`,
   progress: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M200-800v241-1 400-640 200-200Zm80 400h140q9-23 22-43t30-37H280v80Zm0 160h127q-5-20-6.5-40t.5-40H280v80ZM200-80q-33 0-56.5-23.5T120-160v-640q0-33 23.5-56.5T200-880h320l240 240v100q-19-8-39-12.5t-41-6.5v-41H480v-200H200v640h241q16 24 36 44.5T521-80H200Zm531-149q29-29 29-71t-29-71q-29-29-71-29t-71 29q-29 29-29 71t29 71q29 29 71 29t71-29ZM864-40 756-148q-21 14-45.5 21t-50.5 7q-75 0-127.5-52.5T480-300q0-75 52.5-127.5T660-480q75 0 127.5 52.5T840-300q0 26-7 50.5T812-204L920-96l-56 56Z"/></svg>`,
 };
 
@@ -168,19 +187,22 @@ function renderHomeStudyMode(appEl, unitName, unitChars) {
   const currentInfo = currentChar ? unitChars[currentChar] : null;
 
   appEl.classList.add('home-stage-layout');
-  appEl.innerHTML = `
-    ${getUnitTitleHtml(unitName)}
-    <div class="unit-char-strip">
-      ${allChars.map((char, index) => `<span class="unit-char-link${index === safeIndex ? ' active' : ''}" data-char="${escapeHtml(char)}">${escapeHtml(char)}</span>`).join('，')}
-    </div>
-    <div class="home-stage-shell">
-      <button class="home-card-nav prev" type="button" id="homeCardPrevBtn" ${safeIndex === 0 ? 'disabled' : ''} aria-label="上一个字">‹</button>
-      <div class="home-card-stage" data-char="${escapeHtml(currentChar)}">
-        ${currentChar ? buildStudyCardHtml(currentChar, currentInfo, unitName) : '<div class="loading">本单元暂无内容</div>'}
+  appEl.innerHTML = renderCardStageShell({
+    headerHtml: getUnitTitleHtml(unitName),
+    stripHtml: `
+      <div class="unit-char-strip">
+        ${allChars.map((char, index) => `<span class="unit-char-link${index === safeIndex ? ' active' : ''}" data-char="${escapeHtml(char)}">${escapeHtml(char)}</span>`).join('，')}
       </div>
-      <button class="home-card-nav next" type="button" id="homeCardNextBtn" ${safeIndex >= allChars.length - 1 ? 'disabled' : ''} aria-label="下一个字">›</button>
-    </div>
-  `;
+    `,
+    cardHtml: currentChar ? buildStudyCardHtml(currentChar, currentInfo, unitName) : '<div class="loading">本单元暂无内容</div>',
+    prevDisabled: safeIndex === 0,
+    nextDisabled: safeIndex >= allChars.length - 1,
+    prevAction: 'id="homeCardPrevBtn"',
+    nextAction: 'id="homeCardNextBtn"',
+    stageAttrs: `data-char="${escapeHtml(currentChar)}"`,
+    prevLabel: '上一个字',
+    nextLabel: '下一个字',
+  });
   requestAnimationFrame(() => applyResponsiveLayout());
 }
 
@@ -203,10 +225,6 @@ function renderOtherSection(appEl) {
       </div>
     </section>
   `;
-}
-
-function getProgressChevronIcon(expanded) {
-  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 }
 
 function sortProgressLevels(levels) {
@@ -256,95 +274,67 @@ function convertNumberToChinese(num) {
 
 function renderProfileProgressContent() {
   const grouped = state.profileProgress.grouped || {};
-  const levels = sortProgressLevels(Object.keys(grouped));
+  const levels = sortGroupedLevels(Object.keys(grouped));
   if (!levels.length) return '';
 
-  return levels.map((level, index) => {
-    const expanded = index === 0;
-    const units = sortProgressUnits(Object.keys(grouped[level] || {}));
-    return `
-      <div class="progress-level-item">
-        <div class="progress-level-header${expanded ? ' active' : ''}" data-profile-progress-header="${escapeHtml(level)}">
-          <span>${escapeHtml(level)}</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        <div class="progress-level-content${expanded ? ' show' : ''}">
-          <div class="progress-level-scroll">
-            ${units.map((unit) => `
-              <div class="progress-unit-row">
-                <div class="progress-unit-info">
-                  <span class="progress-unit-name">
-                    <span class="progress-unit-number">${escapeHtml(formatProgressUnitDisplay(unit))}</span><span class="progress-unit-colon"> :</span>
-                  </span>
-                  <span class="progress-char-list">
-                    ${(grouped[level][unit] || []).map((char) => `<span class="progress-char learned">${escapeHtml(char)}</span>`).join('，')}
-                  </span>
-                </div>
-                <button class="modal-btn confirm progress-review-btn" type="button" data-profile-progress-nav="${escapeHtml(level)}|${escapeHtml(unit)}" title="复习该单元">复习</button>
-              </div>
-            `).join('')}
-          </div>
-        </div>
+  return renderGroupedLevelSectionsMarkup({
+    escapeHtml,
+    levels,
+    expandedState: (_, index) => index === 0,
+    headerDataBuilder: (level) => ({
+      label: level,
+      toggleAttr: `data-profile-progress-header="${escapeHtml(level)}"`,
+    }),
+    rowRenderer: (level) => `
+      <div class="progress-level-scroll">
+        ${sortGroupedUnits(Object.keys(grouped[level] || {}), parseProgressUnitNumber).map((unit) => renderProgressRowMarkup({
+          escapeHtml,
+          level,
+          unit,
+          chars: grouped[level][unit] || [],
+          formatUnitDisplay: formatProgressUnitDisplay,
+        })).join('')}
       </div>
-    `;
-  }).join('');
+    `,
+    emptyHtml: '',
+  });
 }
 
 function renderAudioProgressContent() {
   const grouped = state.audioProgress.grouped || {};
-  const levels = sortProgressLevels(Object.keys(grouped));
+  const levels = sortGroupedLevels(Object.keys(grouped));
   if (!levels.length) return '';
 
-  return levels.map((level, index) => {
-    const expanded = index === 0;
-    const units = sortProgressUnits(Object.keys(grouped[level] || {}));
-    return `
-      <div class="progress-level-item">
-        <div class="progress-level-header${expanded ? ' active' : ''}" data-audio-progress-header="${escapeHtml(level)}">
-          <span>${escapeHtml(level)}</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        <div class="progress-level-content${expanded ? ' show' : ''}">
-          <div class="progress-level-scroll">
-            ${units.map((unit) => `
-              <div class="progress-unit-row">
-                <div class="progress-unit-info">
-                  <span class="progress-unit-name">
-                    <span class="progress-unit-number">${escapeHtml(formatProgressUnitDisplay(unit))}</span><span class="progress-unit-colon"> :</span>
-                  </span>
-                  <span class="progress-char-list">
-                    ${(grouped[level][unit] || []).map((char) => `<span class="progress-char learned">${escapeHtml(char)}</span>`).join('，')}
-                  </span>
-                </div>
-                <button class="modal-btn confirm progress-review-btn" type="button" data-audio-progress-view="${escapeHtml(level)}|${escapeHtml(unit)}" title="查看该单元录音详情">查看</button>
-              </div>
-            `).join('')}
-          </div>
-        </div>
+  return renderGroupedLevelSectionsMarkup({
+    escapeHtml,
+    levels,
+    expandedState: (_, index) => index === 0,
+    headerDataBuilder: (level) => ({
+      label: level,
+      toggleAttr: `data-audio-progress-header="${escapeHtml(level)}"`,
+    }),
+    rowRenderer: (level) => `
+      <div class="progress-level-scroll">
+        ${sortGroupedUnits(Object.keys(grouped[level] || {}), parseProgressUnitNumber).map((unit) => renderAudioProgressRowMarkup({
+          escapeHtml,
+          level,
+          unit,
+          chars: grouped[level][unit] || [],
+          formatUnitDisplay: formatProgressUnitDisplay,
+        })).join('')}
       </div>
-    `;
-  }).join('');
+    `,
+    emptyHtml: '',
+  });
 }
 
-function renderProfileCollectionCard({ toggleAttrs, icon, label, count, expanded, bodyHtml }) {
-  return `
-    <div class="profile-progress-card-wrap">
-      <button class="section-action-card profile-progress-toggle" type="button" ${toggleAttrs}>
-        <span class="section-action-icon">${icon}</span>
-        <span class="section-action-label">${label}</span>
-        <span class="section-action-count">${count}</span>
-        <span class="notebook-section-arrow${expanded ? ' expanded' : ''}">${getProgressChevronIcon(expanded)}</span>
-      </button>
-      <div class="notebook-collapse${expanded ? ' expanded' : ''}">
-        ${bodyHtml}
-      </div>
-    </div>
-  `;
+function renderProfileCollectionCard(config) {
+  return renderCollectionShell(config);
 }
 
 function renderNotebookCollectionSection(mode, label) {
   const groupedLevels = getNotebookGroupsByLevel(state.notebook.items, mode);
-  const levels = sortProgressLevels(Object.keys(groupedLevels));
+  const levels = sortGroupedLevels(Object.keys(groupedLevels));
   const expanded = !!state.notebook.expandedSections?.[mode];
   const total = Object.values(groupedLevels).reduce(
     (sum, groups) => sum + groups.reduce((groupSum, group) => groupSum + group.length, 0),
@@ -356,36 +346,29 @@ function renderNotebookCollectionSection(mode, label) {
     label,
     count: total,
     expanded,
-    bodyHtml: levels.length ? levels.map((level) => {
-          const levelExpanded = !!state.notebook.expandedLevels?.[mode]?.[level];
-          const groups = groupedLevels[level] || [];
-          return `
-            <div class="progress-level-item notebook-level-item">
-              <div class="progress-level-header${levelExpanded ? ' active' : ''}" data-notebook-level-header="${escapeHtml(mode)}|${escapeHtml(level)}">
-                <span>${escapeHtml(level)}</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </div>
-              <div class="progress-level-content${levelExpanded ? ' show' : ''}">
-                <div class="notebook-group-list notebook-level-group-list">
-                  ${groups.map((group, index) => `
-                      <div class="notebook-group-row">
-                        <div class="progress-unit-info notebook-group-info">
-                          <span class="progress-unit-name">
-                            <span class="progress-unit-number">${escapeHtml(formatAlignedIndex(index + 1))}</span><span class="progress-unit-colon"> :</span>
-                          </span>
-                          <span class="progress-char-list notebook-group-text">${group.map((item) => `<span class="progress-char learned">${escapeHtml(item.char)}</span>`).join('，')}</span>
-                        </div>
-                        <div class="notebook-group-actions">
-                          <button class="modal-btn confirm" type="button" data-notebook-action="review" data-mode="${mode}" data-level="${escapeHtml(level)}" data-group-index="${index}">复习</button>
-                          <button class="modal-btn retry" type="button" data-notebook-action="practice" data-mode="${mode}" data-level="${escapeHtml(level)}" data-group-index="${index}">练习</button>
-                        </div>
-                      </div>
-                  `).join('')}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('') : '<div class="loading">祝贺您！没有错题啦</div>',
+    bodyHtml: levels.length ? renderGroupedLevelSectionsMarkup({
+      escapeHtml,
+      levels,
+      expandedState: (level) => !!state.notebook.expandedLevels?.[mode]?.[level],
+      headerDataBuilder: (level) => ({
+        label: level,
+        toggleAttr: `data-notebook-level-header="${escapeHtml(mode)}|${escapeHtml(level)}"`,
+        itemClassName: 'notebook-level-item',
+      }),
+      rowRenderer: (level) => `
+        <div class="notebook-group-list notebook-level-group-list">
+          ${(groupedLevels[level] || []).map((group, rowIndex) => renderNotebookGroupRowMarkup({
+            escapeHtml,
+            group,
+            index: rowIndex,
+            mode,
+            level,
+            formatIndex: formatAlignedIndex,
+          })).join('')}
+        </div>
+      `,
+      emptyHtml: '<div class="loading">祝贺您！没有错题啦</div>',
+    }) : '<div class="loading">祝贺您！没有错题啦</div>',
   });
 }
 
@@ -422,105 +405,93 @@ function renderNotebookReviewSection(appEl) {
   appEl.style.removeProperty('--listen-option-gap');
   appEl.innerHTML = `
     <section class="section-page notebook-review-page">
-      <div class="notebook-group-header">
-        <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
-        <span class="notebook-group-title">第${escapeHtml(convertNumberToChinese(safeGroupIndex + 1))}组</span>
-      </div>
-      <div class="unit-char-strip notebook-char-strip">
-        ${group.map((item, index) => `<span class="unit-char-link${index === safeCardIndex ? ' active' : ''}" data-notebook-review-char="${index}" data-char="${escapeHtml(item.char)}">${escapeHtml(item.char)}</span>`).join('，')}
-      </div>
-      <div class="home-stage-shell notebook-home-stage">
-        <button class="home-card-nav prev" type="button" data-notebook-review-card="prev" ${safeCardIndex === 0 ? 'disabled' : ''}>‹</button>
-        <div class="home-card-stage">
-          ${currentItem ? `
-            <div class="card home-card ${state.notebook.reviewMotion !== 'none' ? `card-motion-${state.notebook.reviewMotion}` : ''}" data-char="${escapeHtml(currentItem.char)}">
-              <div class="char-header-container">
-                <div class="char-with-btn">
-                  <div class="char-box">
-                    <div class="char-text">${escapeHtml(currentItem.char)}</div>
-                  </div>
-                  ${getBtnHtml(currentItem.char, 'char', currentItem.char, currentItem.level, currentItem.unit, false)}
+      ${renderCardStageShell({
+        headerHtml: `
+          <div class="notebook-group-header">
+            <button class="back-inline-btn" type="button" data-notebook-action="back-to-notebook">返回</button>
+            <span class="notebook-group-title">第${escapeHtml(convertNumberToChinese(safeGroupIndex + 1))}组</span>
+          </div>
+        `,
+        stripHtml: `
+          <div class="unit-char-strip notebook-char-strip">
+            ${group.map((item, index) => `<span class="unit-char-link${index === safeCardIndex ? ' active' : ''}" data-notebook-review-char="${index}" data-char="${escapeHtml(item.char)}">${escapeHtml(item.char)}</span>`).join('，')}
+          </div>
+        `,
+        cardHtml: currentItem ? `
+          <div class="card home-card ${state.notebook.reviewMotion !== 'none' ? `card-motion-${state.notebook.reviewMotion}` : ''}" data-char="${escapeHtml(currentItem.char)}">
+            <div class="char-header-container">
+              <div class="char-with-btn">
+                <div class="char-box">
+                  <div class="char-text">${escapeHtml(currentItem.char)}</div>
                 </div>
+                ${getBtnHtml(currentItem.char, 'char', currentItem.char, currentItem.level, currentItem.unit, false)}
               </div>
-              <div class="content-box">
-                <div class="row">
-                  <div class="tag">误认为</div>
-                  <div class="text-btn-row">
-                    <div class="text-content words notebook-mistake-content">${buildReviewMistakeRows(currentItem)}</div>
-                  </div>
+            </div>
+            <div class="content-box">
+              <div class="row">
+                <div class="tag">误认为</div>
+                <div class="text-btn-row">
+                  <div class="text-content words notebook-mistake-content">${buildReviewMistakeRows(currentItem)}</div>
                 </div>
               </div>
             </div>
-          ` : '<div class="loading">当前错题组暂无内容</div>'}
-        </div>
-        <button class="home-card-nav next" type="button" data-notebook-review-card="next" ${safeCardIndex >= group.length - 1 ? 'disabled' : ''}>›</button>
-      </div>
+          </div>
+        ` : '<div class="loading">当前错题组暂无内容</div>',
+        prevDisabled: safeCardIndex === 0,
+        nextDisabled: safeCardIndex >= group.length - 1,
+        prevAction: 'data-notebook-review-card="prev"',
+        nextAction: 'data-notebook-review-card="next"',
+        shellClassName: 'notebook-home-stage',
+        prevLabel: '上一张错题卡',
+        nextLabel: '下一张错题卡',
+      })}
     </section>
   `;
 }
 
 function renderNotebookPracticeSection(appEl) {
   const session = state.notebook.practice;
-  const total = session.sequence.length;
-  const currentStep = Math.min(session.currentIndex + 1, Math.max(total, 1));
-  const progressPercent = total === 0 ? 0 : Math.round((session.answeredChars.length / total) * 100);
   const titleText = `第${convertNumberToChinese(session.groupIndex + 1)}组`;
-  const groupCount = (getNotebookGroupsByLevel(state.notebook.items, session.mode)[session.level] || []).length;
 
   appEl.classList.add('listen-layout', 'notebook-practice-layout');
   appEl.classList.remove('app-section-layout', 'home-stage-layout');
 
-  if (!total) {
+  if (!session.sequence.length) {
     appEl.innerHTML = `
       <div class="loading">当前错题组暂无可练习内容</div>
     `;
     return;
   }
 
-  if (session.mode === 'listen') {
-    const question = session.questions[session.currentIndex] || null;
-    const currentChar = question?.char || session.sequence[session.currentIndex] || '';
-    const options = Array.isArray(question?.options) ? question.options : [];
-    renderPracticePageShell({
-      appEl,
-      titleText,
-      backActionAttr: 'data-notebook-action="back-to-notebook"',
-      progressTitle: '听音识字进度',
-      currentStep,
-      total,
-      progressPercent,
-      completedCount: session.answeredChars.length,
-      bodyHtml: renderListenPracticeBody({
-        currentChar,
-        options,
-        unitName: '',
-        replayButtonId: 'notebookListenReplayBtn',
-      }),
-    });
-    return;
-  }
-
-  const question = session.questions[session.currentIndex] || null;
-  const currentChar = question?.char || session.sequence[session.currentIndex] || '';
-  const options = Array.isArray(question?.options) ? question.options : [];
-  const revealedOptions = Array.isArray(question?.revealedOptions) ? question.revealedOptions : [];
-  renderPracticePageShell({
-    appEl,
+  const viewModel = buildPracticeViewModel({
+    bodyType: session.mode === 'listen' ? 'listen' : 'see',
+    session,
     titleText,
     backActionAttr: 'data-notebook-action="back-to-notebook"',
-    progressTitle: '看字识音进度',
-    currentStep,
-    total,
-    progressPercent,
-    completedCount: session.answeredChars.length,
-    bodyHtml: renderSeePracticeBody({
-      currentChar,
-      options,
-      revealedOptions,
-      promptId: 'notebookSeePromptCard',
-      promptInteractive: false,
-    }),
+    progressTitle: session.mode === 'listen' ? '听音识字进度' : '看字识音进度',
+    unitName: '',
+    replayButtonId: 'notebookListenReplayBtn',
+    promptId: 'notebookSeePromptCard',
+    promptInteractive: false,
   });
+  const bodyHtml = viewModel.bodyType === 'listen'
+    ? renderListenPracticeBodyMarkup({
+        escapeHtml,
+        getListenSpeakerIconHtml,
+        level: state.currentLevel,
+        ...viewModel.bodyPayload,
+      })
+    : renderSeePracticeBodyMarkup({
+        escapeHtml,
+        getListenSpeakerIconHtml,
+        ...viewModel.bodyPayload,
+      });
+
+  appEl.innerHTML = renderPracticePageShellMarkup({
+    ...viewModel,
+    bodyHtml,
+  });
+  requestAnimationFrame(() => applyResponsiveLayout());
 }
 
 function renderProfileSection(appEl) {
@@ -570,7 +541,7 @@ function renderProfileSection(appEl) {
         })}
         ${state.isTeachingMode ? renderProfileCollectionCard({
           toggleAttrs: 'data-action="audio-progress"',
-          icon: SECTION_ICONS.stats,
+          icon: SECTION_ICONS.audioProgress,
           label: '显示录音进度',
           count: state.audioProgress.total,
           expanded: state.audioProgress.expanded,
@@ -605,9 +576,7 @@ export function updateAppShell() {
   } else if (state.appSection === 'other') {
     title = '其他';
   } else if (state.appSection === 'profile') {
-    if (state.profileView === 'notebook') {
-      title = '生字本';
-    } else if (state.profileView === 'notebookReview') {
+    if (state.profileView === 'notebookReview') {
       title = '复习';
     } else if (state.profileView === 'notebookPractice') {
       title = '练习';
@@ -770,121 +739,45 @@ function renderPracticeEmptyState(appEl, unitName) {
   `;
 }
 
-function renderPracticeProgressCard({ progressTitle, currentStep, total, progressPercent, completedCount }) {
-  return `
-    <div class="listen-progress-card">
-      <div class="listen-progress-header">
-        <span>${progressTitle}</span>
-        <span>${currentStep}/${total}</span>
-      </div>
-      <div class="progress-track listen-progress-track">
-        <div class="progress-fill" style="width:${progressPercent}%"></div>
-      </div>
-      <div class="listen-progress-caption">已完成 ${completedCount} / ${total}</div>
-    </div>
-  `;
-}
-
-function renderListenPracticeBody({ currentChar, options, unitName, replayButtonId = 'listenReplayBtn' }) {
-  return `
-    <div class="listen-mode-panel" data-char="${escapeHtml(currentChar)}">
-      <button class="listen-audio-btn" id="${escapeHtml(replayButtonId)}" title="播放读音" data-text="${escapeHtml(currentChar)}" data-type="char" data-root-char="${escapeHtml(currentChar)}" data-level="${escapeHtml(state.currentLevel)}" data-unit="${escapeHtml(unitName)}">
-        ${getListenSpeakerIconHtml()}
-      </button>
-      <div class="listen-options-grid">
-        ${options.map((option) => `
-          <button class="listen-option-btn" data-char="${escapeHtml(option)}" type="button">${escapeHtml(option)}</button>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderSeePracticeBody({ currentChar, options, revealedOptions = [], promptId = 'seePromptCard', promptInteractive = true }) {
-  const promptAttrs = promptInteractive
-    ? `tabindex="0" role="button" aria-label="拖动汉字到正确读音"`
-    : '';
-
-  return `
-    <div class="listen-mode-panel see-mode-panel" data-char="${escapeHtml(currentChar)}">
-      <div class="see-char-card" id="${escapeHtml(promptId)}" data-char="${escapeHtml(currentChar)}" ${promptAttrs}>${escapeHtml(currentChar)}</div>
-      <div class="see-options-grid">
-        ${options.map((option) => {
-          const isRevealed = revealedOptions.includes(option);
-          return `<button class="see-audio-option${isRevealed ? ' revealed' : ''}" data-char="${escapeHtml(option)}" type="button">${isRevealed ? escapeHtml(option) : getListenSpeakerIconHtml()}</button>`;
-        }).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderPracticePageShell({
-  appEl,
-  titleText,
-  backActionAttr,
-  progressTitle,
-  currentStep,
-  total,
-  progressPercent,
-  completedCount,
-  bodyHtml,
-  headerClassName = 'notebook-group-header',
-}) {
-  appEl.innerHTML = `
-    <div class="${headerClassName}">
-      <button class="back-inline-btn" type="button" ${backActionAttr}>返回</button>
-      <span class="notebook-group-title">${titleText}</span>
-    </div>
-    ${renderPracticeProgressCard({ progressTitle, currentStep, total, progressPercent, completedCount })}
-    ${bodyHtml}
-  `;
-  requestAnimationFrame(() => applyResponsiveLayout());
-}
-
 function renderPracticeMode(appEl, unitName, mode) {
   const isSeeMode = mode === 'see';
   const session = isSeeMode ? state.seeMode : state.listenMode;
-  const total = session.sequence.length;
 
-  if (!total) {
+  if (!session.sequence.length) {
     renderPracticeEmptyState(appEl, unitName);
     return;
   }
 
-  const question = session.questions[session.currentIndex] || null;
-  const currentChar = question?.char || session.sequence[session.currentIndex] || '';
-  const options = Array.isArray(question?.options) ? question.options : [];
-  const completedCount = Math.min(session.answeredChars.length, total);
-  const currentStep = completedCount >= total ? total : Math.min(completedCount + 1, total);
-  const progressPercent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-  const progressTitle = isSeeMode ? '看字识音进度' : '听音识字进度';
-  const bodyHtml = isSeeMode
-    ? renderSeePracticeBody({
-        currentChar,
-        options,
-        revealedOptions: Array.isArray(question?.revealedOptions) ? question.revealedOptions : [],
-        promptId: 'seePromptCard',
-        promptInteractive: true,
-      })
-    : renderListenPracticeBody({
-        currentChar,
-        options,
-        unitName,
-        replayButtonId: 'listenReplayBtn',
-      });
-
-  renderPracticePageShell({
-    appEl,
+  const viewModel = buildPracticeViewModel({
+    bodyType: isSeeMode ? 'see' : 'listen',
+    session,
     titleText: unitName,
     backActionAttr: 'data-practice-action="back-main-practice"',
-    progressTitle,
-    currentStep,
-    total,
-    progressPercent,
-    completedCount,
+    progressTitle: isSeeMode ? '看字识音进度' : '听音识字进度',
+    unitName,
+    replayButtonId: 'listenReplayBtn',
+    promptId: 'seePromptCard',
+    promptInteractive: true,
+  });
+  const bodyHtml = isSeeMode
+    ? renderSeePracticeBodyMarkup({
+        escapeHtml,
+        getListenSpeakerIconHtml,
+        ...viewModel.bodyPayload,
+      })
+    : renderListenPracticeBodyMarkup({
+        escapeHtml,
+        getListenSpeakerIconHtml,
+        level: state.currentLevel,
+        ...viewModel.bodyPayload,
+      });
+
+  appEl.innerHTML = renderPracticePageShellMarkup({
+    ...viewModel,
     bodyHtml,
     headerClassName: 'notebook-group-header',
   });
+  requestAnimationFrame(() => applyResponsiveLayout());
 }
 
 function renderListenMode(appEl, unitName) {
@@ -977,32 +870,35 @@ export function renderSearchResult(char, info, level, unit) {
 
   const sentenceHtml = highlightChar(sentence, char);
 
-  appEl.innerHTML = `
-    <div class="unit-title search-result-title">${escapeHtml(level)} - ${escapeHtml(unit)}</div>
-    <div class="card search-result-card">
-      <div class="char-header-container">
-        <div class="char-with-btn">
-          <div class="char-box">
-            <div class="char-text">${escapeHtml(char)}</div>
+  appEl.innerHTML = renderDetailCardShell({
+    titleHtml: `<div class="unit-title search-result-title">${escapeHtml(level)} - ${escapeHtml(unit)}</div>`,
+    cardHtml: `
+      <div class="card search-result-card">
+        <div class="char-header-container">
+          <div class="char-with-btn">
+            <div class="char-box">
+              <div class="char-text">${escapeHtml(char)}</div>
+            </div>
+            ${getBtnHtml(char, 'char', char, level, unit, false)}
           </div>
-          ${getBtnHtml(char, 'char', char, level, unit, false)}
+        </div>
+        <div class="content-box">
+          <div class="row">
+            <div class="tag">词</div>
+            <div class="text-btn-row">
+              <div class="text-content words">${wordsHtml}</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="tag">句</div>
+            <div class="text-btn-row">
+              <div class="text-content sentence">${sentenceHtml}</div>
+              ${getBtnHtml(sentence, 'sentence', char, level, unit, false)}
+            </div>
+          </div>
         </div>
       </div>
-      <div class="content-box">
-        <div class="row">
-          <div class="tag">词</div>
-          <div class="text-btn-row">
-            <div class="text-content words">${wordsHtml}</div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="tag">句</div>
-          <div class="text-btn-row">
-            <div class="text-content sentence">${sentenceHtml}</div>
-            ${getBtnHtml(sentence, 'sentence', char, level, unit, false)}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+    `,
+    shellClassName: 'search-result-shell',
+  });
 }

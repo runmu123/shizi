@@ -1,3 +1,5 @@
+import { handleHomeCardSelection, handleHomeCardSwipe } from '../common/home-stage-navigation.js';
+
 export function setupPracticeInteractionEvents({
   appEl,
   state,
@@ -90,14 +92,12 @@ export function setupPracticeInteractionEvents({
 
     const unitCharLink = e.target.closest('.unit-char-link');
     if (unitCharLink) {
-      const targetChar = unitCharLink.dataset.char;
-      if (targetChar && isHomeStudyStage()) {
-        const chars = getCurrentUnitChars();
-        const nextIndex = chars.indexOf(targetChar);
-        if (nextIndex !== -1) {
-          navigateHomeCard(nextIndex, nextIndex > state.homeCardIndex ? 'next' : 'prev');
-        }
-      }
+      handleHomeCardSelection({
+        state,
+        targetChar: unitCharLink.dataset.char,
+        chars: getCurrentUnitChars(),
+        navigateHomeCard,
+      });
       return;
     }
 
@@ -166,14 +166,16 @@ export function setupPracticeInteractionEvents({
   }, { passive: true });
 
   appEl.addEventListener('touchend', (e) => {
-    if (!isHomeStudyStage()) return;
     const stage = e.target.closest('.home-card-stage');
     if (!stage || e.changedTouches.length !== 1) return;
 
     const deltaX = e.changedTouches[0].clientX - homeTouchStartX;
     const deltaY = e.changedTouches[0].clientY - homeTouchStartY;
-    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
-    navigateHomeCardByOffset(deltaX > 0 ? -1 : 1);
+    handleHomeCardSwipe({
+      deltaX,
+      deltaY,
+      navigateHomeCardByOffset,
+    });
   }, { passive: true });
 
   appEl.addEventListener('touchstart', (e) => {

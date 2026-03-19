@@ -270,8 +270,6 @@ export function switchTeachingMode(enable) {
 
 // ===== 导航到指定单元 =====
 export async function navigateToUnit(level, unitName) {
-  document.getElementById('progressModal').classList.remove('active');
-
   if (document.getElementById('learningView').classList.contains('active')) {
     exitLearning();
   }
@@ -666,11 +664,8 @@ const notebookSupport = createNotebookSupport({
   escapeHtml,
   renderUnitPreservingScroll,
   renderUnit,
-  saveCurrentPosition,
-  loadNotebookData: (force = false) => profileDataSupport.loadNotebookData(force),
   stopActiveAudioPlayback,
   flushNotebookMutations,
-  loadProfilePageData: (force = false, options = {}) => profileDataSupport.loadProfilePageData(force, options),
   navigateToUnit,
   getCurrentUnitChars: () => homeSupport.getCurrentUnitChars(),
   setMainViewMode,
@@ -680,7 +675,6 @@ const notebookSupport = createNotebookSupport({
   setSpeakerButtonPlaying,
   showToast,
   getUserKey: () => localStorage.getItem(USER_KEY) || '',
-  invalidateNotebookCache,
 });
 
 const practiceStateSupport = createPracticeStateSupport({
@@ -932,7 +926,6 @@ export function setupEventListeners() {
     updateEarStudyButtonForMode,
     refreshCurrentUnitView,
     stopLearnBatchPlayback: (resetQueue = true) => learnBatchSupport.stopLearnBatchPlayback(resetQueue),
-    isHomeStudyStage: () => homeSupport.isHomeStudyStage(),
     navigateListenHistory: (direction) => practiceEngine.navigateListenHistory(direction),
     navigateSeeHistory: (direction) => practiceEngine.navigateSeeHistory(direction),
     navigateHomeCardByOffset: (offset) => homeSupport.navigateHomeCardByOffset(offset),
@@ -955,7 +948,6 @@ export function setupEventListeners() {
     switchTeachingMode,
     tryEnterTeachingMode,
     toggleInlineCollapse,
-    setProfileView: (view) => notebookSupport.setProfileView(view),
   });
 
   setupPracticeInteractionEvents({

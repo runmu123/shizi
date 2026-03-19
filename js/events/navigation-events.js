@@ -1,3 +1,5 @@
+import { handleHomeCardKeyboard } from '../common/home-stage-navigation.js';
+
 export function setupNavigationEvents({
   state,
   currentLevelBtn,
@@ -21,7 +23,6 @@ export function setupNavigationEvents({
   updateEarStudyButtonForMode,
   refreshCurrentUnitView,
   stopLearnBatchPlayback,
-  isHomeStudyStage,
   navigateListenHistory,
   navigateSeeHistory,
   navigateHomeCardByOffset,
@@ -210,17 +211,12 @@ export function setupNavigationEvents({
       }
     }
 
-    if (isHomeStudyStage()) {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        navigateHomeCardByOffset(-1);
-        return;
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        navigateHomeCardByOffset(1);
-        return;
-      }
+    if (handleHomeCardKeyboard({
+      event: e,
+      isActive: state.appSection === 'home' && state.mainViewMode === 'study',
+      navigateHomeCardByOffset,
+    })) {
+      return;
     }
 
     if (state.appSection === 'profile' && state.profileView === 'notebookReview') {

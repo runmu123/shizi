@@ -1,4 +1,5 @@
 import { buildCompletionSummaryHtml } from '../common/completion-summary.js';
+import { isHomeStudyStage } from '../common/home-stage-navigation.js';
 
 export function createHomeSupport({
   state,
@@ -14,10 +15,6 @@ export function createHomeSupport({
   setSpeakerButtonPlaying,
   escapeHtml,
 }) {
-  function isHomeStudyStage() {
-    return state.appSection === 'home' && state.mainViewMode === 'study';
-  }
-
   function returnToHomeStudy() {
     state.appSection = 'home';
     if (state.mainViewMode !== 'study') {
@@ -34,7 +31,7 @@ export function createHomeSupport({
   }
 
   function navigateHomeCard(targetIndex, direction = 'next') {
-    if (!isHomeStudyStage()) return;
+    if (!isHomeStudyStage(state)) return;
     const chars = getCurrentUnitChars();
     if (!chars.length) return;
     const nextIndex = Math.max(0, Math.min(targetIndex, chars.length - 1));
@@ -109,7 +106,7 @@ export function createHomeSupport({
   }
 
   return {
-    isHomeStudyStage,
+    isHomeStudyStage: () => isHomeStudyStage(state),
     returnToHomeStudy,
     getCurrentUnitChars,
     navigateHomeCard,

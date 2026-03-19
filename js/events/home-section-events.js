@@ -12,7 +12,6 @@ export function setupHomeSectionEvents({
   switchTeachingMode,
   tryEnterTeachingMode,
   toggleInlineCollapse,
-  setProfileView,
 }) {
   if (bottomNav) {
     bottomNav.addEventListener('click', (e) => {
@@ -104,11 +103,6 @@ export function setupHomeSectionEvents({
     if (action === 'audio-progress') {
       state.audioProgress.expanded = !state.audioProgress.expanded;
       toggleInlineCollapse(actionCard, state.audioProgress.expanded);
-      return;
-    }
-
-    if (action === 'notebook') {
-      setProfileView('notebook');
       return;
     }
 
