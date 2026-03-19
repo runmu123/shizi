@@ -52,48 +52,6 @@ export function upsertNotebookItemInState(state, {
   state.notebook.error = '';
 }
 
-export function removeNotebookItemFromState(state, { char, level, unit, mistakeMode }) {
-  if (!state?.notebook) return;
-  state.notebook.items = (state.notebook.items || []).filter((item) => !(
-    item.char === char
-    && item.level === level
-    && item.unit === unit
-    && item.mistake_mode === mistakeMode
-  ));
-}
-
-export function removeWrongCharEntryFromNotebookState(state, {
-  ownerChar,
-  ownerLevel,
-  ownerUnit,
-  mistakeMode,
-  wrongChar,
-  wrongLevel,
-  wrongUnit,
-}) {
-  if (!state?.notebook) return;
-
-  state.notebook.items = (state.notebook.items || []).map((item) => {
-    if (
-      item.char !== ownerChar
-      || item.level !== ownerLevel
-      || item.unit !== ownerUnit
-      || item.mistake_mode !== mistakeMode
-    ) {
-      return item;
-    }
-
-    return {
-      ...item,
-      wrong_chars: normalizeWrongCharEntries(item.wrong_chars, item.level, item.unit).filter((entry) => !(
-        entry.char === wrongChar
-        && entry.level === wrongLevel
-        && entry.unit === wrongUnit
-      )),
-    };
-  });
-}
-
 export function upsertProgressEntryInState(state, {
   username,
   char,

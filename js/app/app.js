@@ -445,10 +445,6 @@ async function resolveCharOrigin(char, preferredLevel = '') {
   };
 }
 
-function getCurrentSeeChar() {
-  return state.seeMode.sequence[state.seeMode.currentIndex] || '';
-}
-
 function refreshCurrentUnitView({ resetListen = false, autoPlayListen = false } = {}) {
   stopActiveAudioPlayback();
 
