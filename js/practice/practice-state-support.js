@@ -34,10 +34,29 @@ export function createPracticeStateSupport({
     return shuffleArray([correctChar, ...distractors]);
   }
 
-  function buildPracticeQuestion(char, mode) {
-    const question = {
+  function normalizePracticeEntry(entry, fallbackLevel = state.currentLevel, fallbackUnit = getCurrentUnitName()) {
+    if (typeof entry === 'string') {
+      const char = entry.trim();
+      return char ? { char, level: fallbackLevel, unit: fallbackUnit } : null;
+    }
+    if (!entry || typeof entry !== 'object') return null;
+    const char = String(entry.char || '').trim();
+    if (!char) return null;
+    return {
       char,
-      options: buildListenOptions(char),
+      level: String(entry.level || fallbackLevel || '').trim(),
+      unit: String(entry.unit || fallbackUnit || '').trim(),
+    };
+  }
+
+  function buildPracticeQuestion(entry, mode, fallbackLevel = state.currentLevel, fallbackUnit = getCurrentUnitName()) {
+    const normalizedEntry = normalizePracticeEntry(entry, fallbackLevel, fallbackUnit);
+    if (!normalizedEntry) return null;
+    const question = {
+      char: normalizedEntry.char,
+      level: normalizedEntry.level,
+      unit: normalizedEntry.unit,
+      options: buildListenOptions(normalizedEntry.char),
       selectedChar: '',
       answered: false,
       hadMistake: false,
@@ -53,11 +72,26 @@ export function createPracticeStateSupport({
   function initializePracticeSession(mode, chars, unitName = getCurrentUnitName()) {
     const modeKey = mode === 'see' ? 'seeMode' : 'listenMode';
     const createEmptyState = mode === 'see' ? createEmptySeeState : createEmptyListenState;
-    const normalizedChars = Array.from(new Set((chars || []).filter(Boolean)));
+    const fallbackLevel = state.currentLevel;
+    const fallbackUnit = unitName;
+    const normalizedEntries = [];
+    const seen = new Set();
+
+    (chars || []).forEach((entry) => {
+      const normalizedEntry = normalizePracticeEntry(entry, fallbackLevel, fallbackUnit);
+      if (!normalizedEntry) return;
+      const key = `${normalizedEntry.char}__${normalizedEntry.level}__${normalizedEntry.unit}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      normalizedEntries.push(normalizedEntry);
+    });
 
     state[modeKey] = createEmptyState(unitName);
-    state[modeKey].sequence = shuffleArray(normalizedChars);
-    state[modeKey].questions = state[modeKey].sequence.map((char) => buildPracticeQuestion(char, mode));
+    const shuffledEntries = shuffleArray([...normalizedEntries]);
+    state[modeKey].questions = shuffledEntries
+      .map((entry) => buildPracticeQuestion(entry, mode, fallbackLevel, fallbackUnit))
+      .filter(Boolean);
+    state[modeKey].sequence = state[modeKey].questions.map((question) => question.char);
     state[modeKey].options = state[modeKey].questions[0]?.options
       ? [...state[modeKey].questions[0].options]
       : [];

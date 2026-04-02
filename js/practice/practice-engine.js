@@ -20,6 +20,21 @@ export function createPracticeEngine({
   findCharUnitInCurrentLevel,
   playCharAudio,
 }) {
+  function getQuestionContext(question, fallbackUnit = getCurrentUnitName()) {
+    return {
+      level: question?.level || state.currentLevel,
+      unit: question?.unit || fallbackUnit,
+    };
+  }
+
+  function getSelectedCharContext(selectedChar, fallbackUnit = getCurrentUnitName()) {
+    return {
+      char: selectedChar,
+      level: state.currentLevel,
+      unit: findCharUnitInCurrentLevel(selectedChar) || fallbackUnit,
+    };
+  }
+
   function markQuestionCorrect(question) {
     question.answered = true;
     question.countedCorrect = question.hadMistake ? false : true;
@@ -42,24 +57,38 @@ export function createPracticeEngine({
     const session = getPracticeState(mode);
     if (!session) return;
 
-    const wrongChars = Array.from(
-      new Set(
-        session.questions
-          .filter((question) => question.countedCorrect === false)
-          .flatMap((question) => [question.char, ...(question.wrongSelections || [])])
-          .filter(Boolean),
-      ),
-    );
+    const retryEntryMap = new Map();
+    session.questions
+      .filter((question) => question.countedCorrect === false)
+      .forEach((question) => {
+        const questionContext = getQuestionContext(question);
+        const questionKey = `${question.char}__${questionContext.level}__${questionContext.unit}`;
+        retryEntryMap.set(questionKey, {
+          char: question.char,
+          level: questionContext.level,
+          unit: questionContext.unit,
+        });
 
-    if (!wrongChars.length) {
+        (question.wrongSelections || [])
+          .filter(Boolean)
+          .forEach((wrongChar) => {
+            const selectedContext = getSelectedCharContext(wrongChar, questionContext.unit);
+            const wrongKey = `${selectedContext.char}__${selectedContext.level}__${selectedContext.unit}`;
+            retryEntryMap.set(wrongKey, selectedContext);
+          });
+      });
+
+    const retryEntries = Array.from(retryEntryMap.values());
+
+    if (!retryEntries.length) {
       showToast(mode === 'see' ? '当前没有需要重新练的字' : '当前没有需要重新听的字', 'info');
       return;
     }
 
     if (mode === 'see') {
-      initializeSeeSession(wrongChars, getCurrentUnitName());
+      initializeSeeSession(retryEntries, getCurrentUnitName());
     } else {
-      initializeListenSession(wrongChars, getCurrentUnitName());
+      initializeListenSession(retryEntries, getCurrentUnitName());
     }
     renderUnit();
     saveCurrentPosition();
@@ -190,19 +219,17 @@ export function createPracticeEngine({
     if (!state.listenMode.mistakeChars.includes(currentChar)) {
       state.listenMode.mistakeChars.push(currentChar);
     }
+    const questionContext = getQuestionContext(question);
+    const selectedContext = getSelectedCharContext(selectedChar, questionContext.unit);
     updateUserMistakeRecord({
       char: currentChar,
-      level: state.currentLevel,
-      unit: getCurrentUnitName(),
+      level: questionContext.level,
+      unit: questionContext.unit,
       mistakeMode: 'listen',
-      wrongChar: {
-        char: selectedChar,
-        level: state.currentLevel,
-        unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
-      },
+      wrongChar: selectedContext,
     });
     showToast('错误！请重新选择', 'error');
-    playSpecificListenCharAudio(selectedChar);
+    playSpecificListenCharAudio(selectedChar, selectedContext);
   }
 
   function handleSeeModeAnswer(selectedChar) {
@@ -248,23 +275,21 @@ export function createPracticeEngine({
     if (!state.seeMode.mistakeChars.includes(currentChar)) {
       state.seeMode.mistakeChars.push(currentChar);
     }
+    const questionContext = getQuestionContext(question);
+    const selectedContext = getSelectedCharContext(selectedChar, questionContext.unit);
 
     updateUserMistakeRecord({
       char: currentChar,
-      level: state.currentLevel,
-      unit: getCurrentUnitName(),
+      level: questionContext.level,
+      unit: questionContext.unit,
       mistakeMode: 'see',
-      wrongChar: {
-        char: selectedChar,
-        level: state.currentLevel,
-        unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
-      },
+      wrongChar: selectedContext,
     });
     renderUnit();
     showToast('错误！请重新选择', 'error');
     playCharAudio(selectedChar, {
-      level: state.currentLevel,
-      unit: findCharUnitInCurrentLevel(selectedChar) || getCurrentUnitName(),
+      level: selectedContext.level,
+      unit: selectedContext.unit,
     });
   }
 

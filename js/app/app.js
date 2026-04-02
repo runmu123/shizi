@@ -480,8 +480,8 @@ function playListenModeAudio() {
   return practicePlaybackSupport.playListenModeAudio();
 }
 
-function playSpecificListenCharAudio(char) {
-  return practicePlaybackSupport.playSpecificListenCharAudio(char);
+function playSpecificListenCharAudio(char, options = {}) {
+  return practicePlaybackSupport.playSpecificListenCharAudio(char, options);
 }
 
 async function playSeeOptionAudio(char, btn = null) {
@@ -715,7 +715,7 @@ const practiceEngine = createPracticeEngine({
   getListenQuestion,
   getSeeQuestion,
   showToast,
-  playSpecificListenCharAudio: (char) => practicePlaybackSupport.playSpecificListenCharAudio(char),
+  playSpecificListenCharAudio: (char, options = {}) => practicePlaybackSupport.playSpecificListenCharAudio(char, options),
   updateUserMistakeRecord,
   findCharUnitInCurrentLevel,
   playCharAudio: (char, options) => practicePlaybackSupport.playCharAudio(char, options),

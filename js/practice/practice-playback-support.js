@@ -32,6 +32,16 @@ export function createPracticePlaybackSupport({
     return session.questions[resolvedIndex] || null;
   }
 
+  function getQuestionPlaybackContext(mode = state.mainViewMode, index = null) {
+    const question = getPracticeQuestion(mode, index);
+    if (!question) return null;
+    return {
+      char: question.char || '',
+      level: question.level || state.currentLevel,
+      unit: question.unit || findCharUnitInCurrentLevel(question.char || ''),
+    };
+  }
+
   function playCharAudio(char, { button = null, setPauseIcon = false, level = '', unit = '' } = {}) {
     if (!char || state.isTeachingMode || !window.audioManager) return;
 
@@ -81,8 +91,10 @@ export function createPracticePlaybackSupport({
   function playListenModeAudio() {
     if (state.mainViewMode !== 'listen' || state.isTeachingMode) return;
 
-    const currentChar = getCurrentListenChar();
-    const unitName = findCharUnitInCurrentLevel(currentChar);
+    const questionContext = getQuestionPlaybackContext('listen');
+    const currentChar = questionContext?.char || getCurrentListenChar();
+    const unitName = questionContext?.unit || findCharUnitInCurrentLevel(currentChar);
+    const level = questionContext?.level || state.currentLevel;
     const btn = document.getElementById('listenReplayBtn');
 
     if (!currentChar || !unitName || !window.audioManager) return;
@@ -104,7 +116,7 @@ export function createPracticePlaybackSupport({
 
     audioManager.stopCurrentAudio();
     audioManager.playAudio(
-      state.currentLevel,
+      level,
       unitName,
       currentChar,
       currentChar,
@@ -122,8 +134,8 @@ export function createPracticePlaybackSupport({
     });
   }
 
-  function playSpecificListenCharAudio(char) {
-    playCharAudio(char);
+  function playSpecificListenCharAudio(char, options = {}) {
+    playCharAudio(char, options);
   }
 
   async function playSeeOptionAudio(char, btn = null) {
