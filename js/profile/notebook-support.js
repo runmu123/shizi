@@ -169,7 +169,9 @@ export function createNotebookSupport({
 
   async function returnToNotebookList() {
     stopActiveAudioPlayback();
-    await flushNotebookMutations();
+    void flushNotebookMutations().catch((error) => {
+      console.error('后台同步错题列表失败:', error);
+    });
     state.profileView = 'main';
     document.body.style.overflow = '';
     document.body.style.position = '';

@@ -229,7 +229,9 @@ export function createNotebookEngine({
     if (session.currentIndex >= session.sequence.length - 1) {
       renderUnit();
       await waitForNextFrame();
-      await flushNotebookMutations();
+      void flushNotebookMutations().catch((error) => {
+        console.error('后台同步练习结果失败:', error);
+      });
       showNotebookPracticeCompletionModal();
       return;
     }
@@ -402,7 +404,10 @@ export function createNotebookEngine({
     }
   }
 
-  function moveToNextNotebookPracticeGroup() {
+  async function moveToNextNotebookPracticeGroup() {
+    void flushNotebookMutations().catch((error) => {
+      console.error('后台同步下一组练习结果失败:', error);
+    });
     const session = state.notebook.practice;
     const groups = (getNotebookGroupsByLevel(session.mode)[session.level] || []);
     const nextGroup = session.groupIndex + 1;

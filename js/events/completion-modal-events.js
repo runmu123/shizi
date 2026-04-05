@@ -29,11 +29,11 @@ export function setupCompletionModalEvents({
   }
 
   if (nextListenUnitBtn) {
-    nextListenUnitBtn.addEventListener('click', () => {
+    nextListenUnitBtn.addEventListener('click', async () => {
       listenCompletionModal?.classList.remove('active');
 
       if (completionModalState.kind === 'notebook') {
-        moveToNextNotebookPracticeGroup();
+        await moveToNextNotebookPracticeGroup();
         return;
       }
 
