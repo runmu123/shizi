@@ -1,3 +1,5 @@
+import { playPracticeQuestionAudio } from '../common/practice-audio.js';
+
 export function createPracticePlaybackSupport({
   state,
   practiceAudioUiState,
@@ -93,44 +95,20 @@ export function createPracticePlaybackSupport({
 
     const questionContext = getQuestionPlaybackContext('listen');
     const currentChar = questionContext?.char || getCurrentListenChar();
-    const unitName = questionContext?.unit || findCharUnitInCurrentLevel(currentChar);
-    const level = questionContext?.level || state.currentLevel;
-    const btn = document.getElementById('listenReplayBtn');
-
-    if (!currentChar || !unitName || !window.audioManager) return;
-
-    if (btn) {
-      setSpeakerButtonPlaying(btn, true);
-      practiceAudioUiState.button = btn;
-    }
-
-    const cleanup = () => {
-      if (practiceAudioUiState.button === btn) {
-        practiceAudioUiState.button = null;
-        practiceAudioUiState.cleanup = null;
-      }
-      if (!btn) return;
-      setSpeakerButtonPlaying(btn, false);
-    };
-    practiceAudioUiState.cleanup = cleanup;
-
-    audioManager.stopCurrentAudio();
-    audioManager.playAudio(
-      level,
-      unitName,
-      currentChar,
-      currentChar,
-      'char',
-      null,
-      cleanup,
-    ).then((success) => {
-      if (!success) {
-        cleanup();
-        showToast('暂无录音', 'info');
-      }
-    }).catch((err) => {
-      cleanup();
-      showToast('播放失败: ' + err.message, 'error');
+    playPracticeQuestionAudio({
+      question: currentChar ? { char: currentChar } : null,
+      context: currentChar
+        ? {
+            level: questionContext?.level || state.currentLevel,
+            unit: questionContext?.unit || findCharUnitInCurrentLevel(currentChar),
+          }
+        : null,
+      replayButtonId: 'listenReplayBtn',
+      practiceAudioUiState,
+      setSpeakerButtonPlaying,
+      stopActiveAudioPlayback,
+      showToast,
+      enabled: !!currentChar && !state.isTeachingMode,
     });
   }
 
@@ -143,9 +121,7 @@ export function createPracticePlaybackSupport({
     const inNotebookSeePractice = state.profileView === 'notebookPractice' && state.notebook.practice.mode === 'see';
     if ((!inMainSeeMode && !inNotebookSeePractice) || state.isTeachingMode || !char) return;
     if (btn?.classList.contains('revealed')) return;
-    const preferredLevel = inNotebookSeePractice
-      ? state.notebook.practice.level
-      : state.currentLevel;
+    const preferredLevel = inNotebookSeePractice ? state.notebook.practice.level : state.currentLevel;
     const context = await resolveCharOrigin(char, preferredLevel);
     playCharAudio(char, {
       button: btn,

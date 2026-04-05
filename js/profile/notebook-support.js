@@ -1,4 +1,5 @@
-import { buildCompletionSummaryHtml } from '../common/completion-summary.js';
+import { playPracticeQuestionAudio } from '../common/practice-audio.js';
+import { showPracticeCompletionModalShared } from '../common/practice-completion-modal.js';
 
 export function createNotebookSupport({
   state,
@@ -81,7 +82,7 @@ export function createNotebookSupport({
       if (error) throw error;
       removeNotebookMistakeItemLocally({ char, level, unit, mistakeMode });
     } catch (error) {
-      console.error('移除生字本错题失败:', error);
+      console.error('移除错题失败:', error);
     }
   }
 
@@ -154,29 +155,15 @@ export function createNotebookSupport({
     const question = getNotebookPracticeQuestion();
     if (!question) return;
     const context = getNotebookPracticeCharContext(question.char);
-    const btn = document.getElementById('notebookListenReplayBtn');
-    if (!btn) return;
-
-    if (btn.classList.contains('playing')) {
-      stopActiveAudioPlayback();
-      return;
-    }
-
-    const cleanup = () => {
-      if (practiceAudioUiState.button === btn) {
-        practiceAudioUiState.button = null;
-        practiceAudioUiState.cleanup = null;
-      }
-      setSpeakerButtonPlaying(btn, false);
-    };
-
-    setSpeakerButtonPlaying(btn, true);
-    practiceAudioUiState.button = btn;
-    practiceAudioUiState.cleanup = cleanup;
-    audioManager.stopCurrentAudio();
-    audioManager.playAudio(context.level, context.unit, question.char, question.char, 'char', null, cleanup).catch((err) => {
-      cleanup();
-      showToast('播放失败: ' + err.message, 'error');
+    playPracticeQuestionAudio({
+      question,
+      context,
+      replayButtonId: 'notebookListenReplayBtn',
+      practiceAudioUiState,
+      setSpeakerButtonPlaying,
+      stopActiveAudioPlayback,
+      showToast,
+      enabled: !state.isTeachingMode,
     });
   }
 
@@ -205,52 +192,17 @@ export function createNotebookSupport({
   }
 
   function showNotebookPracticeCompletionModal() {
-    const session = state.notebook.practice;
-    const modal = document.getElementById('listenCompletionModal');
-    const correctList = document.getElementById('listenCorrectList');
-    const wrongList = document.getElementById('listenWrongList');
-    const summary = document.getElementById('listenCompletionSummary');
-    const retryBtn = document.getElementById('retryListenBtn');
-    const nextBtn = document.getElementById('nextListenUnitBtn');
-    if (!modal || !correctList || !wrongList || !summary || !session) return;
-
-    completionModalState.kind = 'notebook';
-    completionModalState.mode = state.notebook.practice.mode;
-    stopActiveAudioPlayback();
-
-    const correctQuestions = session.questions.filter((question) => question.countedCorrect === true);
-    const wrongQuestions = session.questions.filter((question) => question.countedCorrect === false);
-    const hasRetryTargets = session.questions.some((question) => (question.wrongSelections || []).length > 0);
-
-    summary.innerHTML = buildCompletionSummaryHtml({
+    showPracticeCompletionModalShared({
+      kind: 'notebook',
+      mode: state.notebook.practice.mode,
+      session: state.notebook.practice,
+      completionModalState,
+      stopActiveAudioPlayback,
+      escapeHtml,
       scopeLabel: '本组',
-      totalCount: session.sequence.length,
-      correctCount: correctQuestions.length,
-      wrongCount: wrongQuestions.length,
       allCorrectText: '本组全部正确！',
+      nextLabel: '下一组',
     });
-
-    correctList.innerHTML = correctQuestions.length > 0
-      ? correctQuestions.map((question) => `<span class="listen-result-char success">${escapeHtml(question.char)}</span>`).join('')
-      : '<span class="listen-result-empty">暂无</span>';
-
-    wrongList.innerHTML = wrongQuestions.length > 0
-      ? wrongQuestions.map((question) => {
-          const wrongChars = (question.wrongSelections || []).join(',');
-          return `<div class="listen-result-row error">${escapeHtml(question.char)}(误认为：${escapeHtml(wrongChars)})</div>`;
-        }).join('')
-      : '<span class="listen-result-empty">无，表现很棒</span>';
-
-    if (retryBtn) {
-      retryBtn.style.display = hasRetryTargets ? 'inline-flex' : 'none';
-      retryBtn.textContent = '重新练';
-    }
-
-    if (nextBtn) {
-      nextBtn.textContent = '下一组';
-    }
-
-    modal.classList.add('active');
   }
 
   return {
