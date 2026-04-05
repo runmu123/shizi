@@ -15,3 +15,10 @@ args.yaml
 # build.py
 *.apk
 ./utils/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
