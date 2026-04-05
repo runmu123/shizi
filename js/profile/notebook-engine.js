@@ -14,6 +14,7 @@ export function createNotebookEngine({
   showNotebookPracticeCompletionModal,
   getCurrentUnitName,
   resolveCharOrigin,
+  playSpecificListenCharAudio,
   updateUserMistakeRecord,
   trackNotebookMutation,
   removeUserMistakeRecord,
@@ -265,6 +266,10 @@ export function createNotebookEngine({
       },
     }));
     showToast('错误！请重新选择', 'error');
+    playSpecificListenCharAudio(selectedChar, {
+      level: selectedContext?.level || session.level || currentLevel(),
+      unit: selectedContext?.unit || getCurrentUnitName(),
+    });
   }
 
   async function handleNotebookSeePracticeAnswer(selectedChar) {

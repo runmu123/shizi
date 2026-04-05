@@ -752,6 +752,7 @@ const notebookEngine = createNotebookEngine({
   showNotebookPracticeCompletionModal: () => notebookSupport.showNotebookPracticeCompletionModal(),
   getCurrentUnitName,
   resolveCharOrigin,
+  playSpecificListenCharAudio: (char, options = {}) => practicePlaybackSupport.playSpecificListenCharAudio(char, options),
   updateUserMistakeRecord,
   trackNotebookMutation,
   removeUserMistakeRecord: (args) => notebookSupport.removeUserMistakeRecord(args),
