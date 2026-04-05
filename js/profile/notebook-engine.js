@@ -242,6 +242,7 @@ export function createNotebookEngine({
           }
         }
         showToast('选择正确', 'success');
+        stopActiveAudioPlayback();
         setTimeout(() => goToNextNotebookPracticeItem(), 280);
       }
       return;
@@ -325,6 +326,7 @@ export function createNotebookEngine({
         }
         renderUnit();
         showToast('选择正确', 'success');
+        stopActiveAudioPlayback();
         setTimeout(() => goToNextNotebookPracticeItem(), 280);
       }
       return;
